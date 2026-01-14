@@ -1,21 +1,41 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
-import { DashboardLayout } from './components/DashboardLayout/DashboardLayout';
+import Layout from './components/Layout/Layout';
+import Topbar from './components/Topbar/Topbar';
+import DrawingToolbar from './components/Toolbar/DrawingToolbar';
+import DrawingPropertiesPanel from './components/Toolbar/DrawingPropertiesPanel';
+import Watchlist from './components/Watchlist/Watchlist';
+import ChartComponent from './components/Chart/ChartComponent';
+import SymbolSearch from './components/SymbolSearch/SymbolSearch';
+import Toast from './components/Toast/Toast';
+import SnapshotToast from './components/Toast/SnapshotToast';
+import html2canvas from 'html2canvas';
+import { getTickerPrice, subscribeToMultiTicker, checkAuth, closeAllWebSockets, forceCloseAllWebSockets, saveUserPreferences, modifyOrder, cancelOrder } from './services/openalgo';
+import { globalAlertMonitor } from './services/globalAlertMonitor';
+
+import BottomBar from './components/BottomBar/BottomBar';
+import ChartGrid from './components/Chart/ChartGrid';
+import AlertDialog from './components/Alert/AlertDialog';
+import RightToolbar from './components/Toolbar/RightToolbar';
+import AlertsPanel from './components/Alerts/AlertsPanel';
 import ApiKeyDialog from './components/ApiKeyDialog/ApiKeyDialog';
+import MobileNav from './components/MobileNav';
+import LayoutTemplateDialog from './components/LayoutTemplates/LayoutTemplateDialog';
 
 // Lazy load heavy modal components for better initial load performance
-
+const SettingsPopup = lazy(() => import('./components/Settings/SettingsPopup'));
+const CommandPalette = lazy(() => import('./components/CommandPalette/CommandPalette'));
+const ShortcutsDialog = lazy(() => import('./components/ShortcutsDialog/ShortcutsDialog'));
+const OptionChainPicker = lazy(() => import('./components/OptionChainPicker').then(m => ({ default: m.OptionChainPicker })));
+const OptionChainModal = lazy(() => import('./components/OptionChainModal'));
 import { initTimeService, destroyTimeService } from './services/timeService';
-import { getTickerPrice, closeAllWebSockets, subscribeToMultiTicker } from './services/openalgo';
 import logger from './utils/logger';
 import { useIsMobile, useCommandPalette, useGlobalShortcuts } from './hooks';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useCloudWorkspaceSync } from './hooks/useCloudWorkspaceSync';
 import { useOILines } from './hooks/useOILines';
-import { useTradingData } from './hooks/useTradingData';
 import { useWatchlistHandlers } from './hooks/useWatchlistHandlers';
 import { useIndicatorHandlers } from './hooks/useIndicatorHandlers';
 import { useIntervalHandlers } from './hooks/useIntervalHandlers';
-import { useOrderHandlers } from './hooks/useOrderHandlers';
 import { useSymbolHandlers } from './hooks/useSymbolHandlers';
 import { useLayoutHandlers } from './hooks/useLayoutHandlers';
 import { useAlertHandlers } from './hooks/useAlertHandlers';
@@ -24,12 +44,23 @@ import { useUIHandlers } from './hooks/useUIHandlers';
 import { useANNScanner } from './hooks/useANNScanner';
 import { useTheme } from './context/ThemeContext';
 import { useUser } from './context/UserContext';
+import { OrderProvider } from './context/OrderContext';
 import { indicatorConfigs } from './components/IndicatorSettings/indicatorConfigs';
 
-
+import PositionTracker from './components/PositionTracker';
+import GlobalAlertPopup from './components/GlobalAlertPopup/GlobalAlertPopup';
+import AccountPanel from './components/AccountPanel';
+import TradingPanel from './components/TradingPanel/TradingPanel';
+import ObjectTreePanel from './components/ObjectTree/ObjectTreePanel';
+import MarketScreenerPanel from './components/MarketScreener/MarketScreenerPanel';
 
 // Lazy load additional heavy components
+const SectorHeatmapModal = lazy(() => import('./components/SectorHeatmap').then(m => ({ default: m.SectorHeatmapModal })));
+const DepthOfMarket = lazy(() => import('./components/DepthOfMarket'));
 const ANNScanner = lazy(() => import('./components/ANNScanner'));
+const ChartTemplatesDialog = lazy(() => import('./components/ChartTemplates/ChartTemplatesDialog'));
+const ShortcutsSettings = lazy(() => import('./components/ShortcutsSettings/ShortcutsSettings'));
+const IndicatorSettingsDialog = lazy(() => import('./components/IndicatorSettings/IndicatorSettingsDialog'));
 import {
   VALID_INTERVAL_UNITS,
   DEFAULT_FAVORITE_INTERVALS,
@@ -67,7 +98,6 @@ const WorkspaceLoader = () => (
 // AppContent - only mounts AFTER cloud sync is complete
 // This ensures all useState initializers read from already-updated localStorage
 function AppContent({ isAuthenticated, setIsAuthenticated }) {
-  const { apiKey, setApiKey, websocketUrl, setWebsocketUrl, hostUrl, setHostUrl, openalgoUsername, setOpenalgoUsername } = useUser();
 
   // Multi-Chart State
   const [layout, setLayout] = useState(() => {
@@ -202,13 +232,49 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
   // strategyConfig is now per-chart, stored in charts[].strategyConfig
   const [isOptionChainOpen, setIsOptionChainOpen] = useState(false);
   const [optionChainInitialSymbol, setOptionChainInitialSymbol] = useState(null);
-
   // const [indicators, setIndicators] = useState({ sma: false, ema: false }); // Moved to charts state
   const [toasts, setToasts] = useState([]);
   const toastIdCounter = React.useRef(0);
   const MAX_TOASTS = 3;
 
   const [snapshotToast, setSnapshotToast] = useState(null);
+
+  // Toast timeout refs for cleanup
+  const snapshotToastTimeoutRef = React.useRef(null);
+
+  // Show toast helper with queue management - defined early for use in hooks
+  const showToast = (message, type = 'error', action = null) => {
+    const id = ++toastIdCounter.current;
+    const newToast = { id, message, type, action };
+
+    setToasts(prev => {
+      // Add new toast, limit to MAX_TOASTS (oldest removed first)
+      const updated = [...prev, newToast];
+      if (updated.length > MAX_TOASTS) {
+        return updated.slice(-MAX_TOASTS);
+      }
+      return updated;
+    });
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+  };
+
+  // Remove a specific toast
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const showSnapshotToast = (message) => {
+    if (snapshotToastTimeoutRef.current) {
+      clearTimeout(snapshotToastTimeoutRef.current);
+    }
+    setSnapshotToast(message);
+    snapshotToastTimeoutRef.current = setTimeout(() => setSnapshotToast(null), 3000);
+  };
+
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alertPrice, setAlertPrice] = useState(null);
 
@@ -239,77 +305,25 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
   // Global alert popup state (for background alert notifications)
   const [globalAlertPopups, setGlobalAlertPopups] = useState([]);
 
+  // === GlobalAlertMonitor: DISABLED ===
+  // Background price monitoring is disabled because OpenAlgo only supports
+  // one WebSocket connection per API key. The GlobalAlertMonitor was creating
+  // a second connection that conflicted with the watchlist WebSocket.
+  // 
+  // Alert PERSISTENCE still works - alerts are saved/restored per symbol.
+  // Background MONITORING would require reusing the existing watchlist WebSocket.
+  // 
+  // useEffect(() => {
+  //   if (!isAuthenticated) return;
+  //   const handleBackgroundAlertTrigger = (evt) => { ... };
+  //   globalAlertMonitor.start(handleBackgroundAlertTrigger);
+  //   return () => { globalAlertMonitor.stop(); };
+  // }, [isAuthenticated]);
+
   // Mobile State
   const isMobile = useIsMobile();
   const [mobileTab, setMobileTab] = useState('chart');
   const [isWatchlistVisible, setIsWatchlistVisible] = useState(false);
-
-  // Tool State
-  const [activeTool, setActiveTool] = useState('Cursor');
-  const [isMagnetMode, setIsMagnetMode] = useState(false);
-  const [isDrawingsHidden, setIsDrawingsHidden] = useState(false);
-  const [isDrawingsLocked, setIsDrawingsLocked] = useState(false);
-  const [isTimerVisible, setIsTimerVisible] = useState(false);
-  const [isSessionBreakVisible, setIsSessionBreakVisible] = useState(false);
-  const [showDrawingToolbar, setShowDrawingToolbar] = useState(true);
-  const [isReplayMode, setIsReplayMode] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isIndicatorSettingsOpen, setIsIndicatorSettingsOpen] = useState(false);
-
-  // Drawings State
-  const [liveDrawings, setLiveDrawings] = useState([]);
-  const handleDrawingsSync = useCallback((drawings) => {
-    setLiveDrawings(drawings);
-  }, []);
-
-  // Trading Data (Orders/Positions) for visual trading
-  // Trading Data (Orders/Positions) for visual trading and Account Panel
-  // We fetch ALL data here to avoid duplicate API calls in child components
-  const {
-    activeOrders,
-    activePositions,
-    positions: allPositions,
-    orders: allOrders,
-    funds,
-    holdings,
-    trades,
-    refreshTradingData
-  } = useTradingData(isAuthenticated);
-
-  // Show toast helper with queue management (MOVED HERE)
-  const showToast = useCallback((message, type = 'error', action = null) => {
-    const id = ++toastIdCounter.current;
-    const newToast = { id, message, type, action };
-
-    setToasts(prev => {
-      // Add new toast, limit to MAX_TOASTS (oldest removed first)
-      const updated = [...prev, newToast];
-      if (updated.length > MAX_TOASTS) {
-        return updated.slice(-MAX_TOASTS);
-      }
-      return updated;
-    });
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 5000);
-  }, []); // Empty dependency array as it uses functional state update and refs
-
-  // Remove a specific toast
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
-
-  // Order handlers extracted to hook
-  const {
-    handleModifyOrder,
-    handleCancelOrder
-  } = useOrderHandlers({
-    activeOrders,
-    showToast,
-    refreshTradingData
-  });
 
   // Handle mobile tab changes
   const handleMobileTabChange = useCallback((tab) => {
@@ -428,7 +442,6 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
   // Theme State (Refactored to Context)
   const { theme, toggleTheme, setTheme } = useTheme();
 
-
   // Legacy effect removed - handled by ThemeContext
 
   // Chart Appearance State
@@ -460,17 +473,6 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
       console.error('Failed to persist drawing defaults:', error);
     }
   }, [drawingDefaults]);
-
-  // Toast timeout refs for cleanup
-  const snapshotToastTimeoutRef = React.useRef(null);
-
-  const showSnapshotToast = (message) => {
-    if (snapshotToastTimeoutRef.current) {
-      clearTimeout(snapshotToastTimeoutRef.current);
-    }
-    setSnapshotToast(message);
-    snapshotToastTimeoutRef.current = setTimeout(() => setSnapshotToast(null), 3000);
-  };
 
   // Order handlers are now provided by useOrderHandlers hook
 
@@ -710,6 +712,47 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
     skipNextSyncRef,
     setAlertLogs,
     setUnreadAlertCount
+  });
+
+  // Tool-related state - moved early for use in useToolHandlers
+  const [activeTool, setActiveTool] = useState(null);
+  const [isMagnetMode, setIsMagnetMode] = useState(false);
+  const [showDrawingToolbar, setShowDrawingToolbar] = useState(true);
+  const [isReplayMode, setIsReplayMode] = useState(false);
+  const [isDrawingsLocked, setIsDrawingsLocked] = useState(false);
+  const [isDrawingsHidden, setIsDrawingsHidden] = useState(false);
+  const [isTimerVisible, setIsTimerVisible] = useLocalStorage('oa_timer_visible', false);
+  const [isSessionBreakVisible, setIsSessionBreakVisible] = useLocalStorage('oa_session_break_visible', false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isIndicatorSettingsOpen, setIsIndicatorSettingsOpen] = useState(false);
+  const [editingIndicator, setEditingIndicator] = useState(null);
+  const [websocketUrl, setWebsocketUrl] = useState(() => {
+    try {
+      return localStorage.getItem('oa_ws_url') || '127.0.0.1:8765';
+    } catch {
+      return '127.0.0.1:8765';
+    }
+  });
+  const [apiKey, setApiKey] = useState(() => {
+    try {
+      return localStorage.getItem('oa_apikey') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [hostUrl, setHostUrl] = useState(() => {
+    try {
+      return localStorage.getItem('oa_host_url') || 'http://127.0.0.1:5000';
+    } catch {
+      return 'http://127.0.0.1:5000';
+    }
+  });
+  const [openalgoUsername, setOpenalgoUsername] = useState(() => {
+    try {
+      return localStorage.getItem('oa_username') || '';
+    } catch {
+      return '';
+    }
   });
 
   // Tool handlers extracted to hook
@@ -1366,9 +1409,24 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
 
   // Indicator handlers are now provided by useIndicatorHandlers hook
 
+  // Handler to OPEN the settings dialog (called from Object Tree)
+  const handleOpenIndicatorSettings = (indicatorId) => {
+    // Find the indicator to edit
+    const indicator = activeChart.indicators.find(ind => ind.id === indicatorId || ind.type === indicatorId);
+    if (indicator) {
+      setEditingIndicator(indicator);
+      setIsIndicatorSettingsOpen(true);
+    }
+  };
+
   // Check if properties panel should be visible
   const isDrawingPanelVisible = activeTool && DRAWING_TOOLS.includes(activeTool);
 
+  // Drawings State matching lat
+  const [liveDrawings, setLiveDrawings] = useState([]);
+  const handleDrawingsSync = useCallback((drawings) => {
+    setLiveDrawings(drawings);
+  }, []);
 
   // Command Palette (Cmd+K / Ctrl+K)
   const commandPaletteHandlers = React.useMemo(() => ({
@@ -1529,253 +1587,563 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
   }
 
   return (
-    <>
-      <DashboardLayout
-        {...{
-          showDrawingToolbar,
-          isMobile,
-          isWatchlistVisible,
-          setIsWatchlistVisible,
-          isAccountPanelOpen,
-          setIsAccountPanelOpen,
-          isAccountPanelMinimized,
-          isAccountPanelMaximized,
-          handleAccountPanelMinimize,
-          handleAccountPanelMaximize,
+    <OrderProvider showToast={showToast}>
+      <Layout
+        isLeftToolbarVisible={showDrawingToolbar}
+        isMobile={isMobile}
+        isWatchlistVisible={isWatchlistVisible}
+        onWatchlistOverlayClick={() => setIsWatchlistVisible(false)}
+        isAccountPanelOpen={isAccountPanelOpen}
+        accountPanel={
+          <AccountPanel
+            isOpen={isAccountPanelOpen}
+            onClose={() => setIsAccountPanelOpen(false)}
+            isAuthenticated={isAuthenticated}
+            onSymbolSelect={(symData) => {
+              const symbol = typeof symData === 'string' ? symData : symData.symbol;
+              const exchange = typeof symData === 'string' ? 'NSE' : (symData.exchange || 'NSE');
+              setCharts(prev => prev.map(chart =>
+                chart.id === activeChartId ? { ...chart, symbol, exchange, strategyConfig: null } : chart
+              ));
+            }}
+            isMinimized={isAccountPanelMinimized}
+            onMinimize={handleAccountPanelMinimize}
+            isMaximized={isAccountPanelMaximized}
+            onMaximize={handleAccountPanelMaximize}
+            isToolbarVisible={showDrawingToolbar}
+            showToast={showToast}
+          />
+        }
+        isAccountPanelMinimized={isAccountPanelMinimized}
+        isAccountPanelMaximized={isAccountPanelMaximized}
+        mobileNav={
+          <MobileNav
+            activeTab={mobileTab}
+            onTabChange={handleMobileTabChange}
+            alertCount={unreadAlertCount}
+            theme={theme}
+          />
+        }
+        topbar={
+          <Topbar
+            symbol={currentSymbol}
+            interval={currentInterval}
+            chartType={chartType}
+            indicators={activeChart.indicators}
+            favoriteIntervals={favoriteIntervals}
+            customIntervals={customIntervals}
+            lastNonFavoriteInterval={lastNonFavoriteInterval}
+            onSymbolClick={handleSymbolClick}
+            onIntervalChange={handleIntervalChange}
+            onChartTypeChange={setChartType}
+            onAddIndicator={handleAddIndicator}
+            onToggleFavorite={handleToggleFavorite}
+            onAddCustomInterval={handleAddCustomInterval}
+            onRemoveCustomInterval={handleRemoveCustomInterval}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onMenuClick={toggleDrawingToolbar}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onDownloadImage={handleDownloadImage}
+            onCopyImage={handleCopyImage}
+            onFullScreen={handleFullScreen}
+            onReplayClick={handleReplayClick}
+            isReplayMode={isReplayMode}
+            onAlertClick={handleAlertClick}
+            onCompareClick={handleCompareClick}
+            layout={layout}
+            onLayoutChange={handleLayoutChange}
+            onSaveLayout={handleSaveLayout}
+            onSettingsClick={handleSettingsClick}
+            onTemplatesClick={handleTemplatesClick}
+            onChartTemplatesClick={handleChartTemplatesClick}
+            onStraddleClick={() => setIsStraddlePickerOpen(true)}
 
-          theme,
-          toggleTheme,
+            strategyConfig={activeChart?.strategyConfig}
+            onIndicatorSettingsClick={() => setIsIndicatorSettingsOpen(true)}
+            onOptionsClick={() => setIsOptionChainOpen(true)}
+            onHeatmapClick={() => setIsSectorHeatmapOpen(true)}
+          />
+        }
+        leftToolbar={
+          <DrawingToolbar
+            activeTool={activeTool}
+            isMagnetMode={isMagnetMode}
+            onToolChange={handleToolChange}
+            isDrawingsLocked={isDrawingsLocked}
+            isDrawingsHidden={isDrawingsHidden}
+            isTimerVisible={isTimerVisible}
+          />
+        }
+        drawingPropertiesPanel={
+          <DrawingPropertiesPanel
+            defaults={drawingDefaults}
+            onPropertyChange={handleDrawingPropertyChange}
+            onReset={handleResetDrawingDefaults}
+            isVisible={isDrawingPanelVisible}
+            activeTool={activeTool}
+          />
+        }
+        bottomBar={
+          <BottomBar
+            currentTimeRange={currentTimeRange}
+            onTimeRangeChange={(range, interval) => {
+              setCurrentTimeRange(range);
+              if (interval) {
+                handleIntervalChange(interval);
+              }
+            }}
+            isLogScale={isLogScale}
+            isAutoScale={isAutoScale}
+            onToggleLogScale={() => setIsLogScale(!isLogScale)}
+            onToggleAutoScale={() => setIsAutoScale(!isAutoScale)}
+            onResetZoom={() => {
+              const activeRef = chartRefs.current[activeChartId];
+              if (activeRef) {
+                activeRef.resetZoom();
+              }
+            }}
+            isToolbarVisible={showDrawingToolbar}
+            showOILines={showOILines}
+            onToggleOILines={handleToggleOILines}
+            isAccountPanelOpen={isAccountPanelOpen}
+            onToggleAccountPanel={() => setIsAccountPanelOpen(prev => !prev)}
+          />
+        }
+        watchlist={
+          activeRightPanel === 'watchlist' ? (
+            <Watchlist
+              currentSymbol={currentSymbol}
+              currentExchange={currentExchange}
+              items={(() => {
+                // Merge section markers with live data
+                // activeWatchlist.symbols contains both ###section markers and symbol objects
+                const symbols = activeWatchlist?.symbols || [];
+                // Use composite key (symbol-exchange) to properly map live data for same symbol from different exchanges
+                const dataMap = new Map(watchlistData.map(item => [`${item.symbol}-${item.exchange}`, item]));
 
-          onToggleLogScale: () => setIsLogScale(!isLogScale),
-          onToggleAutoScale: () => setIsAutoScale(!isAutoScale),
-          onResetZoom: () => {
-            const activeRef = chartRefs.current[activeChartId];
-            if (activeRef) activeRef.resetZoom();
-          },
-          onTimeRangeChange: (range, interval) => {
-            setCurrentTimeRange(range);
-            if (interval) handleIntervalChange(interval);
-          },
-          timezone: 'UTC+5:30',
-
-          charts,
-          setCharts,
-          activeChartId,
-          setActiveChartId,
-          layout,
-          chartType,
-          setChartType,
-          activeChart,
-          chartRefs,
-          currentSymbol,
-          currentInterval,
-
-          favoriteIntervals,
-          customIntervals,
-          lastNonFavoriteInterval,
-          handleIntervalChange,
-          handleToggleFavorite,
-          handleAddCustomInterval,
-          handleRemoveCustomInterval,
-
-          activeTool,
-          isMagnetMode,
-          handleToolChange,
-          handleToolUsed,
-          isDrawingsLocked,
-          isDrawingsHidden,
-          isDrawingPanelVisible,
-          toggleDrawingToolbar,
-          handleUndo,
-          handleRedo,
-          drawingDefaults,
-          handleDrawingPropertyChange,
-          handleResetDrawingDefaults,
-
-          isTimerVisible,
-          isSessionBreakVisible,
-
-          isLogScale,
-          isAutoScale,
-          chartAppearance,
-          handleChartAppearanceChange,
-          handleResetChartAppearance,
-          currentTimeRange,
-
-          oiLines,
-          showOILines,
-
-          activeOrders,
-          activePositions,
-          allPositions,
-          allOrders,
-          holdings,
-          trades,
-          funds,
-          handleModifyOrder,
-          handleCancelOrder,
-
-          handleAddIndicator,
-          handleIndicatorRemove,
-          handleIndicatorVisibilityToggle,
-          handleIndicatorSettings,
-
-          alerts,
-          alertLogs,
-          unreadAlertCount,
-          globalAlertPopups,
-          isAlertOpen,
-          setIsAlertOpen,
-          alertPrice,
-          setAlertPrice,
-          handleAlertClick,
-          handleSaveAlert,
-          handleRemoveAlert,
-          handleRestartAlert,
-          handlePauseAlert,
-          handleChartAlertsSync,
-          handleChartAlertTriggered,
-          liveDrawings,
-          onDrawingsSync: handleDrawingsSync,
-          dismissGlobalAlertPopup: (alertId) => setGlobalAlertPopups(prev => prev.filter(a => a.id !== alertId)),
-          clearUnreadAlertCount: () => setUnreadAlertCount(0),
-
-          watchlistsState,
-          activeWatchlist,
-          watchlistSymbols,
-          watchlistData,
-          watchlistLoading,
-          handleCreateWatchlist,
-          handleRenameWatchlist,
-          handleDeleteWatchlist,
-          handleSwitchWatchlist,
-          handleToggleWatchlistFavorite,
-          handleClearWatchlist,
-          handleCopyWatchlist,
-          handleImportWatchlist,
-          handleExportWatchlist,
-          handleAddSection,
-          handleToggleSection,
-          handleRenameSection,
-          handleDeleteSection,
-          handleWatchlistReorder,
-          handleRemoveFromWatchlist,
-          favoriteWatchlists,
-
-          isSearchOpen,
-          setIsSearchOpen,
-          searchMode,
-          setSearchMode,
-          initialSearchValue,
-          setInitialSearchValue,
-          handleSymbolChange,
-          handleSymbolClick,
-          handleCompareClick,
-
-          handleDownloadImage,
-          handleCopyImage,
-          handleFullScreen,
-
-          handleReplayClick,
-          isReplayMode,
-          handleReplayModeChange,
-
-          handleLayoutChange,
-          handleSaveLayout,
-          handleMaximizeChart,
-
-          activeRightPanel,
-          handleRightPanelToggle,
-
-          mobileTab,
-          handleMobileTabChange,
-
-          isSettingsOpen,
-          setIsSettingsOpen,
-          handleSettingsClick,
-          websocketUrl,
-          handleWebsocketUrlSave,
-          apiKey,
-          handleApiKeySave: handleApiKeySaveFromSettings,
-          hostUrl,
-          handleHostUrlSave,
-          openalgoUsername,
-          handleUsernameSave,
-          handleTimerToggle,
-          handleSessionBreakToggle,
-
-          isTemplateDialogOpen,
-          setIsTemplateDialogOpen,
-          handleTemplatesClick,
-          handleLoadTemplate,
-
-          isChartTemplatesOpen,
-          setIsChartTemplatesOpen,
-          handleChartTemplatesClick,
-          getCurrentChartConfig,
-          handleLoadChartTemplate,
-
-          isShortcutsDialogOpen,
-          setIsShortcutsDialogOpen,
-
-          isCommandPaletteOpen,
-          setIsCommandPaletteOpen,
-          commands,
-          recentCommands,
-          groupedCommands,
-          searchCommands,
-          executeCommand,
-
-          isOptionChainOpen,
-          setIsOptionChainOpen,
-          optionChainInitialSymbol,
-          setOptionChainInitialSymbol,
-          handleOpenOptionChainForSymbol,
-          handleOptionSelect,
-
-          isStraddlePickerOpen,
-          setIsStraddlePickerOpen,
-
-          isSectorHeatmapOpen,
-          setIsSectorHeatmapOpen,
-          positionTrackerSettings,
-          setPositionTrackerSettings,
-
-          isIndicatorSettingsOpen,
-          setIsIndicatorSettingsOpen,
-
-          toasts,
-          removeToast,
-          showToast,
-          snapshotToast,
-          setSnapshotToast,
-
-          isAuthenticated,
-
-          annScannerState,
-          setAnnScannerState,
-          onStartAnnScan: startAnnScan,
-          onCancelAnnScan: cancelAnnScan,
-          onAddToWatchlist: (symbolData) => {
-            const { symbol, exchange } = symbolData;
-            const existsInWatchlist = watchlistSymbols.some(s => {
-              if (typeof s === 'string') return s === symbol;
-              return s.symbol === symbol && s.exchange === exchange;
-            });
-            if (!existsInWatchlist) {
-              setWatchlistsState(prev => ({
-                ...prev,
-                lists: prev.lists.map(wl =>
-                  wl.id === prev.activeListId
-                    ? { ...wl, symbols: [...wl.symbols, { symbol, exchange: exchange || 'NSE' }] }
-                    : wl
-                ),
-              }));
-            }
-          }
+                return symbols.map(item => {
+                  // If it's a section marker, keep it as-is
+                  if (typeof item === 'string' && item.startsWith('###')) {
+                    return item;
+                  }
+                  // Otherwise, find the live data for this symbol+exchange combination
+                  const symbolName = typeof item === 'string' ? item : item.symbol;
+                  const exchange = typeof item === 'string' ? 'NSE' : (item.exchange || 'NSE');
+                  const compositeKey = `${symbolName}-${exchange}`;
+                  // Merge live data with the item, preserving the original exchange
+                  const liveData = dataMap.get(compositeKey);
+                  if (liveData) {
+                    return { ...liveData, exchange }; // Ensure exchange is from original item
+                  }
+                  return item;
+                });
+              })()}
+              isLoading={watchlistLoading}
+              onSymbolSelect={(symData) => {
+                const symbol = typeof symData === 'string' ? symData : symData.symbol;
+                const exchange = typeof symData === 'string' ? 'NSE' : (symData.exchange || 'NSE');
+                setCharts(prev => prev.map(chart =>
+                  chart.id === activeChartId ? { ...chart, symbol: symbol, exchange: exchange, strategyConfig: null } : chart
+                ));
+              }}
+              onAddClick={handleAddClick}
+              onRemoveClick={handleRemoveFromWatchlist}
+              onReorder={handleWatchlistReorder}
+              // Multiple watchlists props
+              watchlists={watchlistsState.lists}
+              activeWatchlistId={watchlistsState.activeListId}
+              onSwitchWatchlist={handleSwitchWatchlist}
+              onCreateWatchlist={handleCreateWatchlist}
+              onRenameWatchlist={handleRenameWatchlist}
+              onDeleteWatchlist={handleDeleteWatchlist}
+              onClearWatchlist={handleClearWatchlist}
+              onCopyWatchlist={handleCopyWatchlist}
+              // Favorites for quick-access
+              favoriteWatchlists={favoriteWatchlists}
+              onToggleFavorite={handleToggleWatchlistFavorite}
+              // Section management (TradingView flat array model)
+              onAddSection={handleAddSection}
+              onRenameSection={handleRenameSection}
+              onDeleteSection={handleDeleteSection}
+              collapsedSections={activeWatchlist?.collapsedSections || []}
+              onToggleSection={handleToggleSection}
+              // Import/Export props
+              onExport={handleExportWatchlist}
+              onImport={handleImportWatchlist}
+            />
+          ) : activeRightPanel === 'objectTree' ? (
+            <ObjectTreePanel
+              indicators={activeChart.indicators || []}
+              drawings={liveDrawings}
+              onIndicatorVisibilityToggle={handleIndicatorVisibilityToggle}
+              onIndicatorRemove={handleIndicatorRemove}
+              onIndicatorSettings={handleOpenIndicatorSettings}
+              onDrawingVisibilityToggle={(idx) => {
+                const activeRef = chartRefs.current[activeChartId];
+                if (activeRef && typeof activeRef.toggleDrawingVisibility === 'function') {
+                  activeRef.toggleDrawingVisibility(idx);
+                }
+              }}
+              onDrawingLockToggle={(idx) => {
+                const activeRef = chartRefs.current[activeChartId];
+                if (activeRef && typeof activeRef.toggleDrawingLock === 'function') {
+                  activeRef.toggleDrawingLock(idx);
+                }
+              }}
+              onDrawingRemove={(idx) => {
+                const activeRef = chartRefs.current[activeChartId];
+                if (activeRef && typeof activeRef.removeDrawingByIndex === 'function') {
+                  activeRef.removeDrawingByIndex(idx);
+                }
+              }}
+              symbol={currentSymbol}
+              interval={currentInterval}
+            />
+          ) : activeRightPanel === 'screener' ? (
+            <MarketScreenerPanel
+              items={watchlistData}
+              currentSymbol={currentSymbol}
+              currentExchange={currentExchange}
+              onSymbolSelect={(symData) => {
+                const symbol = typeof symData === 'string' ? symData : symData.symbol;
+                const exchange = typeof symData === 'string' ? 'NSE' : (symData.exchange || 'NSE');
+                setCharts(prev => prev.map(chart =>
+                  chart.id === activeChartId ? { ...chart, symbol: symbol, exchange: exchange, strategyConfig: null } : chart
+                ));
+              }}
+            />
+          ) : activeRightPanel === 'alerts' ? (
+            <AlertsPanel
+              alerts={alerts}
+              logs={alertLogs}
+              onRemoveAlert={handleRemoveAlert}
+              onRestartAlert={handleRestartAlert}
+              onPauseAlert={handlePauseAlert}
+              onNavigate={(symbolData) => {
+                // Switch active chart to the alert's symbol
+                setCharts(prev => prev.map(chart =>
+                  chart.id === activeChartId ? { ...chart, symbol: symbolData.symbol, exchange: symbolData.exchange, strategyConfig: null } : chart
+                ));
+              }}
+              onEditAlert={(alert) => {
+                // Navigate to the symbol first
+                setCharts(prev => prev.map(chart =>
+                  chart.id === activeChartId ? { ...chart, symbol: alert.symbol, exchange: alert.exchange || 'NSE', strategyConfig: null } : chart
+                ));
+                // Call editAlertById on the chart after a short delay to allow chart to update
+                setTimeout(() => {
+                  const activeRef = chartRefs.current[activeChartId];
+                  if (activeRef && typeof activeRef.editAlertById === 'function' && alert.externalId) {
+                    activeRef.editAlertById(alert.externalId);
+                  }
+                }, 500);
+              }}
+            />
+          ) : activeRightPanel === 'position_tracker' ? (
+            <PositionTracker
+              sourceMode={positionTrackerSettings.sourceMode}
+              customSymbols={positionTrackerSettings.customSymbols}
+              watchlistData={watchlistData}
+              isLoading={watchlistLoading}
+              onSourceModeChange={(mode) => setPositionTrackerSettings(prev => ({ ...prev, sourceMode: mode }))}
+              onCustomSymbolsChange={(symbols) => setPositionTrackerSettings(prev => ({ ...prev, customSymbols: symbols }))}
+              onSymbolSelect={(symData) => {
+                const symbol = typeof symData === 'string' ? symData : symData.symbol;
+                const exchange = typeof symData === 'string' ? 'NSE' : (symData.exchange || 'NSE');
+                setCharts(prev => prev.map(chart =>
+                  chart.id === activeChartId ? { ...chart, symbol: symbol, exchange: exchange, strategyConfig: null } : chart
+                ));
+              }}
+              isAuthenticated={isAuthenticated}
+            />
+          ) : activeRightPanel === 'ann_scanner' ? (
+            <Suspense fallback={<div style={{ padding: 20 }}>Loading Scanner...</div>}>
+              <ANNScanner
+                watchlistSymbols={watchlistSymbols
+                  .filter(s => !(typeof s === 'string' && s.startsWith('###')))
+                  .map(s => typeof s === 'string'
+                    ? { symbol: s, exchange: 'NSE' }
+                    : { symbol: s.symbol, exchange: s.exchange || 'NSE' }
+                  )}
+                onSymbolSelect={(symData) => {
+                  const symbol = typeof symData === 'string' ? symData : symData.symbol;
+                  const exchange = typeof symData === 'string' ? 'NSE' : (symData.exchange || 'NSE');
+                  setCharts(prev => prev.map(chart =>
+                    chart.id === activeChartId ? { ...chart, symbol: symbol, exchange: exchange, strategyConfig: null } : chart
+                  ));
+                }}
+                isAuthenticated={isAuthenticated}
+                onAddToWatchlist={(symbolData) => {
+                  const { symbol, exchange } = symbolData;
+                  const existsInWatchlist = watchlistSymbols.some(s => {
+                    if (typeof s === 'string') return s === symbol;
+                    return s.symbol === symbol && s.exchange === exchange;
+                  });
+                  if (!existsInWatchlist) {
+                    setWatchlistsState(prev => ({
+                      ...prev,
+                      lists: prev.lists.map(wl =>
+                        wl.id === prev.activeListId
+                          ? { ...wl, symbols: [...wl.symbols, { symbol, exchange: exchange || 'NSE' }] }
+                          : wl
+                      ),
+                    }));
+                  }
+                }}
+                showToast={showToast}
+                persistedState={annScannerState}
+                onStateChange={setAnnScannerState}
+                onStartScan={startAnnScan}
+                onCancelScan={cancelAnnScan}
+              />
+            </Suspense>
+          ) : activeRightPanel === 'dom' ? (
+            <Suspense fallback={<div style={{ padding: 20 }}>Loading DOM...</div>}>
+              <DepthOfMarket
+                symbol={currentSymbol}
+                exchange={currentExchange}
+                isOpen={true}
+                onClose={() => setActiveRightPanel('watchlist')}
+              />
+            </Suspense>
+          ) : activeRightPanel === 'trade' ? (
+            <TradingPanel
+              symbol={currentSymbol}
+              exchange={currentExchange}
+              isOpen={true}
+              onClose={() => setActiveRightPanel('watchlist')}
+              showToast={showToast}
+            />
+          ) : null
+        }
+        rightToolbar={
+          <RightToolbar
+            activePanel={activeRightPanel}
+            onPanelChange={handleRightPanelToggle}
+            badges={{ alerts: unreadAlertCount }}
+          />
+        }
+        chart={
+          <ChartGrid
+            charts={charts}
+            layout={layout}
+            activeChartId={activeChartId}
+            onActiveChartChange={setActiveChartId}
+            onMaximizeChart={handleMaximizeChart}
+            chartRefs={chartRefs}
+            onAlertsSync={handleChartAlertsSync}
+            onDrawingsSync={handleDrawingsSync}
+            onAlertTriggered={handleChartAlertTriggered}
+            onReplayModeChange={handleReplayModeChange}
+            // Common props
+            chartType={chartType}
+            // indicators={indicators} // Handled per chart now
+            activeTool={activeTool}
+            onToolUsed={handleToolUsed}
+            isLogScale={isLogScale}
+            isAutoScale={isAutoScale}
+            magnetMode={isMagnetMode}
+            timeRange={currentTimeRange}
+            isToolbarVisible={showDrawingToolbar}
+            theme={theme}
+            isDrawingsLocked={isDrawingsLocked}
+            isDrawingsHidden={isDrawingsHidden}
+            isTimerVisible={isTimerVisible}
+            isSessionBreakVisible={isSessionBreakVisible}
+            onIndicatorRemove={handleIndicatorRemove}
+            onIndicatorVisibilityToggle={handleIndicatorVisibilityToggle}
+            onIndicatorSettings={handleIndicatorSettings}
+            chartAppearance={chartAppearance}
+            onOpenOptionChain={handleOpenOptionChainForSymbol}
+            oiLines={oiLines}
+            showOILines={showOILines}
+          />
+        }
+      />
+      <SymbolSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSelect={handleSymbolChange}
+        addedSymbols={searchMode === 'compare' ? (activeChart.comparisonSymbols || []) : []}
+        isCompareMode={searchMode === 'compare'}
+        initialValue={initialSearchValue}
+        onInitialValueUsed={() => setInitialSearchValue('')}
+      />
+      <Suspense fallback={null}>
+        {isCommandPaletteOpen && (
+          <CommandPalette
+            isOpen={isCommandPaletteOpen}
+            onClose={() => setIsCommandPaletteOpen(false)}
+            commands={commands}
+            recentCommands={recentCommands}
+            groupedCommands={groupedCommands}
+            searchCommands={searchCommands}
+            executeCommand={executeCommand}
+          />
+        )}
+      </Suspense>
+      {/* Toast Queue */}
+      <div style={{ position: 'fixed', top: 70, right: 20, zIndex: 10000, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {toasts.map((toast, index) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            action={toast.action}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
+      </div>
+      {snapshotToast && (
+        <SnapshotToast
+          message={snapshotToast}
+          onClose={() => setSnapshotToast(null)}
+        />
+      )}
+      {/* Global Alert Popup Restored */}
+      <GlobalAlertPopup
+        alerts={globalAlertPopups}
+        onDismiss={(alertId) => setGlobalAlertPopups(prev => prev.filter(a => a.id !== alertId))}
+        onClick={(symbolData) => {
+          setCharts(prev => prev.map(chart =>
+            chart.id === activeChartId ? { ...chart, symbol: symbolData.symbol, exchange: symbolData.exchange, strategyConfig: null } : chart
+          ));
         }}
       />
-    </>
+      <AlertDialog
+        isOpen={isAlertOpen}
+        onClose={() => setIsAlertOpen(false)}
+        onSave={handleSaveAlert}
+        initialPrice={alertPrice}
+        theme={theme}
+      />
+      <Suspense fallback={null}>
+        {isSettingsOpen && (
+          <SettingsPopup
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            theme={theme}
+            isTimerVisible={isTimerVisible}
+            onTimerToggle={handleTimerToggle}
+            isSessionBreakVisible={isSessionBreakVisible}
+            onSessionBreakToggle={handleSessionBreakToggle}
+            hostUrl={hostUrl}
+            onHostUrlSave={handleHostUrlSave}
+            apiKey={apiKey}
+            onApiKeySave={handleApiKeySaveFromSettings}
+            websocketUrl={websocketUrl}
+            onWebsocketUrlSave={handleWebsocketUrlSave}
+            openalgoUsername={openalgoUsername}
+            onUsernameSave={handleUsernameSave}
+            chartAppearance={chartAppearance}
+            onChartAppearanceChange={handleChartAppearanceChange}
+            onResetChartAppearance={handleResetChartAppearance}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isIndicatorSettingsOpen && editingIndicator && (
+          <IndicatorSettingsDialog
+            isOpen={isIndicatorSettingsOpen}
+            onClose={() => {
+              setIsIndicatorSettingsOpen(false);
+              setEditingIndicator(null);
+            }}
+            indicatorType={editingIndicator.type}
+            settings={editingIndicator}
+            onSave={(newSettings) => {
+              handleIndicatorSettings(editingIndicator.id, newSettings);
+              setIsIndicatorSettingsOpen(false);
+              setEditingIndicator(null);
+            }}
+            theme={theme}
+          />
+        )}
+      </Suspense>
+
+      <LayoutTemplateDialog
+        isOpen={isTemplateDialogOpen}
+        onClose={() => setIsTemplateDialogOpen(false)}
+        currentState={{
+          layout,
+          charts,
+          chartType,
+          chartAppearance,
+          theme,
+        }}
+        onLoadTemplate={handleLoadTemplate}
+        showToast={showToast}
+      />
+      <Suspense fallback={null}>
+        {isShortcutsDialogOpen && (
+          <ShortcutsDialog
+            isOpen={isShortcutsDialogOpen}
+            onClose={() => setIsShortcutsDialogOpen(false)}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isChartTemplatesOpen && (
+          <ChartTemplatesDialog
+            isOpen={isChartTemplatesOpen}
+            onClose={() => setIsChartTemplatesOpen(false)}
+            currentConfig={getCurrentChartConfig()}
+            onLoadTemplate={handleLoadChartTemplate}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isStraddlePickerOpen && (
+          <OptionChainPicker
+            isOpen={isStraddlePickerOpen}
+            onClose={() => setIsStraddlePickerOpen(false)}
+            onSelect={(config) => {
+              setCharts(prev => prev.map(chart =>
+                chart.id === activeChartId ? { ...chart, strategyConfig: config } : chart
+              ));
+              setIsStraddlePickerOpen(false);
+            }}
+            spotPrice={activeChart?.ltp || null}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isOptionChainOpen && (
+          <OptionChainModal
+            isOpen={isOptionChainOpen}
+            onClose={() => {
+              setIsOptionChainOpen(false);
+              setOptionChainInitialSymbol(null);
+            }}
+            onSelectOption={handleOptionSelect}
+            initialSymbol={optionChainInitialSymbol}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isSectorHeatmapOpen && (
+          <SectorHeatmapModal
+            isOpen={isSectorHeatmapOpen}
+            onClose={() => setIsSectorHeatmapOpen(false)}
+            watchlistData={watchlistData}
+            onSectorSelect={(sector) => {
+              setPositionTrackerSettings(prev => ({ ...prev, sectorFilter: sector }));
+              setIsSectorHeatmapOpen(false);
+            }}
+            onSymbolSelect={(symData) => {
+              const symbol = typeof symData === 'string' ? symData : symData.symbol;
+              const exchange = typeof symData === 'string' ? 'NSE' : (symData.exchange || 'NSE');
+              setCharts(prev => prev.map(chart =>
+                chart.id === activeChartId ? { ...chart, symbol: symbol, exchange: exchange, strategyConfig: null } : chart
+              ));
+              setIsSectorHeatmapOpen(false);
+            }}
+          />
+        )}
+      </Suspense>
+    </OrderProvider>
   );
 }
 

@@ -7,7 +7,6 @@ import { loadDrawings, saveDrawings } from '../services/openalgo';
  * @param {string} symbol - Current symbol
  * @param {string} exchange - Current exchange
  * @param {string} interval - Current interval
- * @param {function} onDrawingsSync - Callback to sync drawings with parent
  */
 export const useChartDrawings = (manager, symbol, exchange, interval, onDrawingsSync) => {
     // Keep track of the current manager to ensure we don't attach listeners multiple times if manager identity is stable but other deps change
@@ -81,3 +80,4 @@ export const useChartDrawings = (manager, symbol, exchange, interval, onDrawings
         };
     }, [manager, symbol, exchange, interval, onDrawingsSync]);
 };
+

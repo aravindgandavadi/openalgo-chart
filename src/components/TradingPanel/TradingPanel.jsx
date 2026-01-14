@@ -145,7 +145,7 @@ const TradingPanel = ({ symbol, exchange = 'NSE', isOpen, onClose, showToast }) 
             pricetype: orderType,
             price: orderType === 'MARKET' ? 0 : price,
             trigger_price: (orderType === 'SL' || orderType === 'SL-M') ? triggerPrice : 0,
-            strategy: 'MANUAL'
+            strategy: 'MANUAL_PANEL'
         };
 
         try {

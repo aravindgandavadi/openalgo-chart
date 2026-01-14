@@ -21,7 +21,7 @@ import {
     calculateRSI,
     calculateMACD,
     calculateBollingerBands,
-    calculateEnhancedVolume,
+    calculateVolume,
     calculateATR,
     calculateStochastic,
     calculateVWAP,
@@ -64,6 +64,8 @@ import {
 } from './utils/chartConfig';
 import { saveAlertsForSymbol, loadAlertsForSymbol } from '../../services/alertService';
 import { usePaneMenu } from './hooks/usePaneMenu';
+import { useOrders } from '../../context/OrderContext';
+import { useUser } from '../../context/UserContext';
 
 const ChartComponent = forwardRef(({
     data: initialData = [],
@@ -96,12 +98,14 @@ const ChartComponent = forwardRef(({
     strategyConfig = null, // { strategyType, legs: [{ id, symbol, direction, quantity }], exchange, displayName }
     onOpenOptionChain, // Callback to open option chain for current symbol
     oiLines = null, // { maxCallOI, maxPutOI, maxPain } - OI levels to display as price lines
-    showOILines = false, // Whether to show OI lines
-    orders = [],
-    positions = [],
-    onModifyOrder,
-    onCancelOrder
+    showOILines = false // Whether to show OI lines
 }, ref) => {
+    // Get authentication status
+    const { isAuthenticated } = useUser();
+
+    // Get orders and positions from OrderContext
+    const { activeOrders: orders = [], activePositions: positions = [], onModifyOrder, onCancelOrder } = useOrders();
+
     const chartContainerRef = useRef();
     const [isLoading, setIsLoading] = useState(true);
     const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0 });
@@ -137,6 +141,7 @@ const ChartComponent = forwardRef(({
     // Keeping these for now if used by specific legacy logic, but goal is to move to maps
     // Integrated indicator series refs (displayed within main chart)
     const volumeSeriesRef = useRef(null); // Volume might remain special or move to map
+    const cumulativeVolumeRef = useRef(0); // Track cumulative day volume for per-candle calculation
 
     const chartReadyRef = useRef(false); // Track when chart is fully stable and ready for indicator additions
     const lineToolManagerRef = useRef(null);
@@ -495,30 +500,30 @@ const ChartComponent = forwardRef(({
                 userAlerts.openEditDialog('new', { price: Number(price), condition: 'crossing' });
             }
         },
-        toggleDrawingLock: (index) => {
-            const manager = lineToolManagerRef.current;
-            if (manager && typeof manager.toggleToolLockByIndex === 'function') {
-                manager.toggleToolLockByIndex(index);
+        toggleDrawingVisibility: (index) => {
+            if (lineToolManagerRef.current && typeof lineToolManagerRef.current.toggleToolVisibilityByIndex === 'function') {
+                lineToolManagerRef.current.toggleToolVisibilityByIndex(index);
             }
         },
-        toggleDrawingVisibility: (index) => {
-            const manager = lineToolManagerRef.current;
-            if (manager && typeof manager.toggleToolVisibilityByIndex === 'function') {
-                manager.toggleToolVisibilityByIndex(index);
+        toggleDrawingLock: (index) => {
+            if (lineToolManagerRef.current && typeof lineToolManagerRef.current.toggleToolLockByIndex === 'function') {
+                lineToolManagerRef.current.toggleToolLockByIndex(index);
             }
         },
         removeDrawingByIndex: (index) => {
-            const manager = lineToolManagerRef.current;
-            if (manager && typeof manager.removeToolByIndex === 'function') {
-                manager.removeToolByIndex(index);
+            if (lineToolManagerRef.current && typeof lineToolManagerRef.current.removeToolByIndex === 'function') {
+                lineToolManagerRef.current.removeToolByIndex(index);
             }
         },
-        getDrawingsList: () => {
-            const manager = lineToolManagerRef.current;
-            return manager && manager.exportDrawings ? manager.exportDrawings() : [];
+        enableSessionHighlighting: () => {
+            if (lineToolManagerRef.current && typeof lineToolManagerRef.current.enableSessionHighlighting === 'function') {
+                lineToolManagerRef.current.enableSessionHighlighting();
+            }
         },
-        openIndicatorSettings: (id) => {
-            setIndicatorSettingsOpen(id);
+        disableSessionHighlighting: () => {
+            if (lineToolManagerRef.current && typeof lineToolManagerRef.current.disableSessionHighlighting === 'function') {
+                lineToolManagerRef.current.disableSessionHighlighting();
+            }
         }
     }));
 
@@ -1301,31 +1306,20 @@ const ChartComponent = forwardRef(({
         }
     };
 
-    const updateVisualTradingData = useCallback(() => {
-        if (!visualTradingRef.current) return;
+    const initializeVisualTrading = (series) => {
+        if (!series) return;
 
+        // Filter orders and positions for current symbol
         const relevantOrders = orders.filter(o => areSymbolsEquivalent(o.symbol, symbol));
         const relevantPositions = positions.filter(p => areSymbolsEquivalent(p.symbol, symbol));
 
-        // Debug logging for missing orders
-        if (orders.length > 0 && relevantOrders.length === 0) {
-            console.warn('[VisualTrading] Orders exist but none matched symbol:', symbol,
-                'Available symbols:', orders.map(o => o.symbol));
-        }
-
-        visualTradingRef.current.setData(relevantOrders, relevantPositions);
-    }, [orders, positions, symbol]);
-
-    const initializeVisualTrading = (series) => {
-        if (!series) return;
         visualTradingRef.current = new VisualTrading({
-            orders: [],
-            positions: [],
+            orders: relevantOrders,
+            positions: relevantPositions,
             onModifyOrder: onModifyOrder,
             onCancelOrder: onCancelOrder
         });
         series.attachPrimitive(visualTradingRef.current);
-        updateVisualTradingData();
     };
 
     // Initialize chart once on mount
@@ -2064,27 +2058,45 @@ const ChartComponent = forwardRef(({
                             let candle;
                             if (needNewCandle) {
                                 // Create a new candle - all OHLC start at current price
+                                // Calculate per-candle volume from cumulative day volume
+                                const perCandleVolume = cumulativeVolumeRef.current === 0
+                                    ? tickVolume  // First tick: use as-is
+                                    : Math.max(0, tickVolume - cumulativeVolumeRef.current);  // Subsequent: calculate difference
+
+                                // Update baseline for next candle
+                                cumulativeVolumeRef.current = tickVolume;
+
                                 candle = {
                                     time: currentCandleTime,
                                     open: closePrice,
                                     high: closePrice,
                                     low: closePrice,
                                     close: closePrice,
-                                    volume: tickVolume,
+                                    volume: perCandleVolume,
                                 };
                                 currentData.push(candle);
-                                logger.debug('[WebSocket] Created new candle at time:', currentCandleTime, 'price:', closePrice);
+                                logger.debug('[WebSocket] Created new candle at time:', currentCandleTime, 'price:', closePrice, 'volume:', perCandleVolume, '(cumulative:', tickVolume + ')');
                             } else {
                                 // Update the last candle using ONLY the close price for high/low
                                 // WebSocket high/low are session-wide, not per-interval
                                 const existingCandle = currentData[lastIndex];
+
+                                // Initialize baseline on first tick for this candle
+                                if (cumulativeVolumeRef.current === 0) {
+                                    // Estimate baseline: current cumulative - existing candle volume
+                                    cumulativeVolumeRef.current = Math.max(0, tickVolume - (existingCandle.volume || 0));
+                                }
+
+                                // Calculate per-candle volume
+                                const perCandleVolume = Math.max(0, tickVolume - cumulativeVolumeRef.current);
+
                                 candle = {
                                     time: lastCandleTime,
                                     open: existingCandle.open,
                                     high: Math.max(existingCandle.high, closePrice),
                                     low: Math.min(existingCandle.low, closePrice),
                                     close: closePrice,
-                                    volume: tickVolume,
+                                    volume: perCandleVolume,
                                 };
                                 currentData[lastIndex] = candle;
                             }
@@ -2139,8 +2151,15 @@ const ChartComponent = forwardRef(({
             }
         };
 
-        emaLastValueRef.current = null;
-        loadData();
+        // Only load data if authenticated
+        if (isAuthenticated === true) {
+            emaLastValueRef.current = null;
+            loadData();
+        } else {
+            // Not authenticated - set loading false and show empty chart
+            setIsLoading(false);
+            isActuallyLoadingRef.current = false;
+        }
 
         return () => {
             cancelled = true;
@@ -2162,7 +2181,7 @@ const ChartComponent = forwardRef(({
             strategyDataRef.current = {};
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [symbol, exchange, interval, strategyConfig]);
+    }, [symbol, exchange, interval, strategyConfig, isAuthenticated]);
 
     const emaLastValueRef = useRef(null);
 
@@ -2260,20 +2279,14 @@ const ChartComponent = forwardRef(({
                         break;
                     }
                     case 'volume': {
-                        const result = calculateEnhancedVolume(data, {
-                            maPeriod: ind.maPeriod || 20,
-                            upColor: ind.colorUp || '#26A69A',
-                            downColor: ind.colorDown || '#EF5350',
-                            highVolumeUpColor: ind.highVolumeUpColor || '#00E676',
-                            highVolumeDownColor: ind.highVolumeDownColor || '#FF1744',
-                            highVolumeThreshold: ind.highVolumeThreshold || 1.5,
-                            showMA: ind.showMA !== false
-                        });
-                        if (result.bars && result.bars.length > 0 && series.bars) {
-                            series.bars.setData(result.bars);
-                        }
-                        if (result.ma && result.ma.length > 0 && series.ma) {
-                            series.ma.setData(result.ma);
+                        // TradingView-style volume (close vs previous close)
+                        const volumeData = calculateVolume(
+                            data,
+                            ind.colorUp || '#26A69A',
+                            ind.colorDown || '#EF5350'
+                        );
+                        if (volumeData && volumeData.length > 0 && series.bars) {
+                            series.bars.setData(volumeData);
                         }
                         break;
                     }
@@ -2700,20 +2713,16 @@ const ChartComponent = forwardRef(({
 
         const currentSym = symbolRef.current || symbol; // prefer Ref but fallback to prop
 
-        // Filter orders/positions for current symbol
-        // Use looser matching to handle "SYMBOL:Exch" vs "SYMBOL" mismatch
-        const normalize = s => s ? s.split(':')[0] : '';
-        const target = normalize(currentSym);
-
-        const relevantOrders = (orders || []).filter(o => normalize(o.symbol) === target);
-        const relevantPositions = (positions || []).filter(p => normalize(p.symbol) === target);
+        // Filter orders/positions for current symbol using consistent helper
+        const relevantOrders = (orders || []).filter(o => areSymbolsEquivalent(o.symbol, currentSym));
+        const relevantPositions = (positions || []).filter(p => areSymbolsEquivalent(p.symbol, currentSym));
 
         if (process.env.NODE_ENV === 'development') {
             console.log('[VisualTrading] Sync:', {
                 currentSym,
-                target,
                 totalOrders: (orders || []).length,
-                relevantOrders,
+                relevantOrders: relevantOrders.length,
+                relevantPositions: relevantPositions.length,
                 allOrderSymbols: (orders || []).map(o => o.symbol)
             });
         }

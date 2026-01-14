@@ -9,7 +9,7 @@ import {
     calculateRSI,
     calculateMACD,
     calculateBollingerBands,
-    calculateEnhancedVolume,
+    calculateVolume,
     calculateATR,
     calculateStochastic,
     calculateVWAP,
@@ -132,27 +132,24 @@ export const updateSupertrendSeries = (series, ind, data, isVisible) => {
 };
 
 /**
- * Update Volume series
+ * Update Volume series - TradingView style
  */
 export const updateVolumeSeries = (series, ind, data, isVisible) => {
-    if (series.bars) series.bars.applyOptions({ visible: isVisible });
-    if (series.ma) series.ma.applyOptions({
-        visible: isVisible && (ind.showMA !== false),
-        color: ind.maColor || '#FFD700'
-    });
+    if (!series?.bars || !data) return;
 
-    const result = calculateEnhancedVolume(data, {
-        maPeriod: ind.maPeriod || 20,
-        upColor: ind.colorUp || '#26A69A',
-        downColor: ind.colorDown || '#EF5350',
-        highVolumeUpColor: ind.highVolumeUpColor || '#00E676',
-        highVolumeDownColor: ind.highVolumeDownColor || '#FF1744',
-        highVolumeThreshold: ind.highVolumeThreshold || 1.5,
-        showMA: ind.showMA !== false
-    });
+    // Apply visibility
+    series.bars.applyOptions({ visible: isVisible });
 
-    if (result.bars && series.bars) series.bars.setData(result.bars);
-    if (result.ma && series.ma) series.ma.setData(result.ma);
+    // Use simple volume calculation (close vs previous close)
+    const volumeData = calculateVolume(
+        data,
+        ind.colorUp || '#26A69A',
+        ind.colorDown || '#EF5350'
+    );
+
+    series.bars.setData(volumeData);
+
+    // No MA line to update
 };
 
 /**
@@ -243,11 +240,12 @@ export const updateHilengaMilengaSeries = (series, ind, data, isVisible) => {
     if (series.wma) series.wma.applyOptions({ visible: isVisible, color: ind.wmaColor || '#EF5350' });
     if (series.baseline) series.baseline.applyOptions({ visible: isVisible });
 
-    const result = calculateHilengaMilenga(data, {
-        rsiLength: ind.rsiLength || 14,
-        emaLength: ind.emaLength || 5,
-        wmaLength: ind.wmaLength || 45
-    });
+    const result = calculateHilengaMilenga(
+        data,
+        ind.rsiLength || 14,
+        ind.emaLength || 5,
+        ind.wmaLength || 45
+    );
 
     if (result) {
         if (result.rsi && series.rsi) series.rsi.setData(result.rsi);

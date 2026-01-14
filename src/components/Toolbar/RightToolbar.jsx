@@ -12,7 +12,7 @@ const RightToolbar = ({ activePanel, onPanelChange, badges = {} }) => {
         { id: 'ann_scanner', icon: Brain, label: 'ANN Scanner' },
         { id: 'alerts', icon: Clock, label: 'Alerts' },
         { id: 'dom', icon: Layers, label: 'Depth of Market' },
-        { id: 'trading', icon: ArrowLeftRight, label: 'Trade Panel' },
+        { id: 'trade', icon: ArrowLeftRight, label: 'Trade Panel' },
     ];
 
     const handleToolClick = (id) => {
