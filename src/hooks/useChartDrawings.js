@@ -8,7 +8,7 @@ import { loadDrawings, saveDrawings } from '../services/openalgo';
  * @param {string} exchange - Current exchange
  * @param {string} interval - Current interval
  */
-export const useChartDrawings = (manager, symbol, exchange, interval) => {
+export const useChartDrawings = (manager, symbol, exchange, interval, onDrawingsSync) => {
     // Keep track of the current manager to ensure we don't attach listeners multiple times if manager identity is stable but other deps change
     const managerRef = useRef(null);
 
@@ -27,6 +27,11 @@ export const useChartDrawings = (manager, symbol, exchange, interval) => {
                     console.log('[ChartComponent] Importing', drawings.length, 'drawings...');
                     manager.importDrawings(drawings, true);
                     console.log('[ChartComponent] Import complete!');
+
+                    // Initial sync after load
+                    if (onDrawingsSync && manager.exportDrawings) {
+                        onDrawingsSync(manager.exportDrawings());
+                    }
                 } else {
                     console.log('[ChartComponent] No drawings to import or importDrawings not available');
                 }
@@ -58,6 +63,11 @@ export const useChartDrawings = (manager, symbol, exchange, interval) => {
             manager.setOnDrawingsChanged(() => {
                 console.log('[ChartComponent] Drawing changed, triggering auto-save...');
                 autoSaveDrawings();
+
+                // Sync with parent for Object Tree
+                if (onDrawingsSync && manager.exportDrawings) {
+                    onDrawingsSync(manager.exportDrawings());
+                }
             });
         }
 
@@ -68,5 +78,6 @@ export const useChartDrawings = (manager, symbol, exchange, interval) => {
             if (saveTimeout) clearTimeout(saveTimeout);
             // Cleanup listeners if LineToolManager supports it (it currently might not, but this is best practice)
         };
-    }, [manager, symbol, exchange, interval]);
+    }, [manager, symbol, exchange, interval, onDrawingsSync]);
 };
+
