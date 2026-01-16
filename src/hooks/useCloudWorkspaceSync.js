@@ -162,6 +162,8 @@ export const useCloudWorkspaceSync = (isAuthenticated) => {
                     logger.info(`[CloudSync] Applied ${appliedCount} preferences from cloud.`);
                     // Increment syncKey to force AppContent remount with new localStorage data
                     setSyncKey(prev => prev + 1);
+                    // Dispatch event for contexts (like ThemeContext) that don't remount
+                    window.dispatchEvent(new Event('cloud-sync-complete'));
                 } else {
                     // No cloud data or timeout - use local state
                     logger.info('[CloudSync] No cloud preferences, using local state.');
