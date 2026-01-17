@@ -2323,14 +2323,17 @@ export class LineToolManager extends PluginBase {
             // event.stopPropagation(); 
             this._isDrawing = false;
 
-            // FIX: Always reset if we were drawing a Brush/Highlighter, even if no points were added
+            // FIX: Continuous drawing for Brush/Highlighter
             if (this._activeToolType === 'Brush' || this._activeToolType === 'Highlighter') {
-                if (this._activeTool) {
-                    this._selectTool(this._activeTool);
-                }
-                // Always reset for brush/highlighter
-                this._activeToolType = 'None';
-                this._setChartInteraction(true);
+                // Stay in Brush mode:
+                // 1. Do NOT reset _activeToolType
+                // 2. Do NOT setChartInteraction(true)
+                // 3. Do NOT select the tool (so we don't switch toolbar to "Edit Mode" for the specific shape)
+
+                // Just cleanup active drawing state
+                this._activeTool = null;
+                this._points = [];
+                return;
             } else if (this._activeTool) {
                 // Standard logic for other tools
                 this._selectTool(this._activeTool);
