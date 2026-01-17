@@ -44,6 +44,7 @@ import '../../plugins/line-tools/floating-toolbar.css';
 import ReplayControls from '../Replay/ReplayControls';
 import ReplaySlider from '../Replay/ReplaySlider';
 import PriceScaleMenu from './PriceScaleMenu';
+import PriceScaleContextMenu, { SCALE_MODES } from './PriceScaleContextMenu';
 import { VisualTrading } from '../../plugins/visual-trading/visual-trading';
 import { useChartResize } from '../../hooks/useChartResize';
 import { useChartDrawings } from '../../hooks/useChartDrawings';
@@ -114,6 +115,16 @@ const ChartComponent = forwardRef(({
     const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, price: null });
     const [isVerticalCursorLocked, setIsVerticalCursorLocked] = useState(false);
     const [priceScaleMenu, setPriceScaleMenu] = useState({ visible: false, x: 0, y: 0, price: null });
+    // Right-click price scale context menu state (TradingView-style)
+    const [priceScaleContextMenu, setPriceScaleContextMenu] = useState({ visible: false, x: 0, y: 0 });
+    // Price scale settings state
+    const [priceScaleSettings, setPriceScaleSettings] = useState({
+        autoScale: true,
+        scalePriceChartOnly: false,
+        invertScale: false,
+        scaleMode: SCALE_MODES.NORMAL, // 0: Normal, 1: Log, 2: Percent, 3: Indexed
+        plusButtonVisible: true
+    });
     const [indicatorSettingsOpen, setIndicatorSettingsOpen] = useState(null); // which indicator's settings are open
     const [indicatorValues, setIndicatorValues] = useState({}); // Current value under cursor for each indicator { id: value }
     const [tpoLocalSettings, setTpoLocalSettings] = useState({}); // Local TPO settings storage (workaround for broken parent callback)
@@ -132,6 +143,70 @@ const ChartComponent = forwardRef(({
         document.addEventListener('click', handleClickAway);
         return () => document.removeEventListener('click', handleClickAway);
     }, [contextMenu.show]);
+
+    // Handle right-click on price scale area to show scale options context menu
+    useEffect(() => {
+        if (!chartContainerRef.current) return;
+
+        const handlePriceScaleContextMenu = (e) => {
+            // Check if click is in the right price scale area (approximately rightmost 70px)
+            const container = chartContainerRef.current;
+            if (!container) return;
+
+            const rect = container.getBoundingClientRect();
+            const rightEdge = rect.right;
+            const priceScaleWidth = 70; // Approximate price scale width
+
+            // Check if click is within the price scale area
+            if (e.clientX >= rightEdge - priceScaleWidth) {
+                e.preventDefault();
+                setPriceScaleContextMenu({
+                    visible: true,
+                    x: e.clientX,
+                    y: e.clientY
+                });
+            }
+        };
+
+        const container = chartContainerRef.current;
+        container.addEventListener('contextmenu', handlePriceScaleContextMenu);
+
+        return () => {
+            container.removeEventListener('contextmenu', handlePriceScaleContextMenu);
+        };
+    }, []);
+
+    // Handle price scale settings changes
+    const handleScaleModeChange = useCallback((mode) => {
+        setPriceScaleSettings(prev => ({ ...prev, scaleMode: mode }));
+
+        if (chartRef.current) {
+            chartRef.current.priceScale('right').applyOptions({
+                mode: mode,
+            });
+        }
+    }, []);
+
+    const handleAutoScaleChange = useCallback((value) => {
+        setPriceScaleSettings(prev => ({ ...prev, autoScale: value }));
+
+        if (chartRef.current) {
+            chartRef.current.priceScale('right').applyOptions({
+                autoScale: value,
+            });
+        }
+    }, []);
+
+    const handleInvertScaleChange = useCallback((value) => {
+        setPriceScaleSettings(prev => ({ ...prev, invertScale: value }));
+
+        if (chartRef.current) {
+            chartRef.current.priceScale('right').applyOptions({
+                invertScale: value,
+            });
+        }
+    }, []);
+
 
     const isActuallyLoadingRef = useRef(true); // Track if we're actually loading data (not just updating indicators) - start as true on mount
     const chartRef = useRef(null);
@@ -161,6 +236,7 @@ const ChartComponent = forwardRef(({
     const chartTypeRef = useRef(chartType);
     const dataRef = useRef([]);
     const comparisonSeriesRefs = useRef(new Map());
+    const comparisonPanesRef = useRef(new Map()); // Track panes for 'newPane' comparison mode
     const visualTradingRef = useRef(null);
     const [error, setError] = useState(null);
 
@@ -3011,44 +3087,95 @@ const ChartComponent = forwardRef(({
 
 
 
-    // Handle Comparison Symbols
+    // Handle Comparison Symbols with different scale modes
     useEffect(() => {
         if (!chartRef.current) return;
 
         const abortController = new AbortController();
         let cancelled = false;
 
-        const currentSymbols = new Set(comparisonSymbols.map(s => s.symbol));
+        // Create unique keys that include scale mode and symbol
+        const currentSymbolsMap = new Map(comparisonSymbols.map(s => [
+            `${s.symbol}_${s.exchange}_${s.scaleMode || 'samePercent'}`,
+            s
+        ]));
         const activeSeries = comparisonSeriesRefs.current;
+        const activePanes = comparisonPanesRef.current;
 
-        // Remove series that are no longer in comparisonSymbols
-        activeSeries.forEach((series, sym) => {
-            if (!currentSymbols.has(sym)) {
+        // Remove series/panes that are no longer in comparisonSymbols
+        activeSeries.forEach((series, key) => {
+            if (!currentSymbolsMap.has(key)) {
                 try {
-                    chartRef.current.removeSeries(series);
+                    // Check if it was in a separate pane
+                    const pane = activePanes.get(key);
+                    if (pane) {
+                        try {
+                            const idx = chartRef.current.panes().indexOf(pane);
+                            if (idx > 0) chartRef.current.removePane(idx);
+                        } catch (e) { /* ignore */ }
+                        activePanes.delete(key);
+                    } else {
+                        chartRef.current.removeSeries(series);
+                    }
                 } catch (e) {
                     // Ignore removal errors
                 }
-                activeSeries.delete(sym);
+                activeSeries.delete(key);
             }
         });
 
         // Add new series with cancellation support
         const loadComparisonData = async (comp) => {
-            if (activeSeries.has(comp.symbol)) return;
+            const key = `${comp.symbol}_${comp.exchange}_${comp.scaleMode || 'samePercent'}`;
+            if (activeSeries.has(key)) return;
 
-            const series = chartRef.current.addSeries(LineSeries, {
-                color: comp.color,
-                lineWidth: 2,
-                priceScaleId: 'right',
-                title: comp.symbol,
-            });
-            activeSeries.set(comp.symbol, series);
+            const scaleMode = comp.scaleMode || 'samePercent';
+            let series;
+            let pane;
+
+            // Determine price scale based on scale mode
+            if (scaleMode === 'newPane') {
+                // Create a new pane for this comparison
+                pane = chartRef.current.addPane({ height: 150 });
+                activePanes.set(key, pane);
+
+                series = pane.addSeries(LineSeries, {
+                    color: comp.color,
+                    lineWidth: 2,
+                    priceScaleId: 'right',
+                    title: comp.symbol,
+                });
+            } else if (scaleMode === 'newPriceScale') {
+                // Create a series on a new left price scale
+                series = chartRef.current.addSeries(LineSeries, {
+                    color: comp.color,
+                    lineWidth: 2,
+                    priceScaleId: 'left', // Use left scale for comparison
+                    title: comp.symbol,
+                });
+
+                // Configure the left price scale
+                chartRef.current.priceScale('left').applyOptions({
+                    visible: true,
+                    borderColor: '#363a45',
+                    autoScale: true,
+                });
+            } else {
+                // Same % scale (default) - use right price scale with percentage mode
+                series = chartRef.current.addSeries(LineSeries, {
+                    color: comp.color,
+                    lineWidth: 2,
+                    priceScaleId: 'right',
+                    title: comp.symbol,
+                });
+            }
+
+            activeSeries.set(key, series);
 
             try {
                 const data = await getKlines(comp.symbol, comp.exchange || 'NSE', interval, 1000, abortController.signal);
                 // Check if still valid before setting data
-                if (cancelled || !activeSeries.has(comp.symbol)) return;
+                if (cancelled || !activeSeries.has(key)) return;
                 if (data && data.length > 0) {
                     const transformedData = data.map(d => ({ time: d.time, value: d.close }));
                     series.setData(transformedData);
@@ -3062,9 +3189,21 @@ const ChartComponent = forwardRef(({
 
         comparisonSymbols.forEach(comp => loadComparisonData(comp));
 
-        // Update Price Scale Mode
+        // Update Price Scale Mode based on comparison mode
+        // Check if any comparison uses samePercent mode
+        const hasSamePercentComparison = comparisonSymbols.some(c =>
+            (c.scaleMode || 'samePercent') === 'samePercent'
+        );
+
         // 0: Normal, 1: Log, 2: Percentage
-        const mode = comparisonSymbols.length > 0 ? 2 : (isLogScale ? 1 : 0);
+        let mode;
+        if (hasSamePercentComparison) {
+            mode = 2; // Percentage mode for Same % scale comparisons
+        } else if (isLogScale) {
+            mode = 1;
+        } else {
+            mode = 0;
+        }
 
         chartRef.current.priceScale('right').applyOptions({
             mode: mode,
@@ -3809,6 +3948,11 @@ const ChartComponent = forwardRef(({
         }).filter(Boolean);
     }, [indicators, indicatorValues]);
 
+    // Check if any comparison uses the left price scale
+    const hasLeftPriceScale = useMemo(() => {
+        return comparisonSymbols.some(c => c.scaleMode === 'newPriceScale');
+    }, [comparisonSymbols]);
+
     return (
         <div className={`${styles.chartWrapper} ${isToolbarVisible ? styles.toolbarVisible : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
             <div
@@ -3818,8 +3962,13 @@ const ChartComponent = forwardRef(({
                 style={{
                     position: 'relative',
                     touchAction: 'none',
-                    flex: '1 1 100%',
+                    flex: '1 1 auto',
                     minHeight: 200,
+                    // Adjust width and margin when toolbar is visible AND left price scale is used
+                    // This prevents the left price scale from being hidden under the drawing toolbar
+                    width: (isToolbarVisible && hasLeftPriceScale) ? 'calc(100% - 48px)' : '100%',
+                    marginLeft: (isToolbarVisible && hasLeftPriceScale) ? '48px' : '0px',
+                    transition: 'width 0.15s ease, margin-left 0.15s ease',
                 }}
             />
             {isLoading && isActuallyLoadingRef.current && <div className={styles.loadingOverlay}><div className={styles.spinner}></div><div>Loading...</div></div>}
@@ -4010,6 +4159,33 @@ const ChartComponent = forwardRef(({
                     }
                 }}
                 onClose={() => setPriceScaleMenu({ visible: false, x: 0, y: 0, price: null })}
+            />
+
+            {/* Price Scale Right-Click Context Menu (TradingView-style scale options) */}
+            <PriceScaleContextMenu
+                visible={priceScaleContextMenu.visible}
+                x={priceScaleContextMenu.x}
+                y={priceScaleContextMenu.y}
+                autoScale={priceScaleSettings.autoScale}
+                scalePriceChartOnly={priceScaleSettings.scalePriceChartOnly}
+                invertScale={priceScaleSettings.invertScale}
+                scaleMode={priceScaleSettings.scaleMode}
+                plusButtonVisible={priceScaleSettings.plusButtonVisible}
+                onAutoScaleChange={handleAutoScaleChange}
+                onScalePriceChartOnlyChange={(value) =>
+                    setPriceScaleSettings(prev => ({ ...prev, scalePriceChartOnly: value }))
+                }
+                onInvertScaleChange={handleInvertScaleChange}
+                onScaleModeChange={handleScaleModeChange}
+                onPlusButtonChange={(value) =>
+                    setPriceScaleSettings(prev => ({ ...prev, plusButtonVisible: value }))
+                }
+                onMergeScales={(type) => {
+                    // TODO: Implement merge scales functionality
+                    console.log('Merge scales:', type);
+                }}
+                onOpenSettings={onOpenSettings}
+                onClose={() => setPriceScaleContextMenu({ visible: false, x: 0, y: 0 })}
             />
 
             {/* Right-click Context Menu */}

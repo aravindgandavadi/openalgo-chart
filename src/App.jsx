@@ -54,6 +54,7 @@ import AccountPanel from './components/AccountPanel';
 import TradingPanel from './components/TradingPanel/TradingPanel';
 import ObjectTreePanel from './components/ObjectTree/ObjectTreePanel';
 import MarketScreenerPanel from './components/MarketScreener/MarketScreenerPanel';
+import CompareOptionsDialog from './components/Chart/CompareOptionsDialog';
 
 // Lazy load additional heavy components
 const SectorHeatmapModal = lazy(() => import('./components/SectorHeatmap').then(m => ({ default: m.SectorHeatmapModal })));
@@ -178,6 +179,9 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchMode, setSearchMode] = useState('switch'); // 'switch' or 'add'
   const [initialSearchValue, setInitialSearchValue] = useState('');
+  // Compare options dialog state
+  const [compareOptionsVisible, setCompareOptionsVisible] = useState(false);
+  const [pendingComparisonSymbol, setPendingComparisonSymbol] = useState(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isShortcutsDialogOpen, setIsShortcutsDialogOpen] = useState(false);
@@ -632,6 +636,46 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
     setIsSearchOpen,
     setSearchMode
   });
+
+  // Comparison symbol selection - intercept to show options dialog
+  const handleCompareSymbolSelect = useCallback((symbolData) => {
+    if (searchMode === 'compare') {
+      // Check if symbol already exists (toggle off)
+      const exists = (activeChart?.comparisonSymbols || []).find(c =>
+        c.symbol === symbolData.symbol && c.exchange === symbolData.exchange
+      );
+
+      if (exists) {
+        // Remove existing comparison symbol directly
+        handleSymbolChange(symbolData);
+      } else {
+        // Show options dialog for new comparison symbol
+        setPendingComparisonSymbol(symbolData);
+        setCompareOptionsVisible(true);
+      }
+    } else {
+      // Normal symbol change (not compare mode)
+      handleSymbolChange(symbolData);
+    }
+  }, [searchMode, activeChart, handleSymbolChange]);
+
+  // Handle compare options confirmation
+  const handleCompareOptionsConfirm = useCallback((scaleMode) => {
+    if (pendingComparisonSymbol) {
+      handleSymbolChange({
+        ...pendingComparisonSymbol,
+        scaleMode
+      });
+    }
+    setCompareOptionsVisible(false);
+    setPendingComparisonSymbol(null);
+  }, [pendingComparisonSymbol, handleSymbolChange]);
+
+  // Handle compare options cancel
+  const handleCompareOptionsCancel = useCallback(() => {
+    setCompareOptionsVisible(false);
+    setPendingComparisonSymbol(null);
+  }, []);
 
   // Layout handlers extracted to hook
   const {
@@ -1965,11 +2009,24 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
       <SymbolSearch
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        onSelect={handleSymbolChange}
+        onSelect={handleCompareSymbolSelect}
         addedSymbols={searchMode === 'compare' ? (activeChart.comparisonSymbols || []) : []}
         isCompareMode={searchMode === 'compare'}
         initialValue={initialSearchValue}
         onInitialValueUsed={() => setInitialSearchValue('')}
+      />
+      <CompareOptionsDialog
+        visible={compareOptionsVisible}
+        symbol={pendingComparisonSymbol?.symbol}
+        exchange={pendingComparisonSymbol?.exchange}
+        symbolColor={(() => {
+          // Get the next color for the comparison symbol
+          const colors = ['#f57f17', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5'];
+          const count = (activeChart?.comparisonSymbols || []).length;
+          return colors[count % colors.length];
+        })()}
+        onConfirm={handleCompareOptionsConfirm}
+        onCancel={handleCompareOptionsCancel}
       />
       <Suspense fallback={null}>
         {isCommandPaletteOpen && (
