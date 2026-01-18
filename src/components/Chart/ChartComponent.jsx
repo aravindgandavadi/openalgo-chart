@@ -83,7 +83,7 @@ const ChartComponent = forwardRef(({
     magnetMode,
     isToolbarVisible = true,
     theme = 'dark',
-    comparisonSymbols = [],
+    comparisonSymbols: comparisonSymbolsProp = [],
     onAlertsSync,
     onDrawingsSync,
     onAlertTriggered,
@@ -109,6 +109,9 @@ const ChartComponent = forwardRef(({
 
     // Get orders and positions from OrderContext
     const { activeOrders: orders = [], activePositions: positions = [], onModifyOrder, onCancelOrder } = useOrders();
+
+    // Memoize comparisons to prevent frequent re-renders/effects
+    const comparisonSymbols = useMemo(() => comparisonSymbolsProp, [JSON.stringify(comparisonSymbolsProp)]);
 
     const chartContainerRef = useRef();
     const [isLoading, setIsLoading] = useState(true);
