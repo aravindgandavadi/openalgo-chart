@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { shallow } from 'zustand/shallow';
 import openalgo from '../services/openalgo';
 import logger from '../utils/logger';
 import { useWorkspaceStore } from '../store/workspaceStore';
@@ -309,13 +310,13 @@ export const useCloudWorkspaceSync = (isAuthenticated) => {
         const unsubscribeStore = useWorkspaceStore.subscribe(
             (state) => ({ charts: state.charts, layout: state.layout, activeChartId: state.activeChartId }),
             (newState, prevState) => {
-                // Only trigger if the values actually changed
-                if (JSON.stringify(newState) !== JSON.stringify(prevState)) {
+                // Only trigger if the values actually changed (using shallow comparison)
+                if (!shallow(newState, prevState)) {
                     logger.debug('[CloudSync] Store change detected');
                     scheduleSave();
                 }
             },
-            { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
+            { equalityFn: shallow } // Use shallow comparison for performance
         );
 
         // Also listen for storage events (for cross-tab sync and non-store keys)

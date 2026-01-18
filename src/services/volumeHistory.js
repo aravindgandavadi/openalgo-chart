@@ -9,6 +9,25 @@ import logger from '../utils/logger';
 // Cache for 20-day average volumes
 const volumeCache = new Map();
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_CACHE_SIZE = 500; // Maximum symbols to cache
+
+/**
+ * Evict oldest entries if cache exceeds max size
+ */
+const evictIfNeeded = () => {
+  if (volumeCache.size <= MAX_CACHE_SIZE) return;
+
+  // Find oldest entries by timestamp
+  const entries = Array.from(volumeCache.entries());
+  entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+  // Remove oldest entries to get under limit
+  const toRemove = volumeCache.size - MAX_CACHE_SIZE;
+  for (let i = 0; i < toRemove; i++) {
+    volumeCache.delete(entries[i][0]);
+  }
+  logger.debug(`[VolumeHistory] Evicted ${toRemove} cache entries`);
+};
 
 /**
  * Format date to YYYY-MM-DD
@@ -63,6 +82,7 @@ export const get20DayVolume = async (symbol, exchange = 'NSE') => {
         timestamp: Date.now(),
         data,
       });
+      evictIfNeeded(); // Enforce max cache size
 
       return data;
     }

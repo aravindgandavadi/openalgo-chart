@@ -72,6 +72,9 @@ class SharedWebSocketManager {
         this._nextId = 1;
         this._reconnectTimer = null;
         this._authenticated = false;
+
+        /** @type {Object|null} WebSocket wrapper for registry cleanup */
+        this._wsWrapper = null;
     }
 
     /**
@@ -141,6 +144,11 @@ class SharedWebSocketManager {
                 clearTimeout(this._reconnectTimer);
                 this._reconnectTimer = null;
             }
+            // Remove from global registry before closing
+            if (this._wsWrapper) {
+                activeWebSockets.delete(this._wsWrapper);
+                this._wsWrapper = null;
+            }
             this._ws.close();
             this._ws = null;
         }
@@ -154,7 +162,9 @@ class SharedWebSocketManager {
         const apiKey = localStorage.getItem('oa_apikey');
 
         this._ws = new WebSocket(url);
-        activeWebSockets.add({ close: () => this._ws?.close(), forceClose: () => this._ws?.close() });
+        // Store wrapper reference for cleanup
+        this._wsWrapper = { close: () => this._ws?.close(), forceClose: () => this._ws?.close() };
+        activeWebSockets.add(this._wsWrapper);
 
         this._ws.onopen = () => {
             logger.debug('[SharedWS] Connected, authenticating...');

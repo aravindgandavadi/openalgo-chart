@@ -504,6 +504,7 @@ class GlobalAlertMonitor {
         // Cache is valid for 5 minutes
         const age = Date.now() - cached.timestamp;
         if (age > 5 * 60 * 1000) {
+            logger.warn(`[GlobalAlertMonitor] OHLC cache expired for ${cacheKey}. Indicator alerts may not trigger until chart refreshes data.`);
             this._ohlcCache.delete(cacheKey);
             return null;
         }
