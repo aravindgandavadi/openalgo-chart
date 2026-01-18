@@ -8,9 +8,12 @@
 
 import { subscribeToMultiTicker } from './openalgo';
 import logger from '../utils/logger';
+import { IndicatorDataManager } from './indicatorDataManager';
+import { AlertEvaluator } from '../utils/alerts/alertEvaluator';
 
 // Must match ChartComponent.jsx storage key
 const ALERT_STORAGE_KEY = 'tv_chart_alerts';
+const APP_ALERT_STORAGE_KEY = 'tv_alerts'; // App.jsx indicator alerts
 const ALERT_RETENTION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
@@ -52,6 +55,18 @@ class GlobalAlertMonitor {
 
         /** @type {boolean} */
         this._isRunning = false;
+
+        /** @type {IndicatorDataManager} Indicator calculations */
+        this._indicatorDataManager = new IndicatorDataManager();
+
+        /** @type {AlertEvaluator} Alert condition evaluator */
+        this._alertEvaluator = new AlertEvaluator();
+
+        /** @type {Map<string, Array>} OHLC data cache per symbol-interval */
+        this._ohlcCache = new Map();
+
+        /** @type {Map<string, Object>} Previous bar indicator values */
+        this._previousIndicatorValues = new Map();
     }
 
     /**
@@ -64,38 +79,60 @@ class GlobalAlertMonitor {
     }
 
     /**
-     * Load all alerts from localStorage
+     * Load all alerts from localStorage (both price and indicator alerts)
      * @returns {StoredAlert[]}
      */
     _loadAlerts() {
         try {
-            const stored = localStorage.getItem(ALERT_STORAGE_KEY);
-            if (!stored) return [];
-
-            const data = JSON.parse(stored);
-            if (!data || typeof data !== 'object') return [];
-
-            // Data format: { [symbol-exchange]: [alerts], ... }
             const allAlerts = [];
             const cutoff = Date.now() - ALERT_RETENTION_MS;
 
-            for (const [key, alerts] of Object.entries(data)) {
-                if (!Array.isArray(alerts)) continue;
+            // Load price alerts from chart storage
+            const chartStored = localStorage.getItem(ALERT_STORAGE_KEY);
+            if (chartStored) {
+                const data = JSON.parse(chartStored);
+                if (data && typeof data === 'object') {
+                    // Data format: { [symbol-exchange]: [alerts], ... }
+                    for (const [key, alerts] of Object.entries(data)) {
+                        if (!Array.isArray(alerts)) continue;
 
-                for (const alert of alerts) {
-                    // Filter expired and already triggered
-                    if (alert.createdAt && alert.createdAt < cutoff) continue;
-                    if (alert.status === 'triggered') continue;
+                        for (const alert of alerts) {
+                            // Filter expired and already triggered
+                            if (alert.createdAt && alert.createdAt < cutoff) continue;
+                            if (alert.status === 'triggered') continue;
 
-                    const [symbol, exchange] = key.split(':');
-                    allAlerts.push({
-                        ...alert,
-                        symbol: symbol || alert.symbol,
-                        exchange: exchange || alert.exchange || 'NSE',
-                    });
+                            const [symbol, exchange] = key.split(':');
+                            allAlerts.push({
+                                ...alert,
+                                type: 'price', // Mark as price alert
+                                symbol: symbol || alert.symbol,
+                                exchange: exchange || alert.exchange || 'NSE',
+                            });
+                        }
+                    }
                 }
             }
 
+            // Load indicator alerts from App.jsx storage
+            const appStored = localStorage.getItem(APP_ALERT_STORAGE_KEY);
+            if (appStored) {
+                const alerts = JSON.parse(appStored);
+                if (Array.isArray(alerts)) {
+                    for (const alert of alerts) {
+                        // Filter expired, triggered, and paused
+                        if (alert.created_at && alert.created_at < cutoff) continue;
+                        if (alert.status === 'Triggered' || alert.status === 'Paused') continue;
+                        if (alert.type !== 'indicator') continue; // Only indicator alerts
+
+                        allAlerts.push({
+                            ...alert,
+                            createdAt: alert.created_at, // Normalize field names
+                        });
+                    }
+                }
+            }
+
+            logger.debug(`[GlobalAlertMonitor] Loaded ${allAlerts.length} active alerts`);
             return allAlerts;
         } catch (error) {
             logger.error('[GlobalAlertMonitor] Error loading alerts:', error);
@@ -198,16 +235,66 @@ class GlobalAlertMonitor {
     }
 
     /**
-     * Handle incoming price update
-     * @param {Object} data - { symbol, exchange, last }
+     * Check if indicator alert condition is met
+     * @param {Object} alert - Indicator alert object
+     * @param {Object} indicatorData - Current indicator values
+     * @param {Object} previousData - Previous bar indicator values
+     * @returns {AlertTriggerEvent|null}
      */
-    _onPriceUpdate(data) {
+    async _checkIndicatorAlert(alert, indicatorData, previousData) {
+        try {
+            const condition = alert.condition;
+            if (!condition || !condition.type) {
+                logger.warn('[GlobalAlertMonitor] Invalid indicator alert condition:', alert.id);
+                return null;
+            }
+
+            // Use AlertEvaluator to check condition
+            const isTriggered = this._alertEvaluator.evaluate(
+                condition.type,
+                indicatorData,
+                previousData,
+                condition
+            );
+
+            if (isTriggered) {
+                logger.info('[GlobalAlertMonitor] Indicator alert triggered:', {
+                    id: alert.id,
+                    indicator: alert.indicator,
+                    condition: condition.label
+                });
+
+                return {
+                    alertId: alert.id,
+                    symbol: alert.symbol,
+                    exchange: alert.exchange,
+                    alertType: 'indicator',
+                    indicator: alert.indicator,
+                    condition: condition.label,
+                    conditionType: condition.type,
+                    timestamp: Date.now(),
+                    message: alert.message || `${alert.indicator} ${condition.label}`,
+                };
+            }
+
+            return null;
+        } catch (error) {
+            logger.error('[GlobalAlertMonitor] Error checking indicator alert:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Handle incoming price update
+     * @param {Object} data - { symbol, exchange, last, open, high, low, close, volume, timestamp }
+     */
+    async _onPriceUpdate(data) {
         if (!data || !data.symbol || !data.last) return;
 
-        const { symbol, exchange = 'NSE', last: currentPrice } = data;
+        const { symbol, exchange = 'NSE', last: currentPrice, open, high, low, close, volume, timestamp } = data;
         const key = this._getSymbolKey(symbol, exchange);
 
-        // Get alerts for this symbol
+        // Get all alerts for this symbol
         const alerts = this._loadAlerts().filter(
             a => a.symbol === symbol && (a.exchange || 'NSE') === exchange
         );
@@ -216,12 +303,16 @@ class GlobalAlertMonitor {
             console.log('[GlobalAlertMonitor] Price update', symbol, currentPrice, '- checking', alerts.length, 'alerts');
         }
 
-        // Check each alert for crossing
-        for (const alert of alerts) {
+        // Separate price and indicator alerts
+        const priceAlerts = alerts.filter(a => a.type === 'price' || !a.type);
+        const indicatorAlerts = alerts.filter(a => a.type === 'indicator');
+
+        // Check price alerts
+        for (const alert of priceAlerts) {
             const triggerEvent = this._checkCrossing(alert, currentPrice);
 
             if (triggerEvent) {
-                console.log('[GlobalAlertMonitor] Alert triggered:', triggerEvent);
+                console.log('[GlobalAlertMonitor] Price alert triggered:', triggerEvent);
 
                 // Remove the alert (one-shot)
                 this._removeAlert(alert.id);
@@ -233,8 +324,129 @@ class GlobalAlertMonitor {
             }
         }
 
+        // Check indicator alerts (if any)
+        if (indicatorAlerts.length > 0) {
+            for (const alert of indicatorAlerts) {
+                try {
+                    const interval = alert.interval || '1m';
+                    const cacheKey = `${key}:${interval}:${alert.indicator}`;
+
+                    // Get OHLC data from cache (provided by charts)
+                    const ohlcData = this._getOHLCData(symbol, exchange, interval);
+
+                    if (!ohlcData || ohlcData.length === 0) {
+                        // No OHLC data available yet - skip this alert
+                        logger.debug(`[GlobalAlertMonitor] No OHLC data for ${symbol}:${exchange}:${interval}, skipping indicator alert`);
+                        continue;
+                    }
+
+                    logger.debug(`[GlobalAlertMonitor] Calculating ${alert.indicator} for ${symbol} with ${ohlcData.length} bars`);
+
+                    // Calculate indicator values using actual OHLC data
+                    const indicatorData = await this._indicatorDataManager.calculateIndicator(
+                        alert.indicator,
+                        { symbol, exchange, interval },
+                        ohlcData
+                    );
+
+                    // Get previous values
+                    const previousData = this._previousIndicatorValues.get(cacheKey);
+
+                    // Check alert condition
+                    if (indicatorData && indicatorData.current) {
+                        const triggerEvent = await this._checkIndicatorAlert(alert, indicatorData.current, previousData);
+
+                        if (triggerEvent) {
+                            console.log('[GlobalAlertMonitor] Indicator alert triggered:', triggerEvent);
+
+                            // Mark alert as triggered in App storage
+                            this._markIndicatorAlertTriggered(alert.id);
+
+                            // Fire callback
+                            if (this._onTrigger) {
+                                this._onTrigger(triggerEvent);
+                            }
+                        }
+
+                        // Store current values as previous for next check
+                        this._previousIndicatorValues.set(cacheKey, indicatorData.current);
+                    }
+                } catch (error) {
+                    logger.error(`[GlobalAlertMonitor] Error checking indicator alert ${alert.id}:`, error);
+                }
+            }
+        }
+
         // Update last price
         this._lastPrices.set(key, currentPrice);
+    }
+
+    /**
+     * Mark an indicator alert as triggered in localStorage
+     * @param {string} alertId 
+     */
+    _markIndicatorAlertTriggered(alertId) {
+        try {
+            const stored = localStorage.getItem(APP_ALERT_STORAGE_KEY);
+            if (!stored) return;
+
+            const alerts = JSON.parse(stored);
+            if (!Array.isArray(alerts)) return;
+
+            const updated = alerts.map(a =>
+                a.id === alertId ? { ...a, status: 'Triggered' } : a
+            );
+
+            localStorage.setItem(APP_ALERT_STORAGE_KEY, JSON.stringify(updated));
+        } catch (error) {
+            logger.error('[GlobalAlertMonitor] Error marking indicator alert as triggered:', error);
+        }
+    }
+
+    /**
+     * Update OHLC data cache for a symbol-interval combination
+     * Called by charts to provide historical data for indicator calculations
+     * @param {string} symbol 
+     * @param {string} exchange 
+     * @param {string} interval 
+     * @param {Array} ohlcData - Array of OHLC bars
+     */
+    updateOHLCData(symbol, exchange, interval, ohlcData) {
+        if (!symbol || !ohlcData || !Array.isArray(ohlcData)) {
+            logger.warn('[GlobalAlertMonitor] Invalid OHLC data provided');
+            return;
+        }
+
+        const cacheKey = `${symbol}:${exchange}:${interval}`;
+        this._ohlcCache.set(cacheKey, {
+            data: ohlcData,
+            timestamp: Date.now()
+        });
+
+        logger.debug(`[GlobalAlertMonitor] Updated OHLC cache for ${cacheKey}, bars: ${ohlcData.length}`);
+    }
+
+    /**
+     * Get cached OHLC data for a symbol-interval
+     * @param {string} symbol 
+     * @param {string} exchange 
+     * @param {string} interval 
+     * @returns {Array|null}
+     */
+    _getOHLCData(symbol, exchange, interval) {
+        const cacheKey = `${symbol}:${exchange}:${interval}`;
+        const cached = this._ohlcCache.get(cacheKey);
+
+        if (!cached) return null;
+
+        // Cache is valid for 5 minutes
+        const age = Date.now() - cached.timestamp;
+        if (age > 5 * 60 * 1000) {
+            this._ohlcCache.delete(cacheKey);
+            return null;
+        }
+
+        return cached.data;
     }
 
     /**

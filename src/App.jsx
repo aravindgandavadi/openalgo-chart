@@ -15,6 +15,7 @@ import { globalAlertMonitor } from './services/globalAlertMonitor';
 import BottomBar from './components/BottomBar/BottomBar';
 import ChartGrid from './components/Chart/ChartGrid';
 import AlertDialog from './components/Alert/AlertDialog';
+import IndicatorAlertDialog from './components/IndicatorAlert/IndicatorAlertDialog';
 import RightToolbar from './components/Toolbar/RightToolbar';
 import AlertsPanel from './components/Alerts/AlertsPanel';
 import ApiKeyDialog from './components/ApiKeyDialog/ApiKeyDialog';
@@ -42,6 +43,7 @@ import { useLayoutHandlers } from './hooks/useLayoutHandlers';
 import { useAlertHandlers } from './hooks/useAlertHandlers';
 import { useToolHandlers } from './hooks/useToolHandlers';
 import { useUIHandlers } from './hooks/useUIHandlers';
+import { useIndicatorAlertHandlers } from './hooks/useIndicatorAlertHandlers';
 import { useANNScanner } from './hooks/useANNScanner';
 import { useToastManager } from './hooks/useToastManager';
 import { useTheme } from './context/ThemeContext';
@@ -200,6 +202,8 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
 
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alertPrice, setAlertPrice] = useState(null);
+  const [isIndicatorAlertOpen, setIsIndicatorAlertOpen] = useState(false);
+  const [indicatorAlertToEdit, setIndicatorAlertToEdit] = useState(null);
 
   // Alert State (persisted with 24h retention)
   const [alerts, setAlerts] = useState(() => {
@@ -213,6 +217,14 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
   });
   const alertsRef = React.useRef(alerts); // Ref to avoid race condition in WebSocket callback
   React.useEffect(() => { alertsRef.current = alerts; }, [alerts]);
+
+  const { handleSaveIndicatorAlert } = useIndicatorAlertHandlers({
+    setAlerts,
+    showToast,
+    setIsIndicatorAlertOpen,
+    setIndicatorAlertToEdit,
+    indicatorAlertToEdit
+  });
 
   const [alertLogs, setAlertLogs] = useState(() => {
     const saved = safeParseJSON(localStorage.getItem('tv_alert_logs'), []);
@@ -228,20 +240,47 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
   // Global alert popup state (for background alert notifications)
   const [globalAlertPopups, setGlobalAlertPopups] = useState([]);
 
-  // === GlobalAlertMonitor: DISABLED ===
-  // Background price monitoring is disabled because OpenAlgo only supports
-  // one WebSocket connection per API key. The GlobalAlertMonitor was creating
-  // a second connection that conflicted with the watchlist WebSocket.
-  // 
-  // Alert PERSISTENCE still works - alerts are saved/restored per symbol.
-  // Background MONITORING would require reusing the existing watchlist WebSocket.
-  // 
-  // useEffect(() => {
-  //   if (!isAuthenticated) return;
-  //   const handleBackgroundAlertTrigger = (evt) => { ... };
-  //   globalAlertMonitor.start(handleBackgroundAlertTrigger);
-  //   return () => { globalAlertMonitor.stop(); };
-  // }, [isAuthenticated]);
+  // === GlobalAlertMonitor ===
+  // Background price monitoring using SharedWebSocket
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleBackgroundAlertTrigger = (evt) => {
+      const msg = evt.message || `${evt.symbol} alert triggered`;
+      showToast(msg, 'info');
+
+      // Update logs
+      setAlertLogs(prev => {
+        const newLog = {
+          id: evt.alertId || crypto.randomUUID(),
+          time: new Date().toISOString(),
+          message: msg,
+          symbol: evt.symbol,
+          price: evt.currentPrice,
+          type: evt.alertType || 'price'
+        };
+        const updated = [newLog, ...prev].slice(0, 100); // Keep last 100
+        localStorage.setItem('tv_alert_logs', JSON.stringify(updated));
+        return updated;
+      });
+
+      setUnreadAlertCount(c => c + 1);
+
+      // Add to popup queue for visual notification
+      setGlobalAlertPopups(prev => [...prev, { ...evt, id: evt.alertId || crypto.randomUUID() }]);
+    };
+
+    // Load alerts and start monitoring
+    // Small delay to ensure other services are ready
+    const timer = setTimeout(() => {
+      globalAlertMonitor.start(handleBackgroundAlertTrigger);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      globalAlertMonitor.stop();
+    };
+  }, [isAuthenticated, showToast]);
 
   // Mobile State
   const isMobile = useIsMobile();
@@ -1743,6 +1782,10 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
 
             strategyConfig={activeChart?.strategyConfig}
             onIndicatorSettingsClick={() => setIsIndicatorSettingsOpen(true)}
+            onIndicatorAlertClick={() => {
+              setIndicatorAlertToEdit(null); // Ensure creation mode
+              setIsIndicatorAlertOpen(true);
+            }}
             onOptionsClick={() => setIsOptionChainOpen(true)}
             onHeatmapClick={() => setIsSectorHeatmapOpen(true)}
           />
@@ -1909,6 +1952,16 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
                 ));
               }}
               onEditAlert={(alert) => {
+                if (alert.type === 'indicator') {
+                  setIndicatorAlertToEdit(alert);
+                  setIsIndicatorAlertOpen(true);
+                  // Ensure we are on the correct symbol if needed
+                  setCharts(prev => prev.map(chart =>
+                    chart.id === activeChartId ? { ...chart, symbol: alert.symbol, exchange: alert.exchange || 'NSE', strategyConfig: null } : chart
+                  ));
+                  return;
+                }
+
                 // Navigate to the symbol first
                 setCharts(prev => prev.map(chart =>
                   chart.id === activeChartId ? { ...chart, symbol: alert.symbol, exchange: alert.exchange || 'NSE', strategyConfig: null } : chart
@@ -2125,6 +2178,19 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
         onSave={handleSaveAlert}
         initialPrice={alertPrice}
         theme={theme}
+      />
+      <IndicatorAlertDialog
+        isOpen={isIndicatorAlertOpen}
+        onClose={() => {
+          setIsIndicatorAlertOpen(false);
+          setIndicatorAlertToEdit(null);
+        }}
+        onSave={handleSaveIndicatorAlert}
+        activeIndicators={activeChart?.indicators || []}
+        symbol={indicatorAlertToEdit ? indicatorAlertToEdit.symbol : currentSymbol}
+        exchange={indicatorAlertToEdit ? indicatorAlertToEdit.exchange : currentExchange}
+        theme={theme}
+        alertToEdit={indicatorAlertToEdit}
       />
       <Suspense fallback={null}>
         {isSettingsOpen && (
