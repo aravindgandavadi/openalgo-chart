@@ -388,6 +388,11 @@ export const getAvailableExpiries = async (underlying, exchange = null, instrume
 
         // Convert from API format (DD-MMM-YY like "10-JUL-25") to our internal format (DDMMMYY like "10JUL25")
         const expiries = expiryDates.map(dateStr => {
+            // HIGH FIX BUG-9: Add type check to prevent .replace() on non-string
+            if (typeof dateStr !== 'string') {
+                console.warn('[OptionChain] Non-string expiry date:', dateStr);
+                return String(dateStr || '');
+            }
             // Remove hyphens: "10-JUL-25" -> "10JUL25"
             return dateStr.replace(/-/g, '');
         });
