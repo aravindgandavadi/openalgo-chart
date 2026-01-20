@@ -56,6 +56,7 @@ import { TOOL_MAP, hexToRgba, areSymbolsEquivalent, addFutureWhitespacePoints, f
 import { createSeries, transformData } from './utils/seriesFactories';
 import { createIndicatorSeries } from './utils/indicatorCreators';
 import { updateIndicatorSeries } from './utils/indicatorUpdaters';
+import { cleanupIndicators } from './utils/indicatorCleanup';
 import {
     DEFAULT_CANDLE_WINDOW,
     DEFAULT_RIGHT_OFFSET,
@@ -140,6 +141,7 @@ const ChartComponent = forwardRef(({
     // Unified Indicator Maps for Multi-Instance Support
     const indicatorSeriesMap = useRef(new Map()); // Map<id, Series | Object>
     const indicatorPanesMap = useRef(new Map());  // Map<id, Pane | Object>
+    const indicatorTypesMap = useRef(new Map());  // Map<id, type string> - Track indicator types for cleanup
 
     // Keeping these for now if used by specific legacy logic, but goal is to move to maps
     // Integrated indicator series refs (displayed within main chart)
@@ -2571,6 +2573,7 @@ const ChartComponent = forwardRef(({
 
                         if (series) {
                             indicatorSeriesMap.current.set(id, series);
+                            indicatorTypesMap.current.set(id, type); // Track type for cleanup
                         }
                     } catch (e) {
                         console.error(`Error creating series for ${type} (${id})`, e);
@@ -2652,6 +2655,11 @@ const ChartComponent = forwardRef(({
             if (result.allMarkers && result.allMarkers.length > 0) {
                 allMarkers.push(...result.allMarkers);
             }
+
+            // Track type for cleanup (array-based indicator)
+            if (firstCandleInd?.id) {
+                indicatorTypesMap.current.set(firstCandleInd.id, 'firstCandle');
+            }
         } else if (!firstCandleEnabled) {
             // Remove first candle series when disabled
             for (const series of firstCandleSeriesRef.current) {
@@ -2728,6 +2736,11 @@ const ChartComponent = forwardRef(({
             if (result.markers && result.markers.length > 0) {
                 allMarkers.push(...result.markers);
             }
+
+            // Track type for cleanup (array-based indicator)
+            if (rangeBreakoutInd?.id) {
+                indicatorTypesMap.current.set(rangeBreakoutInd.id, 'rangeBreakout');
+            }
         } else if (!rangeBreakoutEnabled) {
             // Remove range breakout series when disabled
             for (const series of rangeBreakoutSeriesRef.current) {
@@ -2786,6 +2799,11 @@ const ChartComponent = forwardRef(({
                     side: riskCalculatorInd.side || 'BUY',
                     onPriceChange: handleRiskCalculatorDrag
                 });
+
+                // Track type for cleanup (primitive-based indicator)
+                if (riskCalculatorInd?.id) {
+                    indicatorTypesMap.current.set(riskCalculatorInd.id, 'riskCalculator');
+                }
             }
         } else if (!riskCalculatorEnabled) {
             // Remove risk calculator primitive when disabled
@@ -2856,6 +2874,11 @@ const ChartComponent = forwardRef(({
                     });
                 }
             });
+
+            // Track type for cleanup (array-based indicator)
+            if (parIndicator?.id) {
+                indicatorTypesMap.current.set(parIndicator.id, 'priceActionRange');
+            }
         } else if (!parEnabled) {
             // Remove PAR series when disabled
             for (const series of priceActionRangeSeriesRef.current) {
@@ -2864,7 +2887,7 @@ const ChartComponent = forwardRef(({
             priceActionRangeSeriesRef.current = [];
         }
 
-        // --- CLEANUP LOGIC ---
+        // --- UNIFIED CLEANUP LOGIC ---
         // Identify IDs that are no longer in the list
         const idsToRemove = [];
         for (const id of indicatorSeriesMap.current.keys()) {
@@ -2873,34 +2896,25 @@ const ChartComponent = forwardRef(({
             }
         }
 
-        idsToRemove.forEach(id => {
-            const series = indicatorSeriesMap.current.get(id);
-            const pane = indicatorPanesMap.current.get(id);
-
-            // Remove Series
-            if (series) {
-                const list = Array.isArray(series) ? series : (typeof series === 'object' && !series.applyOptions ? Object.values(series) : [series]);
-                list.forEach(s => {
-                    if (s) {
-                        try {
-                            if (pane) pane.removeSeries(s);
-                            else chartRef.current.removeSeries(s);
-                        } catch (e) { /* ignore */ }
-                    }
-                });
+        // Prepare cleanup context with all necessary references
+        const cleanupContext = {
+            chart: chartRef.current,
+            mainSeries: mainSeriesRef.current,
+            indicatorSeriesMap: indicatorSeriesMap.current,
+            indicatorPanesMap: indicatorPanesMap.current,
+            refs: {
+                tpoProfileRef,
+                riskCalculatorPrimitiveRef,
+                firstCandleSeriesRef,
+                rangeBreakoutSeriesRef,
+                priceActionRangeSeriesRef
             }
+        };
 
-            // Remove Pane
-            if (pane) {
-                try {
-                    const idx = chartRef.current.panes().indexOf(pane);
-                    if (idx > 0) chartRef.current.removePane(idx);
-                } catch (e) { console.warn('Error removing pane', e); }
-                indicatorPanesMap.current.delete(id);
-            }
-
-            indicatorSeriesMap.current.delete(id);
-        });
+        // Execute unified cleanup using metadata-driven engine
+        if (idsToRemove.length > 0) {
+            cleanupIndicators(idsToRemove, indicatorTypesMap.current, cleanupContext);
+        }
 
         // Set all collected markers on the main candlestick series using lightweight-charts v5 API
         // This ensures markers from all indicators (ANN Strategy, Range Breakout, etc.) are displayed together
@@ -3892,17 +3906,17 @@ const ChartComponent = forwardRef(({
 
         const tpoIndicators = (indicators || []).filter(ind => ind.type === 'tpo');
 
-        // Remove old TPO primitives
-        if (tpoProfileRef.current) {
+        // ALWAYS remove old TPO primitive first (fixes visibility toggle issue)
+        if (tpoProfileRef.current && mainSeriesRef.current) {
             try {
                 mainSeriesRef.current.detachPrimitive(tpoProfileRef.current);
             } catch (e) {
-                // Primitive might already be detached
+                console.warn('[TPO] Error detaching primitive:', e);
             }
             tpoProfileRef.current = null;
         }
 
-        // Add new TPO if exists and is visible
+        // Only recreate TPO if it exists AND is visible
         if (tpoIndicators.length > 0 && dataRef.current.length > 0) {
             const tpoInd = tpoIndicators[0];
             const tpoId = tpoInd.id;
@@ -3913,8 +3927,9 @@ const ChartComponent = forwardRef(({
             // Check if indicator is visible (default to true if not specified)
             const isVisible = tpoInd.visible !== false;
 
+            // Skip creation if not visible (primitive already removed above)
             if (!isVisible) {
-                console.log('[TPO] Indicator hidden, skipping render');
+                console.log('[TPO] Indicator hidden, primitive removed');
                 return;
             }
 
@@ -3946,6 +3961,11 @@ const ChartComponent = forwardRef(({
                 tpoPrimitive.setData(profiles);
                 mainSeriesRef.current.attachPrimitive(tpoPrimitive);
                 tpoProfileRef.current = tpoPrimitive;
+
+                // Track type for cleanup (primitive-based indicator)
+                if (tpoInd?.id) {
+                    indicatorTypesMap.current.set(tpoInd.id, 'tpo');
+                }
 
                 console.log('[TPO] Primitive attached successfully');
             } catch (error) {
