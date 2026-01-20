@@ -3021,6 +3021,15 @@ const ChartComponent = forwardRef(({
             console.log('[CLEANUP] Calling cleanupIndicators with', idsToRemove.length, 'indicators');
             cleanupIndicators(idsToRemove, indicatorTypesMap.current, cleanupContext);
             console.log('[CLEANUP] Cleanup complete');
+
+            // Explicit ref null assignments for cleanup hygiene (Phase 4.1)
+            idsToRemove.forEach(id => {
+                const type = indicatorTypesMap.current.get(id);
+                if (type === 'annStrategy') {
+                    annStrategyPaneRef.current = null;
+                    console.log('[CLEANUP] Nulled annStrategyPaneRef');
+                }
+            });
         }
 
         // Set all collected markers on the main candlestick series using lightweight-charts v5 API

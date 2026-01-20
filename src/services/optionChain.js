@@ -48,6 +48,20 @@ const MONTH_TO_NUM = Object.fromEntries(
 );
 
 /**
+ * Phase 4.4: Safe parsing helpers for type coercion safety
+ * Ensures NaN values are never propagated into the application
+ */
+const safeParseFloat = (value, fallback = 0) => {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const safeParseInt = (value, fallback = 0) => {
+    const parsed = parseInt(value, 10);
+    return Number.isInteger(parsed) ? parsed : fallback;
+};
+
+/**
  * Parse expiry date string in DDMMMYY format to Date object
  * @param {string} expiryStr - Expiry string like "30DEC25"
  * @returns {Date|null} Date object or null if invalid
@@ -214,44 +228,43 @@ export const getOptionChain = async (underlying, exchange = 'NFO', expiryDate = 
         const chain = (result.chain || [])
             .filter(row => row && typeof row.strike !== 'undefined') // Filter out invalid rows
             .map(row => {
-                const strike = parseFloat(row.strike);
-                const ceLtp = parseFloat(row.ce?.ltp || 0);
-                const peLtp = parseFloat(row.pe?.ltp || 0);
+                // Phase 4.4: Use safe parsing helpers to prevent NaN propagation
+                const strike = safeParseFloat(row.strike);
+                const ceLtp = safeParseFloat(row.ce?.ltp);
+                const peLtp = safeParseFloat(row.pe?.ltp);
 
-                // Calculate straddle premium, ensuring valid number
-                const straddlePremium = Number.isFinite(ceLtp) && Number.isFinite(peLtp)
-                    ? (ceLtp + peLtp).toFixed(2)
-                    : '0.00';
+                // Calculate straddle premium (already safe due to safeParseFloat)
+                const straddlePremium = (ceLtp + peLtp).toFixed(2);
 
                 return {
-                    strike: Number.isFinite(strike) ? strike : 0,
+                    strike,
                     ce: row.ce ? {
                         symbol: row.ce.symbol,
-                        ltp: Number.isFinite(ceLtp) ? ceLtp : 0,
-                        prevClose: parseFloat(row.ce.prev_close || 0),
-                        open: parseFloat(row.ce.open || 0),
-                        high: parseFloat(row.ce.high || 0),
-                        low: parseFloat(row.ce.low || 0),
-                        bid: parseFloat(row.ce.bid || 0),
-                        ask: parseFloat(row.ce.ask || 0),
-                        oi: parseInt(row.ce.oi || 0, 10),
-                        volume: parseInt(row.ce.volume || 0, 10),
+                        ltp: ceLtp,
+                        prevClose: safeParseFloat(row.ce.prev_close),
+                        open: safeParseFloat(row.ce.open),
+                        high: safeParseFloat(row.ce.high),
+                        low: safeParseFloat(row.ce.low),
+                        bid: safeParseFloat(row.ce.bid),
+                        ask: safeParseFloat(row.ce.ask),
+                        oi: safeParseInt(row.ce.oi),
+                        volume: safeParseInt(row.ce.volume),
                         label: row.ce.label, // ITM, ATM, OTM
-                        lotSize: parseInt(row.ce.lotsize || row.ce.lot_size || 0, 10)
+                        lotSize: safeParseInt(row.ce.lotsize || row.ce.lot_size)
                     } : null,
                     pe: row.pe ? {
                         symbol: row.pe.symbol,
-                        ltp: Number.isFinite(peLtp) ? peLtp : 0,
-                        prevClose: parseFloat(row.pe.prev_close || 0),
-                        open: parseFloat(row.pe.open || 0),
-                        high: parseFloat(row.pe.high || 0),
-                        low: parseFloat(row.pe.low || 0),
-                        bid: parseFloat(row.pe.bid || 0),
-                        ask: parseFloat(row.pe.ask || 0),
-                        oi: parseInt(row.pe.oi || 0, 10),
-                        volume: parseInt(row.pe.volume || 0, 10),
+                        ltp: peLtp,
+                        prevClose: safeParseFloat(row.pe.prev_close),
+                        open: safeParseFloat(row.pe.open),
+                        high: safeParseFloat(row.pe.high),
+                        low: safeParseFloat(row.pe.low),
+                        bid: safeParseFloat(row.pe.bid),
+                        ask: safeParseFloat(row.pe.ask),
+                        oi: safeParseInt(row.pe.oi),
+                        volume: safeParseInt(row.pe.volume),
                         label: row.pe.label, // ITM, ATM, OTM
-                        lotSize: parseInt(row.pe.lotsize || row.pe.lot_size || 0, 10)
+                        lotSize: safeParseInt(row.pe.lotsize || row.pe.lot_size)
                     } : null,
                     straddlePremium
                 };

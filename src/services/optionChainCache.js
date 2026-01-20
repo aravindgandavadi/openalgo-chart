@@ -76,7 +76,11 @@ export const loadNoFOCacheFromStorage = () => {
             console.log('[OptionChainCache] Loaded', noFOSymbolsCache.size, 'non-F&O symbols from cache');
         }
     } catch (e) {
+        // Phase 4.3: Enhanced error recovery - clear corrupted cache and reset
         console.warn('[OptionChainCache] Failed to load no-F&O cache:', e.message);
+        console.log('[OptionChainCache] Clearing corrupted no-F&O cache from localStorage');
+        localStorage.removeItem(NO_FO_STORAGE_KEY);
+        noFOSymbolsCache.clear();
     }
 };
 
@@ -129,7 +133,11 @@ export const loadCacheFromStorage = () => {
             console.log('[OptionChainCache] Loaded', optionChainCache.size, 'cache entries from storage');
         }
     } catch (e) {
+        // Phase 4.3: Enhanced error recovery - clear corrupted cache and reset
         console.warn('[OptionChainCache] Failed to load cache from storage:', e.message);
+        console.log('[OptionChainCache] Clearing corrupted option chain cache from localStorage');
+        localStorage.removeItem(STORAGE_KEY);
+        optionChainCache.clear();
     }
 };
 
@@ -203,7 +211,11 @@ export const loadExpiryCacheFromStorage = () => {
             console.log('[OptionChainCache] Loaded', expiryCache.size, 'expiry cache entries');
         }
     } catch (e) {
+        // Phase 4.3: Enhanced error recovery - clear corrupted cache and reset
         console.warn('[OptionChainCache] Failed to load expiry cache:', e.message);
+        console.log('[OptionChainCache] Clearing corrupted expiry cache from localStorage');
+        localStorage.removeItem(EXPIRY_STORAGE_KEY);
+        expiryCache.clear();
     }
 };
 
