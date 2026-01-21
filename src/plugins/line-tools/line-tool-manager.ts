@@ -54,6 +54,7 @@ interface DragState {
 }
 
 export class LineToolManager extends PluginBase {
+    public onToolCompleted: ((tool?: string) => void) | null = null;
     private _activeToolType: ToolType = 'None';
     private _activeTool: TrendLine | HorizontalLine | VerticalLine | Rectangle | Text | ParallelChannel | FibRetracement | Triangle | Polyline | Callout | CrossLine | Circle | Path | PriceRange | LongPosition | ShortPosition | ElliottImpulseWave | ElliottCorrectionWave | DateRange | FibExtension | HorizontalRay | PriceLabel | DatePriceRange | Measure | HeadAndShoulders | null = null;
     private _points: LogicalPoint[] = [];
@@ -1393,6 +1394,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'HorizontalRay') {
@@ -1420,6 +1423,8 @@ export class LineToolManager extends PluginBase {
             // Reset for immediate drag capability
             this._activeToolType = 'None';
             this._setChartInteraction(true);
+
+            this.onToolCompleted?.();
         } else if (this._activeToolType === 'HorizontalLine') {
             // Finalize the horizontal line
             if (this._activeTool instanceof HorizontalLine) {
@@ -1440,6 +1445,8 @@ export class LineToolManager extends PluginBase {
             // Reset for immediate drag capability
             this._activeToolType = 'None';
             this._setChartInteraction(true);
+
+            this.onToolCompleted?.();
         } else if (this._activeToolType === 'VerticalLine') {
             // Finalize the vertical line
             if (this._activeTool instanceof VerticalLine) {
@@ -1460,6 +1467,8 @@ export class LineToolManager extends PluginBase {
             // Reset for immediate drag capability
             this._activeToolType = 'None';
             this._setChartInteraction(true);
+
+            this.onToolCompleted?.();
         } else if (this._activeToolType === 'Text') {
             const tool = new Text(this.chart, this.series, point, 'Add text', this.getToolOptions(this._activeToolType));
             this.series.attachPrimitive(tool);
@@ -1473,6 +1482,8 @@ export class LineToolManager extends PluginBase {
             // Reset for immediate drag capability
             this._activeToolType = 'None';
             this._setChartInteraction(true);
+
+            this.onToolCompleted?.();
         } else if (this._activeToolType === 'Callout') {
             if (this._points.length === 1) {
                 // First click - create callout with anchor point
@@ -1496,6 +1507,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'PriceLabel') {
@@ -1509,6 +1522,8 @@ export class LineToolManager extends PluginBase {
             // Reset for immediate drag capability
             this._activeToolType = 'None';
             this._setChartInteraction(true);
+
+            this.onToolCompleted?.();
         } else if (this._activeToolType === 'ParallelChannel') {
             if (this._points.length === 1) {
                 const p1 = this._points[0] as LogicalPoint;
@@ -1534,6 +1549,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'FibRetracement') {
@@ -1554,6 +1571,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'Triangle') {
@@ -1581,6 +1600,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'LongPosition') {
@@ -1614,6 +1635,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'ShortPosition') {
@@ -1652,6 +1675,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'CrossLine') {
@@ -1664,6 +1689,8 @@ export class LineToolManager extends PluginBase {
             // Reset for immediate drag capability
             this._activeToolType = 'None';
             this._setChartInteraction(true);
+
+            this.onToolCompleted?.();
 
         } else if (this._activeToolType === 'Rectangle') {
             // Store LogicalPoints for Rectangle
@@ -1688,6 +1715,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'PriceRange') {
@@ -1713,6 +1742,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'Circle') {
@@ -1738,6 +1769,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'ElliottImpulseWave') {
@@ -1757,6 +1790,8 @@ export class LineToolManager extends PluginBase {
                         // Reset for immediate drag capability
                         this._activeToolType = 'None';
                         this._setChartInteraction(true);
+
+                        this.onToolCompleted?.();
                     }
                 }
             }
@@ -1777,6 +1812,8 @@ export class LineToolManager extends PluginBase {
                         // Reset for immediate drag capability
                         this._activeToolType = 'None';
                         this._setChartInteraction(true);
+
+                        this.onToolCompleted?.();
                     }
                 }
             }
@@ -1797,6 +1834,8 @@ export class LineToolManager extends PluginBase {
                         // Reset for immediate drag capability
                         this._activeToolType = 'None';
                         this._setChartInteraction(true);
+
+                        this.onToolCompleted?.();
                     }
                 }
             }
@@ -1823,6 +1862,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'DatePriceRange') {
@@ -1848,6 +1889,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'Measure') {
@@ -1898,6 +1941,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                 }
             }
         } else if (this._activeToolType === 'Path') {
@@ -1929,6 +1974,8 @@ export class LineToolManager extends PluginBase {
                     // Reset for immediate drag capability
                     this._activeToolType = 'None';
                     this._setChartInteraction(true);
+
+                    this.onToolCompleted?.();
                     return;
                 }
             }
@@ -2366,6 +2413,8 @@ export class LineToolManager extends PluginBase {
                 // Reset for immediate drag capability
                 this._activeToolType = 'None';
                 this._setChartInteraction(true);
+
+                this.onToolCompleted?.();
                 this._isRightClick = false;
                 return;
             }

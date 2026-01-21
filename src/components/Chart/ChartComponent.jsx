@@ -1512,30 +1512,38 @@ const ChartComponent = forwardRef(({
         activeToolRef.current = activeTool;
     }, [activeTool]);
 
+    // Track onToolUsed to avoid stale closures in callback
+    const onToolUsedRef = useRef(onToolUsed);
+    useEffect(() => {
+        onToolUsedRef.current = onToolUsed;
+    }, [onToolUsed]);
+
     // Initialize LineToolManager when series is ready
     const initializeLineTools = (series) => {
         if (!lineToolManagerRef.current) {
             const manager = new LineToolManager();
 
-            // Wrap startTool to detect when tool is cancelled/finished
-            const originalStartTool = manager.startTool.bind(manager);
-            manager.startTool = (tool) => {
+            // Handle tool completion
+            manager.onToolCompleted = (completedToolType) => {
+                const finishedTool = activeToolRef.current;
+                const currentOnToolUsed = onToolUsedRef.current;
 
-                originalStartTool(tool);
+                // Don't trigger onToolUsed for zoom tools since they handle their own state
+                const isZoomTool = finishedTool === 'zoom_in' || finishedTool === 'zoom_out';
 
-                // If tool is None, it means we are back to cursor mode
-                // But don't trigger onToolUsed for zoom tools since they handle their own state
-                const isZoomTool = activeToolRef.current === 'zoom_in' || activeToolRef.current === 'zoom_out';
-                if ((tool === 'None' || tool === null) && activeToolRef.current !== null && activeToolRef.current !== 'cursor' && !isZoomTool) {
-                    const finishedTool = activeToolRef.current;
-                    if (onToolUsed) onToolUsed();
+                if (finishedTool && finishedTool !== 'cursor' && !isZoomTool) {
+                    if (currentOnToolUsed) currentOnToolUsed();
 
                     // Support for Sequential Mode:
                     // If activeTool is NOT reset by onToolUsed (i.e. we are in sequential mode),
                     // we need to re-activate the tool on the manager because the manager self-resets to None.
                     setTimeout(() => {
+                        // Check if activeTool is STILL same (meaning sequential mode active)
+                        // And verify manager exists
                         if (activeToolRef.current === finishedTool && lineToolManagerRef.current) {
                             const mappedTool = TOOL_MAP[finishedTool] || 'None';
+                            // We call startTool to restart the tool. 
+                            // This might deselect the just-drawn tool, which is expected for sequential drawing.
                             lineToolManagerRef.current.startTool(mappedTool);
                         }
                     }, 0);
