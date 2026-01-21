@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { X, Grid3X3, LayoutGrid, BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
 import styles from './SectorHeatmapModal.module.css';
 import { SECTORS, getSector } from '../PositionTracker/sectorMapping';
+import { getMarketCap } from '../../services/marketCapService';
 
 // Import extracted constants and utils
 import { HEATMAP_MODES } from './constants';
@@ -57,18 +58,25 @@ const SectorHeatmapModal = ({ isOpen, onClose, watchlistData, onSectorSelect, on
     };
   }, []);
 
-  // Process stock data
+  // Process stock data with real market cap data
   const stockData = useMemo(() => {
     if (!watchlistData || watchlistData.length === 0) return [];
-    return watchlistData.map(item => ({
-      symbol: item.symbol,
-      exchange: item.exchange || 'NSE',
-      ltp: parseFloat(item.last) || 0,
-      change: calculateIntradayChange(item),
-      volume: parseFloat(item.volume) || 0,
-      sector: getSector(item.symbol),
-      marketCap: parseFloat(item.marketCap) || parseFloat(item.volume) || 1000000, // Use volume as proxy if no market cap
-    }));
+    return watchlistData.map(item => {
+      // Try to get real market cap data from service
+      const realMarketCap = getMarketCap(item.symbol);
+
+      return {
+        symbol: item.symbol,
+        exchange: item.exchange || 'NSE',
+        ltp: parseFloat(item.last) || 0,
+        change: calculateIntradayChange(item),
+        volume: parseFloat(item.volume) || 0,
+        sector: getSector(item.symbol),
+        // Priority: Real market cap > Provided market cap > Volume as fallback > Default
+        marketCap: realMarketCap || parseFloat(item.marketCap) || parseFloat(item.volume) || 1000000,
+        hasRealMarketCap: !!realMarketCap, // Flag to indicate if real data is used
+      };
+    });
   }, [watchlistData]);
 
   // Calculate sector-wise performance
