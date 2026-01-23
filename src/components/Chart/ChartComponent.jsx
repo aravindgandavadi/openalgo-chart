@@ -2504,10 +2504,18 @@ const ChartComponent = forwardRef(({
                             }
 
                             const currentChartType = chartTypeRef.current;
-                            const transformedCandle = transformData([candle], currentChartType)[0];
 
-                            if (transformedCandle && mainSeriesRef.current && !isReplayModeRef.current) {
-                                mainSeriesRef.current.update(transformedCandle);
+                            if (mainSeriesRef.current && !isReplayModeRef.current) {
+                                // Use setData() approach same as regular symbol mode to avoid
+                                // lightweight-charts time ordering issues with update()
+                                try {
+                                    const transformedFullData = transformData(currentData, currentChartType);
+                                    const dataWithFuture = addFutureWhitespacePoints(transformedFullData, intervalSeconds);
+                                    mainSeriesRef.current.setData(dataWithFuture);
+                                } catch (setDataErr) {
+                                    console.warn('[Strategy WebSocket] Failed to update chart with setData:', setDataErr);
+                                }
+
                                 updateRealtimeIndicators(currentData);
                                 updateAxisLabel();
                                 updateOhlcFromLatest();
