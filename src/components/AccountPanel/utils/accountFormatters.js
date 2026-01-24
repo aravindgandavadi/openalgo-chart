@@ -7,9 +7,9 @@
  */
 
 // Re-export common formatters from centralized module
-// Import common formatters from centralized module
 import { formatCurrency, formatPnL, formatPercent, formatQuantity } from '../../../utils/shared/formatters';
-export { formatCurrency, formatPnL, formatPercent, formatQuantity };
+import { normalizeStatus } from '../../../utils/shared/orderUtils';
+export { formatCurrency, formatPnL, formatPercent, formatQuantity, normalizeStatus };
 
 /**
  * Check if order status is open/pending (cancellable)
@@ -17,7 +17,7 @@ export { formatCurrency, formatPnL, formatPercent, formatQuantity };
  * @returns {boolean}
  */
 export const isOpenOrderStatus = (status) => {
-    const s = (status || '').toUpperCase().replace(/\s+/g, '_');
+    const s = normalizeStatus(status);
 
     // Expanded list of cancellable statuses across different brokers
     const cancellableStatuses = [

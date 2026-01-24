@@ -3,9 +3,9 @@
  * Market timing, columns, and filter options
  */
 
-// Market timing constants (IST)
-export const MARKET_OPEN = { hour: 9, minute: 15 };
-export const MARKET_CLOSE = { hour: 15, minute: 30 };
+// Re-export market timing from centralized module
+import { MARKET_OPEN, MARKET_CLOSE } from '../../../constants/marketConstants';
+export { MARKET_OPEN, MARKET_CLOSE };
 
 // Top N options for gainers/losers filter
 export const TOP_N_OPTIONS = [5, 10, 15, 20];

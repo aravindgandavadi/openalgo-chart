@@ -43,3 +43,9 @@ export { useOptionChainData } from './useOptionChainData';
 
 // Virtual scrolling hooks
 export { useVirtualScroll, VirtualList } from './useVirtualScroll.jsx';
+
+// Table filtering hook (consolidates filter/sort logic for AccountPanel tables)
+export { default as useTableFiltering, sortData } from './useTableFiltering';
+
+// Order form state hook (consolidates modal state for order forms)
+export { default as useOrderFormState } from './useOrderFormState';

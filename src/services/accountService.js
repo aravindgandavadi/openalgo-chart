@@ -1,41 +1,21 @@
 /**
  * Account Service
  * Trading account operations - funds, positions, orders, holdings
+ *
+ * Uses centralized apiHelper to reduce boilerplate
  */
 
-import logger from '../utils/logger.js';
-import { getApiKey, getApiBase } from './apiConfig';
+import { makeApiRequest } from './apiHelper';
 
 /**
  * Ping API - Check connectivity and validate API key
  * @returns {Promise<Object|null>} { broker, message } on success, null on error
  */
 export const ping = async () => {
-    try {
-        const apiKey = getApiKey();
-        if (!apiKey) return null;
-
-        const response = await fetch(`${getApiBase()}/ping`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ apikey: apiKey })
-        });
-
-        if (!response.ok) {
-            logger.warn('[OpenAlgo] Ping failed:', response.status);
-            return null;
-        }
-
-        const data = await response.json();
-        if (data.status === 'success') {
-            return data.data;
-        }
-        return null;
-    } catch (error) {
-        logger.error('[OpenAlgo] Ping error:', error);
-        return null;
-    }
+    return makeApiRequest('/ping', {}, {
+        context: 'Ping',
+        defaultValue: null
+    });
 };
 
 /**
@@ -43,31 +23,10 @@ export const ping = async () => {
  * @returns {Promise<Object|null>} { availablecash, collateral, m2mrealized, m2munrealized, utiliseddebits }
  */
 export const getFunds = async () => {
-    try {
-        const apiKey = getApiKey();
-        if (!apiKey) return null;
-
-        const response = await fetch(`${getApiBase()}/funds`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ apikey: apiKey })
-        });
-
-        if (!response.ok) {
-            logger.warn('[OpenAlgo] Funds API failed:', response.status);
-            return null;
-        }
-
-        const data = await response.json();
-        if (data.status === 'success') {
-            return data.data;
-        }
-        return null;
-    } catch (error) {
-        logger.error('[OpenAlgo] Funds error:', error);
-        return null;
-    }
+    return makeApiRequest('/funds', {}, {
+        context: 'Funds',
+        defaultValue: null
+    });
 };
 
 /**
@@ -75,31 +34,10 @@ export const getFunds = async () => {
  * @returns {Promise<Array>} Array of position objects
  */
 export const getPositionBook = async () => {
-    try {
-        const apiKey = getApiKey();
-        if (!apiKey) return [];
-
-        const response = await fetch(`${getApiBase()}/positionbook`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ apikey: apiKey })
-        });
-
-        if (!response.ok) {
-            logger.warn('[OpenAlgo] PositionBook API failed:', response.status);
-            return [];
-        }
-
-        const data = await response.json();
-        if (data.status === 'success') {
-            return data.data || [];
-        }
-        return [];
-    } catch (error) {
-        logger.error('[OpenAlgo] PositionBook error:', error);
-        return [];
-    }
+    return makeApiRequest('/positionbook', {}, {
+        context: 'PositionBook',
+        defaultValue: []
+    });
 };
 
 /**
@@ -107,31 +45,10 @@ export const getPositionBook = async () => {
  * @returns {Promise<Object>} { orders: [], statistics: {} }
  */
 export const getOrderBook = async () => {
-    try {
-        const apiKey = getApiKey();
-        if (!apiKey) return { orders: [], statistics: {} };
-
-        const response = await fetch(`${getApiBase()}/orderbook`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ apikey: apiKey })
-        });
-
-        if (!response.ok) {
-            logger.warn('[OpenAlgo] OrderBook API failed:', response.status);
-            return { orders: [], statistics: {} };
-        }
-
-        const data = await response.json();
-        if (data.status === 'success') {
-            return data.data || { orders: [], statistics: {} };
-        }
-        return { orders: [], statistics: {} };
-    } catch (error) {
-        logger.error('[OpenAlgo] OrderBook error:', error);
-        return { orders: [], statistics: {} };
-    }
+    return makeApiRequest('/orderbook', {}, {
+        context: 'OrderBook',
+        defaultValue: { orders: [], statistics: {} }
+    });
 };
 
 /**
@@ -139,31 +56,10 @@ export const getOrderBook = async () => {
  * @returns {Promise<Array>} Array of trade objects
  */
 export const getTradeBook = async () => {
-    try {
-        const apiKey = getApiKey();
-        if (!apiKey) return [];
-
-        const response = await fetch(`${getApiBase()}/tradebook`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ apikey: apiKey })
-        });
-
-        if (!response.ok) {
-            logger.warn('[OpenAlgo] TradeBook API failed:', response.status);
-            return [];
-        }
-
-        const data = await response.json();
-        if (data.status === 'success') {
-            return data.data || [];
-        }
-        return [];
-    } catch (error) {
-        logger.error('[OpenAlgo] TradeBook error:', error);
-        return [];
-    }
+    return makeApiRequest('/tradebook', {}, {
+        context: 'TradeBook',
+        defaultValue: []
+    });
 };
 
 /**
@@ -171,29 +67,8 @@ export const getTradeBook = async () => {
  * @returns {Promise<Object>} { holdings: [], statistics: {} }
  */
 export const getHoldings = async () => {
-    try {
-        const apiKey = getApiKey();
-        if (!apiKey) return { holdings: [], statistics: {} };
-
-        const response = await fetch(`${getApiBase()}/holdings`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ apikey: apiKey })
-        });
-
-        if (!response.ok) {
-            logger.warn('[OpenAlgo] Holdings API failed:', response.status);
-            return { holdings: [], statistics: {} };
-        }
-
-        const data = await response.json();
-        if (data.status === 'success') {
-            return data.data || { holdings: [], statistics: {} };
-        }
-        return { holdings: [], statistics: {} };
-    } catch (error) {
-        logger.error('[OpenAlgo] Holdings error:', error);
-        return { holdings: [], statistics: {} };
-    }
+    return makeApiRequest('/holdings', {}, {
+        context: 'Holdings',
+        defaultValue: { holdings: [], statistics: {} }
+    });
 };

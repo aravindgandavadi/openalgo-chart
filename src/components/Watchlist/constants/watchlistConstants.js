@@ -3,6 +3,10 @@
  * Symbol full names and other constants
  */
 
+// Re-export market status from centralized module
+import { isMarketOpen } from '../../../constants/marketConstants';
+export { isMarketOpen };
+
 // Symbol full names (can be extended or fetched from API)
 export const SYMBOL_FULL_NAMES = {
     'NIFTY': 'Nifty 50 Index',
@@ -58,31 +62,13 @@ export const SYMBOL_FULL_NAMES = {
 
 /**
  * Check if market is open (simplified)
+ * @deprecated Use isMarketOpen from constants/marketConstants instead
  * @param {string} exchange - Exchange code
  * @returns {boolean} Whether market is currently open
  */
 export function isMarketOpenNow(exchange) {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const day = now.getDay();
-
-    // Weekend check
-    if (day === 0 || day === 6) return false;
-
-    // India market hours (9:15 AM - 3:30 PM IST)
-    if (['NSE', 'NSE_INDEX', 'BSE', 'NFO', 'MCX', 'CDS', 'BFO'].includes(exchange)) {
-        const timeInMinutes = hours * 60 + minutes;
-        return timeInMinutes >= 555 && timeInMinutes <= 930; // 9:15 to 15:30
-    }
-
-    // US market hours (simplified - 9:30 AM - 4:00 PM EST)
-    if (['NYSE', 'NASDAQ', 'AMEX'].includes(exchange)) {
-        const timeInMinutes = hours * 60 + minutes;
-        return timeInMinutes >= 570 && timeInMinutes <= 960;
-    }
-
-    return false;
+    // Delegate to centralized market utility
+    return isMarketOpen(exchange);
 }
 
 export default {

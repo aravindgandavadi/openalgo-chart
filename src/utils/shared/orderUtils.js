@@ -13,6 +13,12 @@ import {
     TRIGGER_REQUIRED_ORDER_TYPES,
 } from '../../constants/orderConstants';
 
+// Import safe parse functions from centralized module (avoid duplication)
+import { safeParseFloat, safeParseInt } from '../safeParse';
+
+// Re-export for backward compatibility
+export { safeParseFloat, safeParseInt };
+
 /**
  * Validation result type
  * @typedef {Object} ValidationResult
@@ -21,27 +27,13 @@ import {
  */
 
 /**
- * Safe parse float with NaN handling
- * @param {string|number} value - Value to parse
- * @param {number} fallback - Fallback value if parsing fails
- * @returns {number} Parsed number or fallback
+ * Normalize status string for comparison
+ * Converts to uppercase and replaces spaces with underscores
+ * @param {string} status - Status string to normalize
+ * @returns {string} Normalized status
  */
-export const safeParseFloat = (value, fallback = 0) => {
-    if (value === null || value === undefined || value === '') return fallback;
-    const parsed = parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-/**
- * Safe parse int with NaN handling
- * @param {string|number} value - Value to parse
- * @param {number} fallback - Fallback value if parsing fails
- * @returns {number} Parsed integer or fallback
- */
-export const safeParseInt = (value, fallback = 0) => {
-    if (value === null || value === undefined || value === '') return fallback;
-    const parsed = parseInt(value, 10);
-    return Number.isFinite(parsed) ? parsed : fallback;
+export const normalizeStatus = (status) => {
+    return (status || '').toUpperCase().replace(/\s+/g, '_');
 };
 
 /**
