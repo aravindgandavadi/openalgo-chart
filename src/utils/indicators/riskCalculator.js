@@ -143,7 +143,7 @@ export function calculateRiskPosition(params) {
       targetPrice: formatCurrency(finalTargetPrice, { showSymbol: true }),
       rewardPoints: rewardPoints.toFixed(2),
       rewardAmount: formatCurrency(rewardAmount, { showSymbol: true }),
-      rrRatio: `1 : ${finalRiskRewardRatio.toFixed(2)}`
+      rrRatio: `1 : ${Number.isInteger(finalRiskRewardRatio) ? finalRiskRewardRatio : finalRiskRewardRatio.toFixed(2)}`
     }
   };
 }

@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import App from './App';
 import { UserProvider } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { UIProvider } from './context/UIContext';
+import { AlertProvider } from './context/AlertContext';
 
 // Mock child components to isolate App testing
 vi.mock('./components/Layout/Layout', () => ({
@@ -12,7 +14,14 @@ vi.mock('./components/Layout/Layout', () => ({
 // Mock services
 vi.mock('./services/openalgo', () => ({
     checkAuth: vi.fn().mockResolvedValue(true),
-    // Add other mocked exports if needed by App
+    closeAllWebSockets: vi.fn(),
+    forceCloseAllWebSockets: vi.fn(),
+    getTickerPrice: vi.fn().mockResolvedValue(null),
+    subscribeToMultiTicker: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+    saveUserPreferences: vi.fn(),
+    modifyOrder: vi.fn(),
+    cancelOrder: vi.fn(),
+    getKlines: vi.fn().mockResolvedValue({ data: [] }),
 }));
 
 vi.mock('./hooks/useCloudWorkspaceSync', () => ({
@@ -24,7 +33,11 @@ describe('App Component', () => {
         const { container } = render(
             <UserProvider>
                 <ThemeProvider>
-                    <App />
+                    <UIProvider>
+                        <AlertProvider>
+                            <App />
+                        </AlertProvider>
+                    </UIProvider>
                 </ThemeProvider>
             </UserProvider>
         );

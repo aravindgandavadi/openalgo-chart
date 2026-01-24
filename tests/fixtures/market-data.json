@@ -1,0 +1,25 @@
+{
+  "candles": [
+    { "time": 1705276800, "open": 2500, "high": 2520, "low": 2490, "close": 2510, "volume": 1000000 },
+    { "time": 1705363200, "open": 2510, "high": 2530, "low": 2505, "close": 2525, "volume": 1200000 },
+    { "time": 1705449600, "open": 2525, "high": 2540, "low": 2515, "close": 2535, "volume": 900000 },
+    { "time": 1705536000, "open": 2535, "high": 2560, "low": 2530, "close": 2550, "volume": 1500000 },
+    { "time": 1705622400, "open": 2550, "high": 2570, "low": 2545, "close": 2560, "volume": 1100000 }
+  ],
+  "ticker": {
+    "symbol": "RELIANCE",
+    "exchange": "NSE",
+    "ltp": 2560,
+    "chg": 10,
+    "chgP": 0.39,
+    "volume": 5000000,
+    "open": 2550,
+    "high": 2570,
+    "low": 2545,
+    "prevClose": 2550,
+    "bidPrice": 2559,
+    "askPrice": 2560,
+    "bidQuantity": 100,
+    "askQuantity": 150
+  }
+}

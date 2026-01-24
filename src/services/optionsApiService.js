@@ -3,7 +3,7 @@
  * Handles option chain, greeks, and expiry data fetching
  */
 
-import { getApiKey, getApiBase, getLoginUrl } from './apiConfig';
+import { getApiKey, getApiBase, getLoginUrl } from './api/config';
 import logger from '../utils/logger';
 
 /**

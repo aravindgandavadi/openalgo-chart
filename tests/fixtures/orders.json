@@ -1,0 +1,55 @@
+{
+  "orders": [
+    {
+      "orderid": "ORD001",
+      "symbol": "RELIANCE",
+      "exchange": "NSE",
+      "action": "BUY",
+      "quantity": 10,
+      "pricetype": "LIMIT",
+      "price": 2500,
+      "trigger_price": 0,
+      "product": "MIS",
+      "order_status": "COMPLETE",
+      "filledqty": 10,
+      "average_price": 2500,
+      "timestamp": "2024-01-15T10:30:00"
+    },
+    {
+      "orderid": "ORD002",
+      "symbol": "TCS",
+      "exchange": "NSE",
+      "action": "SELL",
+      "quantity": 5,
+      "pricetype": "MARKET",
+      "price": 0,
+      "trigger_price": 0,
+      "product": "MIS",
+      "order_status": "OPEN",
+      "filledqty": 0,
+      "average_price": 0,
+      "timestamp": "2024-01-15T11:00:00"
+    },
+    {
+      "orderid": "ORD003",
+      "symbol": "INFY",
+      "exchange": "NSE",
+      "action": "BUY",
+      "quantity": 20,
+      "pricetype": "SL",
+      "price": 1500,
+      "trigger_price": 1490,
+      "product": "CNC",
+      "order_status": "TRIGGER_PENDING",
+      "filledqty": 0,
+      "average_price": 0,
+      "timestamp": "2024-01-15T11:30:00"
+    }
+  ],
+  "statistics": {
+    "total": 3,
+    "open": 1,
+    "completed": 1,
+    "rejected": 0
+  }
+}
