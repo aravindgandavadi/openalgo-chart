@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './ReplaySlider.module.css';
+import logger from '../../utils/logger';
 
 const ReplaySlider = ({
   chartRef,
@@ -240,7 +241,7 @@ const ReplaySlider = ({
         return x;
       }
     } catch (e) {
-      console.error('Error calculating replay position:', e);
+      logger.error('Error calculating replay position:', e);
     }
 
     return null;

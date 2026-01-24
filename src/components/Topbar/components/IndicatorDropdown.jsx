@@ -1,4 +1,5 @@
 import React from 'react';
+import { BaseDropdown, DropdownItem, DropdownDivider } from '../../shared';
 import styles from '../Topbar.module.css';
 
 /**
@@ -8,65 +9,85 @@ import styles from '../Topbar.module.css';
 export function IndicatorDropdown({ position, onAddIndicator, onClose }) {
     const handleClick = (indicator) => {
         onAddIndicator(indicator);
+        // Dont close automatically to allow adding multiple indicators
     };
 
+    const SectionHeader = ({ children }) => (
+        <div className={styles.dropdownSection}>{children}</div>
+    );
+
+    const IndicatorItem = ({ id, label }) => (
+        <DropdownItem
+            label={label}
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleClick(id);
+            }}
+        />
+    );
+
     return (
-        <div
+        <BaseDropdown
+            isOpen={true}
+            onClose={onClose}
+            position={{ top: position.top, left: position.left }}
+            width={220}
             className={styles.indicatorDropdown}
-            style={{ top: position.top, left: position.left }}
         >
-            <div className={styles.dropdownSection}>Moving Averages TEST</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('sma'); }}>SMA</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('ema'); }}>EMA</div>
+            <SectionHeader>Moving Averages</SectionHeader>
+            <IndicatorItem id="sma" label="SMA" />
+            <IndicatorItem id="ema" label="EMA" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Oscillators</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('rsi'); }}>RSI</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('stochastic'); }}>Stochastic</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('hilengaMilenga'); }}>Hilenga-Milenga</div>
+            <DropdownDivider />
+            <SectionHeader>Oscillators</SectionHeader>
+            <IndicatorItem id="rsi" label="RSI" />
+            <IndicatorItem id="stochastic" label="Stochastic" />
+            <IndicatorItem id="hilengaMilenga" label="Hilenga-Milenga" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Momentum</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('macd'); }}>MACD</div>
+            <DropdownDivider />
+            <SectionHeader>Momentum</SectionHeader>
+            <IndicatorItem id="macd" label="MACD" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Volatility</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('bollingerBands'); }}>Bollinger Bands</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('atr'); }}>ATR</div>
+            <DropdownDivider />
+            <SectionHeader>Volatility</SectionHeader>
+            <IndicatorItem id="bollingerBands" label="Bollinger Bands" />
+            <IndicatorItem id="atr" label="ATR" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Trend</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('supertrend'); }}>Supertrend</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('ichimoku'); }}>Ichimoku Cloud</div>
+            <DropdownDivider />
+            <SectionHeader>Trend</SectionHeader>
+            <IndicatorItem id="supertrend" label="Supertrend" />
+            <IndicatorItem id="ichimoku" label="Ichimoku Cloud" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Trend Strength</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('adx'); }}>ADX</div>
+            <DropdownDivider />
+            <SectionHeader>Trend Strength</SectionHeader>
+            <IndicatorItem id="adx" label="ADX" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Support/Resistance</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('pivotPoints'); }}>Pivot Points</div>
+            <DropdownDivider />
+            <SectionHeader>Support/Resistance</SectionHeader>
+            <IndicatorItem id="pivotPoints" label="Pivot Points" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Volume</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('volume'); }}>Volume</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('vwap'); }}>VWAP</div>
+            <DropdownDivider />
+            <SectionHeader>Volume</SectionHeader>
+            <IndicatorItem id="volume" label="Volume" />
+            <IndicatorItem id="vwap" label="VWAP" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Market Profile</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('tpo'); }}>TPO Profile (30m)</div>
+            <DropdownDivider />
+            <SectionHeader>Market Profile</SectionHeader>
+            <IndicatorItem id="tpo" label="TPO Profile (30m)" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Strategy</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('firstCandle'); }}>First Red Candle</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('rangeBreakout'); }}>Range Breakout</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('annStrategy'); }}>ANN Strategy</div>
+            <DropdownDivider />
+            <SectionHeader>Strategy</SectionHeader>
+            <IndicatorItem id="firstCandle" label="First Red Candle" />
+            <IndicatorItem id="rangeBreakout" label="Range Breakout" />
+            <IndicatorItem id="annStrategy" label="ANN Strategy" />
 
-            <div className={styles.dropdownDivider}></div>
-            <div className={styles.dropdownSection}>Risk Management</div>
-            <div className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleClick('riskCalculator'); }}>Risk Calculator</div>
-        </div>
+            <DropdownDivider />
+            <SectionHeader>Risk Management</SectionHeader>
+            <IndicatorItem id="riskCalculator" label="Risk Calculator" />
+        </BaseDropdown>
     );
 }
 
 export default IndicatorDropdown;
+

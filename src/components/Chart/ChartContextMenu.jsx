@@ -4,9 +4,11 @@
  * TradingView-style comprehensive context menu
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
-import styles from './ChartContextMenu.module.css';
+import React, { useCallback, useRef } from 'react';
 import { useUser } from '../../context/UserContext';
+import logger from '../../utils/logger';
+import { BaseContextMenu, MenuItem, MenuDivider } from '../shared';
+import { formatCurrency, formatPrice } from '../../utils/shared/formatters';
 
 // Icons for menu items
 const ResetIcon = () => (
@@ -71,29 +73,6 @@ const CopyIcon = () => (
 
 /**
  * Chart right-click context menu
- * @param {Object} props
- * @param {boolean} props.show - Whether the menu is visible
- * @param {number} props.x - X coordinate position
- * @param {number} props.y - Y coordinate position
- * @param {string} props.orderId - Order ID (for cancel order option)
- * @param {string} props.symbol - Current symbol
- * @param {string} props.exchange - Current exchange
- * @param {number} props.price - Price at click point
- * @param {number} props.indicatorCount - Number of active indicators
- * @param {boolean} props.isVerticalCursorLocked - Whether vertical cursor is locked
- * @param {Function} props.onCancelOrder - Callback for cancel order
- * @param {Function} props.onOpenOptionChain - Callback for opening option chain
- * @param {Function} props.onResetChartView - Callback to reset chart view
- * @param {Function} props.onCopyPrice - Callback to copy price
- * @param {Function} props.onAddAlert - Callback to add alert
- * @param {Function} props.onPlaceSellOrder - Callback for sell limit order
- * @param {Function} props.onPlaceBuyOrder - Callback for buy stop order
- * @param {Function} props.onAddOrder - Callback for add order dialog
- * @param {Function} props.onToggleCursorLock - Callback to toggle cursor lock
- * @param {Function} props.onOpenObjectTree - Callback to open object tree
- * @param {Function} props.onRemoveIndicator - Callback to remove indicator
- * @param {Function} props.onOpenSettings - Callback to open settings
- * @param {Function} props.onClose - Callback to close the menu
  */
 const ChartContextMenu = ({
     show,
@@ -103,7 +82,7 @@ const ChartContextMenu = ({
     symbol,
     exchange,
     price,
-    ltp = null, // Current Last Traded Price for dynamic order options
+    ltp = null,
     indicatorCount = 0,
     isVerticalCursorLocked = false,
     onCancelOrder,
@@ -120,7 +99,6 @@ const ChartContextMenu = ({
     onOpenSettings,
     onClose
 }) => {
-    const menuRef = useRef(null);
     const { isAuthenticated } = useUser();
 
     // Determine if clicked price is above or below LTP
@@ -128,35 +106,7 @@ const ChartContextMenu = ({
     const isBelowLTP = ltp != null && price != null && price < ltp;
 
     // Format price for display
-    const formattedPrice = price != null ? price.toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }) : '—';
-
-    // Adjust menu position to stay within viewport
-    useEffect(() => {
-        if (show && menuRef.current) {
-            const rect = menuRef.current.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-
-            let adjustedX = x;
-            let adjustedY = y;
-
-            // Adjust horizontal position if menu goes off right edge
-            if (x + rect.width > viewportWidth) {
-                adjustedX = viewportWidth - rect.width - 10;
-            }
-
-            // Adjust vertical position if menu goes off bottom edge
-            if (y + rect.height > viewportHeight) {
-                adjustedY = viewportHeight - rect.height - 10;
-            }
-
-            menuRef.current.style.left = `${adjustedX}px`;
-            menuRef.current.style.top = `${adjustedY}px`;
-        }
-    }, [show, x, y]);
+    const formattedPrice = price != null ? formatCurrency(price, { showSymbol: false, decimals: 2 }) : '—';
 
     const handleCopyPrice = useCallback(() => {
         if (price != null) {
@@ -168,225 +118,159 @@ const ChartContextMenu = ({
         onClose();
     }, [price, onCopyPrice, onClose]);
 
-    if (!show) return null;
+    const handlePaste = useCallback(() => {
+        navigator.clipboard.readText().then(text => {
+            logger.debug('Pasted:', text);
+        }).catch(err => {
+            logger.warn('Failed to read clipboard:', err);
+        });
+        onClose();
+    }, [onClose]);
 
     return (
-        <div
-            ref={menuRef}
-            className={styles.contextMenu}
-            style={{ left: x, top: y }}
-            onClick={(e) => e.stopPropagation()}
+        <BaseContextMenu
+            isVisible={show}
+            position={{ x, y }}
+            onClose={onClose}
+            width={280}
         >
             {/* Reset Chart View */}
-            <button
-                className={styles.contextMenuItem}
-                onClick={() => {
-                    onResetChartView?.();
-                    onClose();
-                }}
-            >
-                <span className={styles.menuIcon}><ResetIcon /></span>
-                <span className={styles.menuLabel}>Reset chart view</span>
-                <span className={styles.menuShortcut}>Alt + R</span>
-            </button>
+            <MenuItem
+                icon={ResetIcon}
+                label="Reset chart view"
+                onClick={onResetChartView}
+                shortcut="Alt + R"
+            />
 
-            <div className={styles.divider} />
+            <MenuDivider />
 
             {/* Copy Price */}
-            <button
-                className={styles.contextMenuItem}
+            <MenuItem
+                icon={CopyIcon}
+                label={`Copy price ${formattedPrice}`}
                 onClick={handleCopyPrice}
-            >
-                <span className={styles.menuIcon}><CopyIcon /></span>
-                <span className={styles.menuLabel}>Copy price {formattedPrice}</span>
-            </button>
+            />
 
             {/* Paste */}
-            <button
-                className={styles.contextMenuItem}
-                onClick={() => {
-                    // Paste functionality - reads from clipboard and could be used for drawing coordinates
-                    navigator.clipboard.readText().then(text => {
-                        console.log('Pasted:', text);
-                    }).catch(err => {
-                        console.warn('Failed to read clipboard:', err);
-                    });
-                    onClose();
-                }}
-            >
-                <span className={styles.menuIcon}></span>
-                <span className={styles.menuLabel}>Paste</span>
-                <span className={styles.menuShortcut}>Ctrl + V</span>
-            </button>
+            <MenuItem
+                label="Paste"
+                onClick={handlePaste}
+                shortcut="Ctrl + V"
+            />
 
-            <div className={styles.divider} />
+            <MenuDivider />
 
             {/* Add Alert */}
-            <button
-                className={styles.contextMenuItem}
-                onClick={() => {
-                    onAddAlert?.(price);
-                    onClose();
-                }}
-            >
-                <span className={styles.menuIcon}><AlertIcon /></span>
-                <span className={styles.menuLabel}>Add alert on {symbol} at {formattedPrice}...</span>
-                <span className={styles.menuShortcut}>Alt + A</span>
-            </button>
+            <MenuItem
+                icon={AlertIcon}
+                label={`Add alert on ${symbol} at ${formattedPrice}...`}
+                onClick={() => onAddAlert?.(price)}
+                shortcut="Alt + A"
+            />
 
             {/* Trading options - only show when authenticated */}
             {isAuthenticated && (
                 <>
-                    {/* Above LTP: Sell Limit first, then Buy Stop */}
-                    {/* Below LTP: Buy Limit first, then Sell Stop */}
-
-                    {/* First order option */}
-                    <button
-                        className={styles.contextMenuItem}
+                    {/* Trade Option 1: Limit Order */}
+                    <MenuItem
+                        icon={isAboveLTP || !isBelowLTP ? SellIcon : BuyIcon}
+                        label={isAboveLTP || !isBelowLTP
+                            ? `Sell 1 ${symbol} @ ${formattedPrice} limit`
+                            : `Buy 1 ${symbol} @ ${formattedPrice} limit`
+                        }
                         onClick={() => {
                             if (isAboveLTP || !isBelowLTP) {
-                                // Above LTP or same: Sell Limit
                                 onPlaceSellOrder?.(price, 'LIMIT');
                             } else {
-                                // Below LTP: Buy Limit
                                 onPlaceBuyOrder?.(price, 'LIMIT');
                             }
                             onClose();
                         }}
-                    >
-                        <span className={styles.menuIcon}>{isAboveLTP || !isBelowLTP ? <SellIcon /> : <BuyIcon />}</span>
-                        <span className={styles.menuLabel}>
-                            {isAboveLTP || !isBelowLTP
-                                ? `Sell 1 ${symbol} @ ${formattedPrice} limit`
-                                : `Buy 1 ${symbol} @ ${formattedPrice} limit`
-                            }
-                        </span>
-                        <span className={styles.menuShortcut}>{isAboveLTP || !isBelowLTP ? 'Alt + Shift + S' : 'Alt + Shift + B'}</span>
-                    </button>
+                        shortcut={isAboveLTP || !isBelowLTP ? 'Alt + Shift + S' : 'Alt + Shift + B'}
+                    />
 
-                    {/* Second order option */}
-                    <button
-                        className={styles.contextMenuItem}
+                    {/* Trade Option 2: Stop Order */}
+                    <MenuItem
+                        icon={isAboveLTP || !isBelowLTP ? BuyIcon : SellIcon}
+                        label={isAboveLTP || !isBelowLTP
+                            ? `Buy 1 ${symbol} @ ${formattedPrice} stop`
+                            : `Sell 1 ${symbol} @ ${formattedPrice} stop`
+                        }
                         onClick={() => {
                             if (isAboveLTP || !isBelowLTP) {
-                                // Above LTP or same: Buy Stop
                                 onPlaceBuyOrder?.(price, 'SL');
                             } else {
-                                // Below LTP: Sell Stop
                                 onPlaceSellOrder?.(price, 'SL');
                             }
                             onClose();
                         }}
-                    >
-                        <span className={styles.menuIcon}>{isAboveLTP || !isBelowLTP ? <BuyIcon /> : <SellIcon />}</span>
-                        <span className={styles.menuLabel}>
-                            {isAboveLTP || !isBelowLTP
-                                ? `Buy 1 ${symbol} @ ${formattedPrice} stop`
-                                : `Sell 1 ${symbol} @ ${formattedPrice} stop`
-                            }
-                        </span>
-                    </button>
+                    />
 
                     {/* Add Order */}
-                    <button
-                        className={styles.contextMenuItem}
-                        onClick={() => {
-                            onAddOrder?.(price);
-                            onClose();
-                        }}
-                    >
-                        <span className={styles.menuIcon}><OrderIcon /></span>
-                        <span className={styles.menuLabel}>Add order on {symbol} at {formattedPrice}...</span>
-                        <span className={styles.menuShortcut}>Shift + T</span>
-                    </button>
+                    <MenuItem
+                        icon={OrderIcon}
+                        label={`Add order on ${symbol} at ${formattedPrice}...`}
+                        onClick={() => onAddOrder?.(price)}
+                        shortcut="Shift + T"
+                    />
                 </>
             )}
 
-            <div className={styles.divider} />
+            <MenuDivider />
 
             {/* Lock Vertical Cursor Line */}
-            <button
-                className={`${styles.contextMenuItem} ${isVerticalCursorLocked ? styles.active : ''}`}
-                onClick={() => {
-                    onToggleCursorLock?.();
-                    onClose();
-                }}
-            >
-                <span className={styles.menuIcon}><LockIcon /></span>
-                <span className={styles.menuLabel}>Lock vertical cursor line by time</span>
-                {isVerticalCursorLocked && <span className={styles.checkmark}>✓</span>}
-            </button>
+            {/* TODO: Add checked support to MenuItem or BaseContextMenu */}
+            <MenuItem
+                icon={LockIcon}
+                label={isVerticalCursorLocked ? "Unlock vertical cursor line" : "Lock vertical cursor line by time"}
+                onClick={onToggleCursorLock}
+            />
 
-            <div className={styles.divider} />
+            <MenuDivider />
 
             {/* Object Tree */}
-            <button
-                className={styles.contextMenuItem}
-                onClick={() => {
-                    onOpenObjectTree?.();
-                    onClose();
-                }}
-            >
-                <span className={styles.menuIcon}><ObjectTreeIcon /></span>
-                <span className={styles.menuLabel}>Object Tree...</span>
-            </button>
+            <MenuItem
+                icon={ObjectTreeIcon}
+                label="Object Tree..."
+                onClick={onOpenObjectTree}
+            />
 
-            {/* Remove Indicator - only show if there are indicators */}
+            {/* Remove Indicator */}
             {indicatorCount > 0 && (
-                <button
-                    className={styles.contextMenuItem}
-                    onClick={() => {
-                        onRemoveIndicator?.();
-                        onClose();
-                    }}
-                >
-                    <span className={styles.menuIcon}><RemoveIcon /></span>
-                    <span className={styles.menuLabel}>Remove {indicatorCount} indicator{indicatorCount > 1 ? 's' : ''}</span>
-                </button>
+                <MenuItem
+                    icon={RemoveIcon}
+                    label={`Remove ${indicatorCount} indicator${indicatorCount > 1 ? 's' : ''}`}
+                    onClick={onRemoveIndicator}
+                />
             )}
 
-            {/* Cancel Order - only show when there's an order */}
+            {/* Cancel Order */}
             {orderId && (
                 <>
-                    <div className={styles.divider} />
-                    <button
-                        className={`${styles.contextMenuItem} ${styles.danger}`}
-                        onClick={() => {
-                            onCancelOrder?.(orderId);
-                            onClose();
-                        }}
-                    >
-                        Cancel Order
-                    </button>
+                    <MenuDivider />
+                    <MenuItem
+                        label="Cancel Order"
+                        onClick={() => onCancelOrder?.(orderId)}
+                        danger
+                    />
                 </>
             )}
 
-            <div className={styles.divider} />
+            <MenuDivider />
 
             {/* View Option Chain */}
-            <button
-                className={styles.contextMenuItem}
-                onClick={() => {
-                    onOpenOptionChain?.(symbol, exchange);
-                    onClose();
-                }}
-            >
-                <span className={styles.menuIcon}></span>
-                <span className={styles.menuLabel}>View Option Chain</span>
-            </button>
+            <MenuItem
+                label="View Option Chain"
+                onClick={() => onOpenOptionChain?.(symbol, exchange)}
+            />
 
             {/* Settings */}
-            <button
-                className={styles.contextMenuItem}
-                onClick={() => {
-                    onOpenSettings?.();
-                    onClose();
-                }}
-            >
-                <span className={styles.menuIcon}><SettingsIcon /></span>
-                <span className={styles.menuLabel}>Settings...</span>
-            </button>
-        </div>
+            <MenuItem
+                icon={SettingsIcon}
+                label="Settings..."
+                onClick={onOpenSettings}
+            />
+        </BaseContextMenu>
     );
 };
 

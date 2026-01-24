@@ -4,6 +4,7 @@
  */
 
 import { getString, STORAGE_KEYS } from './storageService';
+import logger from '../utils/logger.js';
 
 const DEFAULT_HOST = 'http://127.0.0.1:5000';
 const DEFAULT_WS_HOST = '127.0.0.1:8765';
@@ -94,7 +95,7 @@ export const checkAuth = async () => {
         // API key exists, user is authenticated
         return true;
     } catch (error) {
-        console.error('Auth check failed:', error);
+        logger.error('[ApiConfig] Auth check failed:', error);
         return false;
     }
 };

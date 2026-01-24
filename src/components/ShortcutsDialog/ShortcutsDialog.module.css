@@ -1,51 +1,9 @@
-/* Overlay */
-.overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1100;
-    animation: fadeIn 0.15s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-/* Modal */
-.modal {
-    width: 520px;
-    max-width: 90vw;
+/* BaseModal Overrides */
+.modalBase {
+    height: 600px;
     max-height: 85vh;
-    background-color: var(--tv-color-dropdown-background);
-    border-radius: 12px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-    overflow: hidden;
-    border: 1px solid var(--tv-color-border);
-    animation: slideIn 0.15s ease;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px) scale(0.98);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
 }
 
 /* Header */
@@ -55,6 +13,7 @@
     justify-content: space-between;
     padding: 16px 20px;
     border-bottom: 1px solid var(--tv-color-border);
+    flex-shrink: 0;
 }
 
 .title {
@@ -181,6 +140,7 @@
     padding: 12px 20px;
     border-top: 1px solid var(--tv-color-border);
     background-color: rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
 }
 
 .footerText {
@@ -200,7 +160,7 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-    .modal {
+    .modalBase {
         width: 100%;
         max-width: 100%;
         height: 100vh;

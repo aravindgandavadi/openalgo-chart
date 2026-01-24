@@ -6,6 +6,9 @@
 
 import { getOptionChain } from './optionChain';
 import logger from '../utils/logger';
+import { getJSON, setJSON, STORAGE_KEYS } from './storageService';
+
+import { formatCompactNumber } from '../utils/shared/formatters';
 
 // Cache for current session OI data
 const oiCache = new Map();
@@ -14,18 +17,16 @@ const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_OI_CACHE_SIZE = 150; // Limit to 150 symbols
 
 // localStorage keys
-const OI_HISTORY_KEY = 'oi_history';
-const OI_CURRENT_KEY = 'oi_current';
+const OI_HISTORY_KEY = STORAGE_KEYS.OI_HISTORY;
+const OI_CURRENT_KEY = STORAGE_KEYS.OI_CURRENT;
 
 /**
  * Format OI for display (Indian notation: K, L, Cr)
  */
 export const formatOI = (oi) => {
   if (!oi || oi === 0) return '-';
-  if (oi >= 10000000) return `${(oi / 10000000).toFixed(1)}Cr`;
-  if (oi >= 100000) return `${(oi / 100000).toFixed(1)}L`;
-  if (oi >= 1000) return `${(oi / 1000).toFixed(1)}K`;
-  return oi.toLocaleString('en-IN');
+  // Use shared formatter which handles K/L/Cr
+  return formatCompactNumber(oi, 1);
 };
 
 /**
@@ -192,14 +193,13 @@ export const storeCurrentOI = (oiData) => {
     });
 
     // Store current day's data
-    localStorage.setItem(OI_CURRENT_KEY, JSON.stringify({
+    setJSON(OI_CURRENT_KEY, {
       date: today,
       data: dataObj,
-    }));
+    });
 
     // Also update history (keep last 5 days)
-    const historyRaw = localStorage.getItem(OI_HISTORY_KEY);
-    const history = historyRaw ? JSON.parse(historyRaw) : {};
+    const history = getJSON(OI_HISTORY_KEY, {});
     history[today] = dataObj;
 
     // Keep only last 5 days
@@ -208,7 +208,7 @@ export const storeCurrentOI = (oiData) => {
       dates.slice(0, dates.length - 5).forEach(d => delete history[d]);
     }
 
-    localStorage.setItem(OI_HISTORY_KEY, JSON.stringify(history));
+    setJSON(OI_HISTORY_KEY, history);
     logger.debug(`[OI] Stored OI snapshot for ${today}: ${oiData.size} symbols`);
   } catch (error) {
     logger.error('[OI] Error storing OI:', error);
@@ -222,10 +222,9 @@ export const storeCurrentOI = (oiData) => {
  */
 export const getPreviousOI = (symbol) => {
   try {
-    const historyRaw = localStorage.getItem(OI_HISTORY_KEY);
-    if (!historyRaw) return null;
+    const history = getJSON(OI_HISTORY_KEY, null);
+    if (!history) return null;
 
-    const history = JSON.parse(historyRaw);
     const previousDay = getPreviousDayKey();
 
     // Try previous day first, then any earlier date

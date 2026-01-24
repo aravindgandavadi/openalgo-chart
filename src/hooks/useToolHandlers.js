@@ -5,6 +5,7 @@
 
 import { useCallback } from 'react';
 import html2canvas from 'html2canvas';
+import logger from '../utils/logger';
 
 /**
  * Custom hook for tool operations
@@ -156,7 +157,7 @@ export const useToolHandlers = ({
                     link.download = filename;
                     link.click();
                 } catch (error) {
-                    console.error('Screenshot failed:', error);
+                    logger.error('Screenshot failed:', error);
                     showToast('Failed to download image', 'error');
                 }
             }
@@ -185,12 +186,12 @@ export const useToolHandlers = ({
                             ]);
                             showSnapshotToast('Link to the chart image copied to clipboard');
                         } catch (err) {
-                            console.error('Failed to copy to clipboard:', err);
+                            logger.error('Failed to copy to clipboard:', err);
                             showToast('Failed to copy to clipboard', 'error');
                         }
                     });
                 } catch (error) {
-                    console.error('Screenshot failed:', error);
+                    logger.error('Screenshot failed:', error);
                     showToast('Failed to capture image', 'error');
                 }
             }

@@ -5,6 +5,7 @@
 
 import logger from '../utils/logger.js';
 import { getApiBase, getLoginUrl, getApiKey, convertInterval } from './apiConfig';
+import { safeParseJSON } from './storageService';
 
 /**
  * HIGH FIX BUG-10: Safe parseFloat that prevents NaN propagation
@@ -174,7 +175,7 @@ export const getKlines = async (symbol, exchange = 'NSE', interval = '1d', limit
         return [];
     } catch (error) {
         if (error.name !== 'AbortError') {
-            console.error('Error fetching klines:', error);
+            logger.error('[ChartData] Error fetching klines:', error);
         }
         return [];
     }
@@ -263,7 +264,7 @@ export const getHistoricalKlines = async (symbol, exchange = 'NSE', interval = '
         return [];
     } catch (error) {
         if (error.name !== 'AbortError') {
-            console.error('Error fetching historical klines:', error);
+            logger.error('[ChartData] Error fetching historical klines:', error);
         }
         return [];
     }
@@ -303,14 +304,9 @@ export const getTickerPrice = async (symbol, exchange = 'NSE', signal) => {
                 const errorData = await response.text(); // Read text first as it might be html or string
                 if (errorData) {
                     // Try to parse as JSON if possible
-                    try {
-                        const jsonError = JSON.parse(errorData);
-                        if (jsonError.message) errorMessage = jsonError.message;
-                        else errorMessage = errorData;
-                    } catch (e) {
-                        logger.debug('[ChartData] Failed to parse error response as JSON:', e);
-                        errorMessage = errorData;
-                    }
+                    const jsonError = safeParseJSON(errorData);
+                    if (jsonError && jsonError.message) errorMessage = jsonError.message;
+                    else errorMessage = errorData;
                 }
             } catch (e) {
                 logger.debug('[ChartData] Failed to read error response:', e);
@@ -356,12 +352,12 @@ export const getTickerPrice = async (symbol, exchange = 'NSE', signal) => {
         }
 
         if (!data || !data.data) {
-            console.warn('[OpenAlgo] No data in quotes response for', symbol, data);
+            logger.warn('[OpenAlgo] No data in quotes response for', symbol, data);
         }
         return null;
     } catch (error) {
         if (error.name !== 'AbortError') {
-            console.error('Error fetching ticker price:', error);
+            logger.error('[ChartData] Error fetching ticker price:', error);
             throw error; // Re-throw so consumers (App.jsx) can handle specific errors (e.g. invalid symbol)
         }
         return null;
@@ -435,7 +431,7 @@ export const getDepth = async (symbol, exchange = 'NSE', signal) => {
         return null;
     } catch (error) {
         if (error.name !== 'AbortError') {
-            console.error('Error fetching depth:', error);
+            logger.error('[ChartData] Error fetching depth:', error);
         }
         return null;
     }

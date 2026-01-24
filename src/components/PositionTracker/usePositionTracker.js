@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { getTickerPrice, subscribeToMultiTicker } from '../../services/openalgo';
+import logger from '../../utils/logger';
 
 // Market timing constants (IST)
 const MARKET_OPEN = { hour: 9, minute: 15 };
@@ -97,13 +98,13 @@ export const usePositionTracker = (symbols, isAuthenticated) => {
   // Fetch initial data via REST API (parallel fetch)
   const hydrateData = useCallback(async () => {
     if (!isAuthenticated || !symbols || symbols.length === 0) {
-      console.log('[PositionTracker] Skipping hydrate - not authenticated or no symbols');
+      logger.debug('[PositionTracker] Skipping hydrate - not authenticated or no symbols');
       setData([]);
       setIsLoading(false);
       return;
     }
 
-    console.log('[PositionTracker] Hydrating data for', symbols.length, 'symbols');
+    logger.debug('[PositionTracker] Hydrating data for', symbols.length, 'symbols');
     setIsLoading(true);
 
     // Fetch all quotes in parallel
@@ -133,7 +134,7 @@ export const usePositionTracker = (symbols, isAuthenticated) => {
         }
         return null;
       } catch (error) {
-        console.error(`[PositionTracker] Error fetching ${symbol}:`, error);
+        logger.error(`[PositionTracker] Error fetching ${symbol}:`, error);
         return null;
       }
     });
@@ -146,7 +147,7 @@ export const usePositionTracker = (symbols, isAuthenticated) => {
       .filter(r => r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value);
 
-    console.log('[PositionTracker] Fetched', validResults.length, 'quotes');
+    logger.debug('[PositionTracker] Fetched', validResults.length, 'quotes');
 
     if (!isMountedRef.current) return;
 
@@ -228,13 +229,13 @@ export const usePositionTracker = (symbols, isAuthenticated) => {
     }
 
     if (!isAuthenticated || !symbols || symbols.length === 0) {
-      console.log('[PositionTracker] Not starting - auth:', isAuthenticated, 'symbols:', symbols?.length);
+      logger.debug('[PositionTracker] Not starting - auth:', isAuthenticated, 'symbols:', symbols?.length);
       setData([]);
       setIsLoading(false);
       return;
     }
 
-    console.log('[PositionTracker] Starting with', symbols.length, 'symbols');
+    logger.debug('[PositionTracker] Starting with', symbols.length, 'symbols');
 
     // Initial data fetch
     hydrateData();

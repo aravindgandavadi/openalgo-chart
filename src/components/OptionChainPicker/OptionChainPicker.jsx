@@ -5,10 +5,12 @@ import { subscribeToMultiTicker } from '../../services/openalgo';
 import { STRATEGY_TEMPLATES, applyTemplate, validateStrategy, calculateNetPremium, formatStrategyName, generateLegId } from '../../services/strategyTemplates';
 import styles from './OptionChainPicker.module.css';
 import classNames from 'classnames';
+import logger from '../../utils/logger';
 
 // Import extracted components and hooks
 import { LegBuilder } from './components';
 import { useOptionFilters } from './hooks';
+import { formatCurrency, formatCompactNumber } from '../../utils/shared/formatters';
 
 /**
  * OptionChainPicker - Professional Option Chain UI with Multi-Leg Strategy Support
@@ -69,7 +71,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
         const currentSymbol = underlying.symbol;
         const currentExchange = underlying.exchange;
 
-        console.log('[OptionChainPicker] Fetching expiries for', currentSymbol, 'requestId:', requestId);
+        logger.debug('[OptionChainPicker] Fetching expiries for', currentSymbol, 'requestId:', requestId);
         setIsLoadingExpiries(true);
 
         try {
@@ -77,7 +79,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
 
             // Check if this request is still current
             if (requestId !== expiryRequestIdRef.current) {
-                console.log('[OptionChainPicker] Discarding stale expiry response for', currentSymbol);
+                logger.debug('[OptionChainPicker] Discarding stale expiry response for', currentSymbol);
                 return;
             }
 
@@ -88,7 +90,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
             }
         } catch (err) {
             if (requestId === expiryRequestIdRef.current) {
-                console.error('Failed to fetch expiries:', err);
+                logger.error('Failed to fetch expiries:', err);
                 setAvailableExpiries([]);
             }
         } finally {
@@ -108,7 +110,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
         const currentExchange = underlying.exchange;
         const currentExpiry = selectedExpiry;
 
-        console.log('[OptionChainPicker] Fetching chain for', currentSymbol, currentExpiry, 'requestId:', requestId);
+        logger.debug('[OptionChainPicker] Fetching chain for', currentSymbol, currentExpiry, 'requestId:', requestId);
         setIsLoading(true);
         setError(null);
         setGreeksData({});
@@ -118,12 +120,12 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
 
             // Check if this request is still current
             if (requestId !== chainRequestIdRef.current) {
-                console.log('[OptionChainPicker] Discarding stale chain response for', currentSymbol);
+                logger.debug('[OptionChainPicker] Discarding stale chain response for', currentSymbol);
                 return;
             }
 
             // DEBUG: Log API response structure
-            console.log('[OptionChainPicker] API returned:', {
+            logger.debug('[OptionChainPicker] API returned:', {
                 isNull: chain === null,
                 isUndefined: chain === undefined,
                 type: typeof chain,
@@ -140,7 +142,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
                 const reason = !chain ? 'null_response'
                     : !chain.chain ? 'missing_chain_array'
                         : 'empty_chain_array';
-                console.error('[OptionChainPicker] Empty chain:', {
+                logger.error('[OptionChainPicker] Empty chain:', {
                     reason,
                     chainValue: chain,
                     underlying: currentSymbol,
@@ -156,7 +158,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
         } catch (err) {
             // Only handle error if request is still current
             if (requestId === chainRequestIdRef.current) {
-                console.error('[OptionChainPicker] Fetch error:', {
+                logger.error('[OptionChainPicker] Fetch error:', {
                     message: err.message,
                     name: err.name,
                     underlying: currentSymbol,
@@ -201,7 +203,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
 
         for (let i = 0; i < availableExpiries.length; i++) {
             if (oiFetchAbortRef.current) {
-                console.log('[OI Aggregation] Fetch aborted');
+                logger.debug('[OI Aggregation] Fetch aborted');
                 break;
             }
 
@@ -229,7 +231,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
                     await new Promise(r => setTimeout(r, 2000));
                 }
             } catch (e) {
-                console.warn('[OI Aggregation] Failed for expiry:', expiry, e.message);
+                logger.warn('[OI Aggregation] Failed for expiry:', expiry, e.message);
             }
         }
 
@@ -244,7 +246,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
         if (!chainRows?.length) return;
 
         setIsLoadingGreeks(true);
-        console.log('[Greeks] Using batch API for', chainRows.length, 'strikes');
+        logger.debug('[Greeks] Using batch API for', chainRows.length, 'strikes');
 
         try {
             // Build symbols array for batch request (CE + PE for each row)
@@ -258,7 +260,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
                 return;
             }
 
-            console.log('[Greeks] Batch request for', symbols.length, 'symbols');
+            logger.debug('[Greeks] Batch request for', symbols.length, 'symbols');
 
             // Single batch API call instead of 30+ individual calls
             const response = await fetchMultiOptionGreeks(symbols);
@@ -276,13 +278,13 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
                     }
                 });
 
-                console.log('[Greeks] Batch results:', response.summary, '- Loaded', Object.keys(results).length, 'symbols');
+                logger.debug('[Greeks] Batch results:', response.summary, '- Loaded', Object.keys(results).length, 'symbols');
                 setGreeksData(results);
             } else {
-                console.warn('[Greeks] Batch API returned empty response');
+                logger.warn('[Greeks] Batch API returned empty response');
             }
         } catch (error) {
-            console.error('[Greeks] Batch API error:', error);
+            logger.error('[Greeks] Batch API error:', error);
         } finally {
             setIsLoadingGreeks(false);
         }
@@ -351,7 +353,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
 
         if (symbols.length === 0) return;
 
-        console.log('[OptionChainPicker] Subscribing to', symbols.length, 'option symbols via WebSocket');
+        logger.debug('[OptionChainPicker] Subscribing to', symbols.length, 'option symbols via WebSocket');
 
         // Subscribe to real-time updates
         optionChainWsRef.current = subscribeToMultiTicker(symbols, (ticker) => {
@@ -373,7 +375,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
         // Cleanup on unmount or when dependencies change
         return () => {
             if (optionChainWsRef.current) {
-                console.log('[OptionChainPicker] Unsubscribing from option chain WebSocket');
+                logger.debug('[OptionChainPicker] Unsubscribing from option chain WebSocket');
                 optionChainWsRef.current.close();
                 optionChainWsRef.current = null;
             }
@@ -411,11 +413,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
         const straddlePrem = atmRow ? (parseFloat(atmRow.ce?.ltp || 0) + parseFloat(atmRow.pe?.ltp || 0)).toFixed(2) : '-';
         const pcr = totalCeOI > 0 ? (totalPeOI / totalCeOI).toFixed(2) : '-';
 
-        const formatOI = (oi) => {
-            if (oi >= 10000000) return (oi / 10000000).toFixed(1) + 'Cr';
-            if (oi >= 100000) return (oi / 100000).toFixed(1) + 'L';
-            return oi.toLocaleString('en-IN');
-        };
+        const formatOI = (oi) => formatCompactNumber(oi, 1);
 
         return {
             totalCeOI,
@@ -569,7 +567,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
     const handleCreate = useCallback(() => {
         const validation = validateStrategy(legs);
         if (!validation.valid) {
-            console.error('Invalid strategy:', validation.error);
+            logger.error('Invalid strategy:', validation.error);
             return;
         }
 
@@ -591,10 +589,9 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
         onClose();
     }, [legs, selectedTemplate, underlying, selectedExpiry, onSelect, onClose]);
 
-    // Format number
     const formatNumber = (num) => {
         if (!num && num !== 0) return '-';
-        return num.toLocaleString('en-IN');
+        return formatCurrency(num, { showSymbol: false, decimals: 0 }); // Assuming integer or default
     };
 
     // Format LTP
@@ -606,9 +603,7 @@ const OptionChainPicker = ({ isOpen, onClose, onSelect }) => {
     // Format OI with Cr/L suffix
     const formatOI = (oi) => {
         if (!oi && oi !== 0) return '-';
-        if (oi >= 10000000) return (oi / 10000000).toFixed(1) + 'Cr';
-        if (oi >= 100000) return (oi / 100000).toFixed(1) + 'L';
-        return oi.toLocaleString('en-IN');
+        return formatCompactNumber(oi, 1);
     };
 
     if (!isOpen) return null;

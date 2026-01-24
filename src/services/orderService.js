@@ -94,7 +94,7 @@ export const placeOrder = async (orderDetails) => {
             };
         }
     } catch (error) {
-        console.error('[OpenAlgo] Place Order error:', error);
+        logger.error('[OpenAlgo] Place Order error:', error);
         return {
             status: 'error',
             message: error.message
@@ -147,7 +147,7 @@ export const modifyOrder = async (orderDetails) => {
             };
         }
     } catch (error) {
-        console.error('[OpenAlgo] Modify Order error:', error);
+        logger.error('[OpenAlgo] Modify Order error:', error);
         return {
             status: 'error',
             message: error.message
@@ -170,7 +170,7 @@ export const cancelOrder = async (orderDetails) => {
         const orderid = typeof order === 'string' ? order : order.orderid;
 
         // Log the order details being sent for debugging
-        console.log('[OrderService] Cancel Order Request:', {
+        logger.info('[OrderService] Cancel Order Request:', {
             orderid: orderid,
             symbol: order.symbol || 'N/A',
             status: order.order_status || 'N/A',
@@ -198,7 +198,7 @@ export const cancelOrder = async (orderDetails) => {
             const errorData = await response.json().catch(() => ({}));
 
             // Log the full error response
-            console.error('[OrderService] Cancel Order HTTP Error:', {
+            logger.error('[OrderService] Cancel Order HTTP Error:', {
                 status: response.status,
                 statusText: response.statusText,
                 errorData: errorData
@@ -210,7 +210,7 @@ export const cancelOrder = async (orderDetails) => {
         const data = await response.json();
 
         // Log the full response for debugging
-        console.log('[OrderService] Cancel Order Response:', {
+        logger.info('[OrderService] Cancel Order Response:', {
             status: response.status,
             data: data,
             success: data.status === 'success',
@@ -226,7 +226,7 @@ export const cancelOrder = async (orderDetails) => {
             };
         } else {
             // Include broker response in error for better debugging
-            console.error('[OrderService] Cancel failed:', data.message);
+            logger.error('[OrderService] Cancel failed:', data.message);
             return {
                 status: 'error',
                 message: data.message || 'Unknown error',
@@ -234,7 +234,7 @@ export const cancelOrder = async (orderDetails) => {
             };
         }
     } catch (error) {
-        console.error('[OpenAlgo] Cancel Order error:', error);
+        logger.error('[OpenAlgo] Cancel Order error:', error);
         return {
             status: 'error',
             message: error.message,

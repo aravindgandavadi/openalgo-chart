@@ -24,7 +24,7 @@ export const LOG_LEVEL_LABELS = {
     [LOG_LEVELS.NONE]: 'None (Silent)'
 };
 
-// Get initial log level from localStorage or use default
+// Get initial log level from storage
 const getInitialLogLevel = () => {
     try {
         const saved = localStorage.getItem('oa_log_level');

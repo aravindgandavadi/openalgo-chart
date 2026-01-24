@@ -165,7 +165,7 @@ export function useChartData({
                     const newTo = currentLogicalRange.to + prependCount;
                     timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
                 } catch (e) {
-                    console.warn('[ScrollBack] Failed to restore visible range:', e);
+                    logger.warn('[ScrollBack] Failed to restore visible range:', e);
                 }
             }
 
@@ -176,7 +176,7 @@ export function useChartData({
 
         } catch (error) {
             if (error.name !== 'AbortError') {
-                console.error('[ScrollBack] Error loading older data:', error);
+                logger.error('[ScrollBack] Error loading older data:', error);
             }
         } finally {
             isLoadingOlderDataRef.current = false;
@@ -291,7 +291,7 @@ export function useChartData({
                         (symbolRef.current === symbol && exchangeRef.current === exchange && intervalRef.current === interval);
 
                     if (!symbolsMatch) {
-                        console.warn('[useChartData] Symbol changed during data load, skipping WebSocket setup');
+                        logger.warn('[useChartData] Symbol changed during data load, skipping WebSocket setup');
                         return;
                     }
 
@@ -307,7 +307,7 @@ export function useChartData({
                 }
             } catch (error) {
                 if (error.name === 'AbortError') return;
-                console.error('Error loading chart data:', error);
+                logger.error('Error loading chart data:', error);
             }
         };
 
@@ -367,7 +367,7 @@ export function useChartData({
                 const closePrice = Number(ticker.close);
                 const tickVolume = Number(ticker.volume) || 0;
                 if (!Number.isFinite(closePrice) || closePrice <= 0) {
-                    console.warn('Received invalid close price:', ticker);
+                    logger.warn('Received invalid close price:', ticker);
                     return;
                 }
 
@@ -437,7 +437,7 @@ export function useChartData({
                     const dataWithFuture = addFutureWhitespacePoints(transformedFullData, intervalSeconds);
                     mainSeriesRef.current.setData(dataWithFuture);
                 } catch (setDataErr) {
-                    console.warn('[WebSocket] Failed to update chart:', setDataErr);
+                    logger.warn('[WebSocket] Failed to update chart:', setDataErr);
                 }
 
                 updateAxisLabel?.();

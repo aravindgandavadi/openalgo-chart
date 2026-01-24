@@ -15,29 +15,34 @@
  * @returns {Object} { rsiLine, emaLine, wmaLine }
  */
 export const calculateHilengaMilenga = (data, rsiLength = 9, emaLength = 3, wmaLength = 21) => {
-    if (!Array.isArray(data) || data.length < Math.max(rsiLength, wmaLength) + 1) {
+    // Ensure parameters are integers
+    const rsiLen = parseInt(rsiLength, 10) || 9;
+    const emaLen = parseInt(emaLength, 10) || 3;
+    const wmaLen = parseInt(wmaLength, 10) || 21;
+
+    if (!Array.isArray(data) || data.length < Math.max(rsiLen, wmaLen) + 1) {
         return { rsiLine: [], emaLine: [], wmaLine: [] };
     }
 
     // Step 1: Calculate RSI
-    const rsiValues = calculateRSIValues(data, rsiLength);
+    const rsiValues = calculateRSIValues(data, rsiLen);
 
     if (rsiValues.length === 0) {
         return { rsiLine: [], emaLine: [], wmaLine: [] };
     }
 
     // Step 2: Calculate EMA of RSI
-    const emaValues = calculateEMAOfValues(rsiValues.map(r => r.value), emaLength);
+    const emaValues = calculateEMAOfValues(rsiValues.map(r => r.value), emaLen);
 
     // Step 3: Calculate WMA of RSI
-    const wmaValues = calculateWMAOfValues(rsiValues.map(r => r.value), wmaLength);
+    const wmaValues = calculateWMAOfValues(rsiValues.map(r => r.value), wmaLen);
 
     // Build output arrays with time alignment
     const rsiLine = rsiValues.map(r => ({ time: r.time, value: r.value }));
 
     // EMA line starts after emaLength - 1 RSI values
     const emaLine = [];
-    const emaStartIndex = emaLength - 1;
+    const emaStartIndex = emaLen - 1;
     for (let i = 0; i < emaValues.length; i++) {
         if (emaStartIndex + i < rsiValues.length) {
             emaLine.push({
@@ -49,7 +54,7 @@ export const calculateHilengaMilenga = (data, rsiLength = 9, emaLength = 3, wmaL
 
     // WMA line starts after wmaLength - 1 RSI values
     const wmaLine = [];
-    const wmaStartIndex = wmaLength - 1;
+    const wmaStartIndex = wmaLen - 1;
     for (let i = 0; i < wmaValues.length; i++) {
         if (wmaStartIndex + i < rsiValues.length) {
             wmaLine.push({
@@ -66,7 +71,9 @@ export const calculateHilengaMilenga = (data, rsiLength = 9, emaLength = 3, wmaL
  * Calculate RSI values from OHLC data
  */
 const calculateRSIValues = (data, period) => {
-    if (data.length < period + 1) {
+    // Ensure period is integer
+    const p = parseInt(period, 10);
+    if (isNaN(p) || p <= 0 || data.length < p + 1) {
         return [];
     }
 
@@ -75,35 +82,60 @@ const calculateRSIValues = (data, period) => {
     const losses = [];
 
     // Calculate price changes
+    // Check constraints to avoid loop errors
+    if (data.length < 2) return [];
+
     for (let i = 1; i < data.length; i++) {
+        // Safety check for data integrity
+        if (!data[i] || !data[i - 1]) continue;
+
         const change = data[i].close - data[i - 1].close;
         gains.push(change > 0 ? change : 0);
         losses.push(change < 0 ? Math.abs(change) : 0);
     }
 
+    if (gains.length < p) return [];
+
     // Calculate first average gain and loss (SMA)
     let avgGain = 0;
     let avgLoss = 0;
-    for (let i = 0; i < period; i++) {
+    for (let i = 0; i < p; i++) {
         avgGain += gains[i];
         avgLoss += losses[i];
     }
-    avgGain /= period;
-    avgLoss /= period;
+    avgGain /= p;
+    avgLoss /= p;
 
     // First RSI value
     const firstRS = avgLoss === 0 ? 100 : avgGain / avgLoss;
     const firstRSI = 100 - (100 / (1 + firstRS));
-    rsiData.push({ time: data[period].time, value: firstRSI });
+
+    // Safety check for data[p]
+    if (data[p]) {
+        rsiData.push({ time: data[p].time, value: firstRSI });
+    }
 
     // Calculate subsequent RSI values using Wilder's smoothing
-    for (let i = period; i < gains.length; i++) {
-        avgGain = ((avgGain * (period - 1)) + gains[i]) / period;
-        avgLoss = ((avgLoss * (period - 1)) + losses[i]) / period;
+    for (let i = p; i < gains.length; i++) {
+        avgGain = ((avgGain * (p - 1)) + gains[i]) / p;
+        avgLoss = ((avgLoss * (p - 1)) + losses[i]) / p;
 
         const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
         const rsi = 100 - (100 / (1 + rs));
-        rsiData.push({ time: data[i + 1].time, value: rsi });
+
+        // Match RSI to corresponding price candle time
+        // The first RSI is at index p (calculated from gains 0 to p-1)
+        // The next RSI is at index p+1 (calculated from gain p)
+        // Wait, gains index i corresponds to change from data[i] to data[i+1]?
+        // Gains[0] is change from data[0] to data[1].
+        // Gains[p-1] is change from data[p-1] to data[p].
+        // Average of gains[0..p-1] corresponds to data[p]. Correct.
+        // Loop starts at i=p. gains[p] is change from data[p] to data[p+1].
+        // RSI from avgGain including gains[p] corresponds to data[p+1].
+
+        if (data[i + 1]) {
+            rsiData.push({ time: data[i + 1].time, value: rsi });
+        }
     }
 
     return rsiData;
@@ -113,7 +145,7 @@ const calculateRSIValues = (data, period) => {
  * Calculate EMA of a value array
  */
 const calculateEMAOfValues = (values, period) => {
-    if (values.length < period) {
+    if (!values || values.length < period) {
         return [];
     }
 
@@ -142,7 +174,7 @@ const calculateEMAOfValues = (values, period) => {
  * WMA gives more weight to recent prices
  */
 const calculateWMAOfValues = (values, period) => {
-    if (values.length < period) {
+    if (!values || values.length < period) {
         return [];
     }
 

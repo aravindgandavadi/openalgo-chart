@@ -4,6 +4,7 @@
  */
 
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import logger from '../utils/logger';
 
 /**
  * Safely parse JSON with fallback
@@ -33,7 +34,7 @@ export const getString = (key, fallback = '') => {
         const value = localStorage.getItem(key);
         return value !== null ? value : fallback;
     } catch (error) {
-        console.warn(`[Storage] Failed to get '${key}':`, error.message);
+        logger.warn(`[Storage] Failed to get '${key}':`, error.message);
         return fallback;
     }
 };
@@ -49,7 +50,7 @@ export const get = (key, fallback = null) => {
         const value = localStorage.getItem(key);
         return value !== null ? value : fallback;
     } catch (error) {
-        console.warn(`[Storage] Failed to get '${key}':`, error.message);
+        logger.warn(`[Storage] Failed to get '${key}':`, error.message);
         return fallback;
     }
 };
@@ -65,7 +66,7 @@ export const set = (key, value) => {
         localStorage.setItem(key, value);
         return true;
     } catch (error) {
-        console.warn(`[Storage] Failed to set '${key}':`, error.message);
+        logger.warn(`[Storage] Failed to set '${key}':`, error.message);
         return false;
     }
 };
@@ -80,7 +81,7 @@ export const remove = (key) => {
         localStorage.removeItem(key);
         return true;
     } catch (error) {
-        console.warn(`[Storage] Failed to remove '${key}':`, error.message);
+        logger.warn(`[Storage] Failed to remove '${key}':`, error.message);
         return false;
     }
 };
@@ -106,7 +107,7 @@ export const setJSON = (key, value) => {
     try {
         return set(key, JSON.stringify(value));
     } catch (error) {
-        console.warn(`[Storage] Failed to stringify for '${key}':`, error.message);
+        logger.warn(`[Storage] Failed to stringify for '${key}':`, error.message);
         return false;
     }
 };
@@ -188,7 +189,7 @@ export const clearAppStorage = () => {
             cleared++;
         });
     } catch (error) {
-        console.warn('[Storage] Failed to clear app storage:', error.message);
+        logger.warn('[Storage] Failed to clear app storage:', error.message);
     }
     return cleared;
 };
@@ -207,7 +208,7 @@ export const exportStorage = () => {
             }
         }
     } catch (error) {
-        console.warn('[Storage] Failed to export storage:', error.message);
+        logger.warn('[Storage] Failed to export storage:', error.message);
     }
     return data;
 };
@@ -227,7 +228,7 @@ export const importStorage = (data) => {
             }
         });
     } catch (error) {
-        console.warn('[Storage] Failed to import storage:', error.message);
+        logger.warn('[Storage] Failed to import storage:', error.message);
     }
     return imported;
 };

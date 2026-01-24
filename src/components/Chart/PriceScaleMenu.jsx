@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import styles from './PriceScaleMenu.module.css';
 import { useUser } from '../../context/UserContext';
+import { formatCurrency } from '../../utils/shared/formatters';
 
 // Icons
 const AlertIcon = () => (
@@ -90,10 +91,7 @@ const PriceScaleMenu = ({
     if (!visible) return null;
 
     // Format price for display
-    const formattedPrice = price?.toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }) ?? '0.00';
+    const formattedPrice = price != null ? formatCurrency(price, { showSymbol: false, decimals: 2 }) : '0.00';
 
     // Determine if clicked price is above or below LTP
     const isAboveLTP = ltp != null && price != null && price > ltp;

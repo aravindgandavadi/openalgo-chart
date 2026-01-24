@@ -33,7 +33,7 @@ export const ping = async () => {
         }
         return null;
     } catch (error) {
-        console.error('[OpenAlgo] Ping error:', error);
+        logger.error('[OpenAlgo] Ping error:', error);
         return null;
     }
 };
@@ -65,7 +65,7 @@ export const getFunds = async () => {
         }
         return null;
     } catch (error) {
-        console.error('[OpenAlgo] Funds error:', error);
+        logger.error('[OpenAlgo] Funds error:', error);
         return null;
     }
 };
@@ -97,7 +97,7 @@ export const getPositionBook = async () => {
         }
         return [];
     } catch (error) {
-        console.error('[OpenAlgo] PositionBook error:', error);
+        logger.error('[OpenAlgo] PositionBook error:', error);
         return [];
     }
 };
@@ -129,7 +129,7 @@ export const getOrderBook = async () => {
         }
         return { orders: [], statistics: {} };
     } catch (error) {
-        console.error('[OpenAlgo] OrderBook error:', error);
+        logger.error('[OpenAlgo] OrderBook error:', error);
         return { orders: [], statistics: {} };
     }
 };
@@ -161,7 +161,7 @@ export const getTradeBook = async () => {
         }
         return [];
     } catch (error) {
-        console.error('[OpenAlgo] TradeBook error:', error);
+        logger.error('[OpenAlgo] TradeBook error:', error);
         return [];
     }
 };
@@ -193,7 +193,7 @@ export const getHoldings = async () => {
         }
         return { holdings: [], statistics: {} };
     } catch (error) {
-        console.error('[OpenAlgo] Holdings error:', error);
+        logger.error('[OpenAlgo] Holdings error:', error);
         return { holdings: [], statistics: {} };
     }
 };

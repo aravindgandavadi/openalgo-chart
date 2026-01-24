@@ -3,6 +3,8 @@
  * Defines option strategy templates and helper functions for multi-leg strategies
  */
 
+import logger from '../utils/logger';
+
 // Strategy template definitions
 export const STRATEGY_TEMPLATES = {
     straddle: {
@@ -110,7 +112,7 @@ export const applyTemplate = (templateKey, atmStrike, strikeGap, chainData) => {
         const row = chainData.find(r => r.strike === strike);
 
         // DEBUG: Log strike lookup details
-        console.log('[StrategyTemplates] Strike lookup:', {
+        logger.debug('[StrategyTemplates] Strike lookup:', {
             legType: legTemplate.type,
             direction: legTemplate.direction,
             atmStrike,
@@ -123,7 +125,7 @@ export const applyTemplate = (templateKey, atmStrike, strikeGap, chainData) => {
 
         if (!row) {
             // DEBUG: Log detailed miss info
-            console.error('[StrategyTemplates] Strike NOT FOUND:', {
+            logger.error('[StrategyTemplates] Strike NOT FOUND:', {
                 targetStrike: strike,
                 calculation: `${atmStrike} + (${legTemplate.strikeOffset} * ${strikeGap})`,
                 nearestStrikes: chainData
@@ -138,7 +140,7 @@ export const applyTemplate = (templateKey, atmStrike, strikeGap, chainData) => {
 
         if (!optionData?.symbol) {
             // DEBUG: Log option data issue
-            console.error('[StrategyTemplates] Option symbol missing:', {
+            logger.error('[StrategyTemplates] Option symbol missing:', {
                 legType: legTemplate.type,
                 strike,
                 rowCE: row.ce ? { symbol: row.ce.symbol, ltp: row.ce.ltp } : null,
@@ -160,7 +162,7 @@ export const applyTemplate = (templateKey, atmStrike, strikeGap, chainData) => {
 
     // Validate we got all required legs
     if (legs.length !== template.legs.length) {
-        console.warn(`[StrategyTemplates] Could not create all legs for ${templateKey}`);
+        logger.warn(`[StrategyTemplates] Could not create all legs for ${templateKey}`);
         return null;
     }
 

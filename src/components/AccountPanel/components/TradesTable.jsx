@@ -6,6 +6,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Search, X, Filter } from 'lucide-react';
 import styles from '../AccountPanel.module.css';
 import { formatCurrency, sortData } from '../utils/accountFormatters';
+import { BaseTable } from '../../shared';
 
 const TradesTable = ({ trades, onRowClick }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -76,13 +77,96 @@ const TradesTable = ({ trades, onRowClick }) => {
         }));
     }, []);
 
-    // Get sort indicator
-    const getSortIndicator = (key) => {
-        if (sortConfig.key !== key) return null;
-        return sortConfig.direction === 'asc' ? '↑' : '↓';
-    };
-
     const hasActiveFilters = searchTerm || filters.action.length > 0 || filters.exchange.length > 0;
+
+    // Define columns for BaseTable
+    const columns = useMemo(() => [
+        {
+            key: 'timestamp',
+            title: 'Time',
+            width: '15%',
+            sortable: true,
+            render: (row) => <span className={styles.timeCell}>{row.timestamp}</span>
+        },
+        {
+            key: 'symbol',
+            title: 'Symbol',
+            width: '20%',
+            sortable: true,
+            render: (row) => <span className={styles.symbolCell}>{row.symbol}</span>
+        },
+        {
+            key: 'action',
+            title: 'Action',
+            width: '8%',
+            render: (row) => (
+                <span className={row.action === 'BUY' ? styles.positive : styles.negative}>
+                    {row.action}
+                </span>
+            )
+        },
+        {
+            key: 'quantity',
+            title: 'Qty',
+            width: '8%',
+            align: 'right',
+            sortable: true
+        },
+        {
+            key: 'average_price',
+            title: 'Avg Price',
+            width: '12%',
+            align: 'right',
+            sortable: true,
+            render: (row) => formatCurrency(row.average_price)
+        },
+        {
+            key: 'trade_value',
+            title: 'Value',
+            width: '12%',
+            align: 'right',
+            sortable: true,
+            render: (row) => {
+                const tradeValue = parseFloat(row.trade_value || 0);
+                return `₹${formatCurrency(tradeValue)}`;
+            }
+        },
+        {
+            key: 'charges',
+            title: 'Charges',
+            width: '10%',
+            align: 'right',
+            render: (row) => {
+                const charges = parseFloat(row.charges || row.brokerage || row.fees || 0);
+                return (
+                    <span className={styles.negative}>
+                        {charges > 0 ? `-${formatCurrency(charges)}` : '-'}
+                    </span>
+                );
+            }
+        },
+        {
+            key: 'tradeId',
+            title: 'Trade ID',
+            width: '15%',
+            align: 'right',
+            render: (row) => {
+                const tradeId = row.tradeid || row.trade_id || row.orderid || '-';
+                return (
+                    <span className={styles.tradeId} title={tradeId}>
+                        {tradeId.length > 12 ? `${tradeId.substring(0, 12)}...` : tradeId}
+                    </span>
+                );
+            }
+        }
+    ], []);
+
+    // Create custom row click handler
+    const handleRowClick = useCallback((row) => {
+        if (onRowClick) {
+            onRowClick(row.symbol, row.exchange);
+        }
+    }, [onRowClick]);
 
     if (trades.length === 0) {
         return (
@@ -183,125 +267,25 @@ const TradesTable = ({ trades, onRowClick }) => {
                 </div>
             )}
 
-            {/* Table */}
-            {sortedTrades.length === 0 ? (
-                <div className={styles.emptyState}>
-                    <span className={styles.emptyIcon}>🔍</span>
-                    <p>No trades match your filters</p>
-                    <button className={styles.clearFiltersBtn} onClick={handleClearFilters}>
-                        Clear Filters
-                    </button>
-                </div>
-            ) : (
-                <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-                <colgroup>
-                    <col style={{ width: '15%' }} />
-                    <col style={{ width: '20%' }} />
-                    <col style={{ width: '8%' }} />
-                    <col style={{ width: '8%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '15%' }} />
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th
-                            className={`${styles.sortableHeader} ${sortConfig.key === 'timestamp' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('timestamp')}
-                        >
-                            Time
-                            {getSortIndicator('timestamp') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('timestamp')}
-                                </span>
-                            )}
-                        </th>
-                        <th
-                            className={`${styles.sortableHeader} ${sortConfig.key === 'symbol' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('symbol')}
-                        >
-                            Symbol
-                            {getSortIndicator('symbol') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('symbol')}
-                                </span>
-                            )}
-                        </th>
-                        <th>Action</th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'quantity' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('quantity')}
-                        >
-                            Qty
-                            {getSortIndicator('quantity') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('quantity')}
-                                </span>
-                            )}
-                        </th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'average_price' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('average_price')}
-                        >
-                            Avg Price
-                            {getSortIndicator('average_price') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('average_price')}
-                                </span>
-                            )}
-                        </th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'trade_value' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('trade_value')}
-                        >
-                            Value
-                            {getSortIndicator('trade_value') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('trade_value')}
-                                </span>
-                            )}
-                        </th>
-                        <th className={styles.alignRight}>Charges</th>
-                        <th className={styles.alignRight}>Trade ID</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedTrades.map((trade, idx) => {
-                        const tradeValue = parseFloat(trade.trade_value || 0);
-                        const charges = parseFloat(trade.charges || trade.brokerage || trade.fees || 0);
-                        const tradeId = trade.tradeid || trade.trade_id || trade.orderid || '-';
-
-                        return (
-                            <tr
-                                key={`${trade.orderid || 'trade'}-${trade.timestamp || ''}-${idx}`}
-                                onClick={() => onRowClick(trade.symbol, trade.exchange)}
-                                className={styles.clickableRow}
-                            >
-                                <td className={styles.timeCell}>{trade.timestamp}</td>
-                                <td className={styles.symbolCell}>{trade.symbol}</td>
-                                <td className={trade.action === 'BUY' ? styles.positive : styles.negative}>
-                                    {trade.action}
-                                </td>
-                                <td className={styles.alignRight}>{trade.quantity}</td>
-                                <td className={styles.alignRight}>{formatCurrency(trade.average_price)}</td>
-                                <td className={styles.alignRight}>₹{formatCurrency(tradeValue)}</td>
-                                <td className={`${styles.alignRight} ${styles.negative}`}>
-                                    {charges > 0 ? `-${formatCurrency(charges)}` : '-'}
-                                </td>
-                                <td className={styles.alignRight}>
-                                    <span className={styles.tradeId} title={tradeId}>
-                                        {tradeId.length > 12 ? `${tradeId.substring(0, 12)}...` : tradeId}
-                                    </span>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-            )}
+            {/* Use BaseTable */}
+            {/* Use composite key for trades since they might not have unique IDs */}
+            <BaseTable
+                columns={columns}
+                data={sortedTrades}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+                onRowClick={handleRowClick}
+                keyField={(row) => `${row.orderid || 'trade'}-${row.timestamp || ''}`}
+                emptyState={
+                    <div className={styles.emptyState}>
+                        <span className={styles.emptyIcon}>🔍</span>
+                        <p>No trades match your filters</p>
+                        <button className={styles.clearFiltersBtn} onClick={handleClearFilters}>
+                            Clear Filters
+                        </button>
+                    </div>
+                }
+            />
         </div>
     );
 };

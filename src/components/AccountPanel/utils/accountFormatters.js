@@ -1,30 +1,15 @@
 /**
  * Account Panel Formatters
- * Utility functions for formatting currency and P&L values
+ * Utility functions for formatting and order status handling
+ * 
+ * NOTE: formatCurrency and formatPnL are re-exported from shared formatters
+ * to eliminate duplication across the codebase
  */
 
-/**
- * Format currency values in Indian locale
- * @param {number|string} value - Value to format
- * @returns {string} Formatted currency string
- */
-export const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '0.00';
-    const num = parseFloat(value);
-    return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
-
-/**
- * Format P&L with sign and color indicator
- * @param {number|string} value - P&L value
- * @returns {Object} { value: string, isPositive: boolean }
- */
-export const formatPnL = (value) => {
-    const num = parseFloat(value) || 0;
-    const formatted = formatCurrency(Math.abs(num));
-    const sign = num >= 0 ? '+' : '-';
-    return { value: `${sign}${formatted}`, isPositive: num >= 0 };
-};
+// Re-export common formatters from centralized module
+// Import common formatters from centralized module
+import { formatCurrency, formatPnL, formatPercent, formatQuantity } from '../../../utils/shared/formatters';
+export { formatCurrency, formatPnL, formatPercent, formatQuantity };
 
 /**
  * Check if order status is open/pending (cancellable)

@@ -1,7 +1,6 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { Layers, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
-import styles from './ContextMenu.module.css';
+import { BaseContextMenu, MenuItem, MenuDivider } from '../shared';
 
 /**
  * ContextMenu - Right-click context menu for watchlist symbols
@@ -22,57 +21,43 @@ const ContextMenu = ({
     onMoveToBottom,
     onRemove,
 }) => {
-    if (!isVisible) return null;
+    return (
+        <BaseContextMenu
+            isVisible={isVisible}
+            position={position}
+            onClose={onClose}
+            width={200}
+        >
+            <MenuItem
+                icon={Layers}
+                label="Add section above"
+                onClick={onAddSection}
+            />
 
-    // Calculate menu position to avoid going off-screen
-    const menuStyle = {
-        left: Math.min(position.x, window.innerWidth - 200),
-        top: Math.min(position.y, window.innerHeight - 200),
-    };
+            <MenuDivider />
 
-    const handleClick = (action) => (e) => {
-        e.stopPropagation();
-        action();
-        onClose();
-    };
+            <MenuItem
+                icon={ArrowUp}
+                label="Move to top"
+                onClick={onMoveToTop}
+            />
 
-    const menuContent = (
-        <>
-            {/* Backdrop to close menu */}
-            <div className={styles.backdrop} onClick={onClose} />
+            <MenuItem
+                icon={ArrowDown}
+                label="Move to bottom"
+                onClick={onMoveToBottom}
+            />
 
-            <div className={styles.menu} style={menuStyle}>
-                <button className={styles.menuItem} onClick={handleClick(onAddSection)}>
-                    <Layers size={14} />
-                    <span>Add section above</span>
-                </button>
+            <MenuDivider />
 
-                <div className={styles.divider} />
-
-                <button className={styles.menuItem} onClick={handleClick(onMoveToTop)}>
-                    <ArrowUp size={14} />
-                    <span>Move to top</span>
-                </button>
-
-                <button className={styles.menuItem} onClick={handleClick(onMoveToBottom)}>
-                    <ArrowDown size={14} />
-                    <span>Move to bottom</span>
-                </button>
-
-                <div className={styles.divider} />
-
-                <button
-                    className={`${styles.menuItem} ${styles.danger}`}
-                    onClick={handleClick(onRemove)}
-                >
-                    <Trash2 size={14} />
-                    <span>Remove from watchlist</span>
-                </button>
-            </div>
-        </>
+            <MenuItem
+                icon={Trash2}
+                label="Remove from watchlist"
+                onClick={onRemove}
+                danger
+            />
+        </BaseContextMenu>
     );
-
-    return createPortal(menuContent, document.body);
 };
 
 export default React.memo(ContextMenu);

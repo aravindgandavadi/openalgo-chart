@@ -5,50 +5,38 @@ import styles from '../OptionChainModal.module.css';
 /**
  * Format helpers
  */
+import { formatCompactNumber, formatPrice, formatPercent } from '../../../utils/shared/formatters';
+
+/**
+ * Format helpers
+ */
 export const formatOI = (oi) => {
     if (!oi && oi !== 0) return '-';
-    if (oi >= 100000) return (oi / 100000).toFixed(2) + 'L';
-    if (oi >= 1000) return (oi / 1000).toFixed(2) + 'K';
-    return oi.toLocaleString('en-IN');
+    return formatCompactNumber(oi, 2);
 };
 
-export const formatLTP = (ltp) => (!ltp && ltp !== 0) ? '-' : ltp.toFixed(2);
+export const formatLTP = (ltp) => (!ltp && ltp !== 0) ? '-' : formatPrice(ltp, 2);
 
 export const formatLtpChange = (change) => {
     if (change === null || change === undefined) return null;
-    const sign = change >= 0 ? '+' : '';
-    return sign + change.toFixed(2) + '%';
+    return formatPercent(change, 2, true);
 };
 
 export const formatGreek = (value, decimals = 4) => {
     if (value === null || value === undefined) return '-';
-    return value.toFixed(decimals);
+    return formatPrice(value, decimals);
 };
 
-export const formatDelta = (value) => {
-    if (value === null || value === undefined) return '-';
-    return value.toFixed(2);
-};
+export const formatDelta = (value) => formatGreek(value, 2);
 
 export const formatIv = (value) => {
     if (value === null || value === undefined) return '-';
-    return value.toFixed(1) + '%';
+    return formatPercent(value, 1, false);
 };
 
-export const formatTheta = (value) => {
-    if (value === null || value === undefined) return '-';
-    return value.toFixed(0);
-};
-
-export const formatVega = (value) => {
-    if (value === null || value === undefined) return '-';
-    return value.toFixed(0);
-};
-
-export const formatGamma = (value) => {
-    if (value === null || value === undefined) return '-';
-    return value.toFixed(4);
-};
+export const formatTheta = (value) => formatGreek(value, 0);
+export const formatVega = (value) => formatGreek(value, 0);
+export const formatGamma = (value) => formatGreek(value, 4);
 
 /**
  * Standard LTP/OI Row Component
@@ -113,7 +101,7 @@ export function OptionChainRow({
 
             {/* STRIKE */}
             <div className={classNames(styles.cell, styles.strikeCell)}>
-                {row.strike.toLocaleString('en-IN')}
+                {formatPrice(row.strike, 0)}
             </div>
 
             {/* PUTS */}
@@ -196,7 +184,7 @@ export function OptionChainGreeksRow({
 
             {/* STRIKE with IV */}
             <div className={styles.strikeCellGreeks}>
-                <span>{row.strike.toLocaleString('en-IN')}</span>
+                <span>{formatPrice(row.strike, 0)}</span>
                 <span className={styles.strikeIv}>
                     {ceGreeks?.iv ? formatIv(ceGreeks.iv) : ''}
                 </span>

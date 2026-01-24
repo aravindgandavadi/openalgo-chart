@@ -7,7 +7,8 @@
  * 2. Consolidated: tv_chart_alerts with nested {symbol:exchange: alerts} (preferred)
  */
 
-import { STORAGE_KEYS } from '../constants/storageKeys';
+import { getJSON, setJSON, STORAGE_KEYS } from './storageService';
+import logger from '../utils/logger';
 
 // Storage key for consolidated chart alerts
 const CHART_ALERTS_KEY = STORAGE_KEYS.CHART_ALERTS;
@@ -34,18 +35,15 @@ export const loadAlertsForSymbol = (symbol, exchange) => {
 
     try {
         // Try consolidated storage first
-        const stored = localStorage.getItem(CHART_ALERTS_KEY);
-        if (stored) {
-            const allAlerts = JSON.parse(stored);
-            const key = getSymbolKey(symbol, exchange);
-            const alerts = allAlerts[key] || [];
-            if (alerts.length > 0) {
-                console.log('[Alerts] Loaded', alerts.length, 'alerts for', key);
-                return alerts;
-            }
+        const allAlerts = getJSON(CHART_ALERTS_KEY, {});
+        const key = getSymbolKey(symbol, exchange);
+        const alerts = allAlerts[key] || [];
+        if (alerts.length > 0) {
+            logger.debug('[Alerts] Loaded', alerts.length, 'alerts for', key);
+            return alerts;
         }
     } catch (error) {
-        console.warn('[Alerts] Failed to load alerts for', symbol, error);
+        logger.warn('[Alerts] Failed to load alerts for', symbol, error);
     }
 
     return [];
@@ -63,12 +61,12 @@ export const saveAlertsForSymbol = (symbol, exchange, alerts) => {
 
     try {
         const key = getSymbolKey(symbol, exchange);
-        const stored = JSON.parse(localStorage.getItem(CHART_ALERTS_KEY) || '{}');
+        const stored = getJSON(CHART_ALERTS_KEY, {});
         stored[key] = alerts;
-        localStorage.setItem(CHART_ALERTS_KEY, JSON.stringify(stored));
-        console.log('[Alerts] Saved', alerts.length, 'alerts for', key);
+        setJSON(CHART_ALERTS_KEY, stored);
+        logger.debug('[Alerts] Saved', alerts.length, 'alerts for', key);
     } catch (error) {
-        console.warn('[Alerts] Failed to save alerts for', symbol, error);
+        logger.warn('[Alerts] Failed to save alerts for', symbol, error);
     }
 };
 
@@ -78,10 +76,9 @@ export const saveAlertsForSymbol = (symbol, exchange, alerts) => {
  */
 export const getAllAlerts = () => {
     try {
-        const stored = localStorage.getItem(CHART_ALERTS_KEY);
-        return stored ? JSON.parse(stored) : {};
+        return getJSON(CHART_ALERTS_KEY, {});
     } catch (error) {
-        console.warn('[Alerts] Failed to load all alerts:', error);
+        logger.warn('[Alerts] Failed to load all alerts:', error);
         return {};
     }
 };
@@ -96,11 +93,11 @@ export const clearAlertsForSymbol = (symbol, exchange) => {
 
     try {
         const key = getSymbolKey(symbol, exchange);
-        const stored = JSON.parse(localStorage.getItem(CHART_ALERTS_KEY) || '{}');
+        const stored = getJSON(CHART_ALERTS_KEY, {});
         delete stored[key];
-        localStorage.setItem(CHART_ALERTS_KEY, JSON.stringify(stored));
-        console.log('[Alerts] Cleared alerts for', key);
+        setJSON(CHART_ALERTS_KEY, stored);
+        logger.debug('[Alerts] Cleared alerts for', key);
     } catch (error) {
-        console.warn('[Alerts] Failed to clear alerts for', symbol, error);
+        logger.warn('[Alerts] Failed to clear alerts for', symbol, error);
     }
 };

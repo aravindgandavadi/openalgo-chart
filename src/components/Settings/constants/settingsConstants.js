@@ -4,13 +4,14 @@
  */
 import { Keyboard } from 'lucide-react';
 import React from 'react';
+import { CHART_COLORS } from '../../../utils/colorUtils';
 
 // Default chart appearance for reset
 export const DEFAULT_CHART_APPEARANCE = {
-    candleUpColor: '#089981',
-    candleDownColor: '#F23645',
-    wickUpColor: '#089981',
-    wickDownColor: '#F23645',
+    candleUpColor: CHART_COLORS.UP.primary,
+    candleDownColor: CHART_COLORS.DOWN.primary,
+    wickUpColor: CHART_COLORS.UP.primary,
+    wickDownColor: CHART_COLORS.DOWN.primary,
     showVerticalGridLines: true,
     showHorizontalGridLines: true,
     darkBackground: '#131722',

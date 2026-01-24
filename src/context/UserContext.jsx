@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { checkAuth } from '../services/openalgo';
+import logger from '../utils/logger';
 
 const UserContext = createContext();
 
@@ -13,7 +14,7 @@ export const UserProvider = ({ children }) => {
                 const isAuth = await checkAuth();
                 setIsAuthenticated(isAuth);
             } catch (error) {
-                console.error("Auth check failed:", error);
+                logger.error("Auth check failed:", error);
                 setIsAuthenticated(false);
             }
         };

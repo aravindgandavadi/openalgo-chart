@@ -9,6 +9,7 @@ import {
     BaselineSeries,
     HistogramSeries
 } from 'lightweight-charts';
+import { CHART_COLORS } from '../../../utils/colorUtils';
 
 /**
  * Create SMA/EMA/VWAP series (overlay on main chart)
@@ -48,7 +49,7 @@ export const createRSISeries = (chart, ind) => {
     // Add OB/OS lines for RSI
     series._obLine = series.createPriceLine({
         price: ind.overbought || 70,
-        color: ind.overboughtColor || '#F23645',
+        color: ind.overboughtColor || CHART_COLORS.DOWN.primary,
         lineWidth: 1,
         lineStyle: 2,
         axisLabelVisible: false,
@@ -56,7 +57,7 @@ export const createRSISeries = (chart, ind) => {
     });
     series._osLine = series.createPriceLine({
         price: ind.oversold || 30,
-        color: ind.oversoldColor || '#089981',
+        color: ind.oversoldColor || CHART_COLORS.UP.primary,
         lineWidth: 1,
         lineStyle: 2,
         axisLabelVisible: false,

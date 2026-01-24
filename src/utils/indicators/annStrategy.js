@@ -16,6 +16,7 @@
  */
 
 import { getISTComponents } from './timeUtils';
+import logger from '../logger';
 
 // Activation functions
 const tanhActivation = (v) => Math.tanh(v);
@@ -149,11 +150,11 @@ export const calculateANNStrategy = (data, options = {}) => {
   } = options;
 
   if (!Array.isArray(data) || data.length === 0) {
-    console.log('[ANN] No data provided');
+    logger.debug('[ANN] No data provided');
     return { predictions: [], markers: [], backgrounds: [], signals: [] };
   }
 
-  console.log('[ANN] Processing', data.length, 'candles with threshold:', threshold);
+  logger.debug('[ANN] Processing', data.length, 'candles with threshold:', threshold);
 
   // Group candles by day
   const dayMap = new Map();
@@ -176,8 +177,8 @@ export const calculateANNStrategy = (data, options = {}) => {
     dailyOHLC4.set(dateStr, calculateDailyOHLC4(dayCandles));
   }
 
-  console.log('[ANN] Days found:', sortedDays.length, sortedDays.slice(-3));
-  console.log('[ANN] Daily OHLC4 (last 3):', sortedDays.slice(-3).map(d => ({ date: d, ohlc4: dailyOHLC4.get(d) })));
+  logger.debug('[ANN] Days found:', sortedDays.length, sortedDays.slice(-3));
+  logger.debug('[ANN] Daily OHLC4 (last 3):', sortedDays.slice(-3).map(d => ({ date: d, ohlc4: dailyOHLC4.get(d) })));
 
   const predictions = [];
   const markers = [];
@@ -210,7 +211,7 @@ export const calculateANNStrategy = (data, options = {}) => {
 
     // Log first few diffs for debugging
     if (i < 3 || i === data.length - 1) {
-      console.log(`[ANN] Candle ${i}: date=${currentDateStr}, yesterday=${yesterdayOHLC4?.toFixed(2)}, today=${todayOHLC4?.toFixed(2)}, diff=${diff.toFixed(6)}`);
+      logger.debug(`[ANN] Candle ${i}: date=${currentDateStr}, yesterday=${yesterdayOHLC4?.toFixed(2)}, today=${todayOHLC4?.toFixed(2)}, diff=${diff.toFixed(6)}`);
     }
 
     // Run neural network
@@ -275,10 +276,10 @@ export const calculateANNStrategy = (data, options = {}) => {
   const sampleOutputs = predictions.slice(-10).map(p => p.value.toFixed(6));
   const minOutput = Math.min(...predictions.map(p => p.value));
   const maxOutput = Math.max(...predictions.map(p => p.value));
-  console.log('[ANN] NN Output range:', minOutput.toFixed(6), 'to', maxOutput.toFixed(6));
-  console.log('[ANN] Last 10 outputs:', sampleOutputs);
-  console.log('[ANN] Markers generated:', markers.length);
-  console.log('[ANN] Signal changes:', markers);
+  logger.debug('[ANN] NN Output range:', minOutput.toFixed(6), 'to', maxOutput.toFixed(6));
+  logger.debug('[ANN] Last 10 outputs:', sampleOutputs);
+  logger.debug('[ANN] Markers generated:', markers.length);
+  logger.debug('[ANN] Signal changes:', markers);
 
   return {
     predictions,

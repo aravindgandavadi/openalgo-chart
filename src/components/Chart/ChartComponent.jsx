@@ -15,6 +15,7 @@ import { getIndicatorConfig } from '../IndicatorSettings/indicatorConfigs';
 import { getKlines, getHistoricalKlines, subscribeToTicker, saveDrawings, loadDrawings } from '../../services/openalgo';
 import { combineMultiLegOHLC } from '../../services/optionChain';
 import { getAccurateISTTimestamp, syncTimeWithAPI, shouldResync } from '../../services/timeService';
+import { formatCurrency } from '../../utils/shared/formatters';
 import {
     calculateSMA,
     calculateEMA,
@@ -458,7 +459,7 @@ const ChartComponent = forwardRef(({
                 timeScale.setVisibleLogicalRange({ from, to });
             }
         } catch (err) {
-            console.warn('Failed to apply default candle position', err);
+            logger.warn('Failed to apply default candle position', err);
         }
 
         chartRef.current.priceScale('right').applyOptions({ autoScale: true });
@@ -528,7 +529,7 @@ const ChartComponent = forwardRef(({
                     });
                 }
             } catch (err) {
-                console.warn('Failed to add price alert to chart', err);
+                logger.warn('Failed to add price alert to chart', err);
             }
         },
         removePriceAlert: (externalId) => {
@@ -541,7 +542,7 @@ const ChartComponent = forwardRef(({
                     userAlerts.removeAlert(externalId);
                 }
             } catch (err) {
-                console.warn('Failed to remove price alert from chart', err);
+                logger.warn('Failed to remove price alert from chart', err);
             }
         },
         restartPriceAlert: (price, condition = 'crossing') => {
@@ -557,7 +558,7 @@ const ChartComponent = forwardRef(({
                     userAlerts.addAlertWithCondition(priceNum, condition === 'crossing' ? 'crossing' : condition);
                 }
             } catch (err) {
-                console.warn('Failed to restart price alert on chart', err);
+                logger.warn('Failed to restart price alert on chart', err);
             }
         },
         resetZoom: () => {
@@ -595,7 +596,7 @@ const ChartComponent = forwardRef(({
                     manager._selectedTool.applyOptions(options);
                     return true;
                 } catch (err) {
-                    console.warn('Failed to apply drawing options:', err);
+                    logger.warn('Failed to apply drawing options:', err);
                 }
             }
             return false;
@@ -607,7 +608,7 @@ const ChartComponent = forwardRef(({
                 try {
                     manager.updateToolOptions(options);
                 } catch (err) {
-                    console.warn('Failed to update default tool options:', err);
+                    logger.warn('Failed to update default tool options:', err);
                 }
             }
         },
@@ -647,7 +648,7 @@ const ChartComponent = forwardRef(({
                         try {
                             chartRef.current.removeSeries(fadedSeriesRef.current);
                         } catch (e) {
-                            console.warn('Error removing faded series:', e);
+                            logger.warn('Error removing faded series:', e);
                         }
                         fadedSeriesRef.current = null;
                     }
@@ -771,7 +772,7 @@ const ChartComponent = forwardRef(({
             timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
 
         } catch (err) {
-            console.warn('Failed to zoom chart', err);
+            logger.warn('Failed to zoom chart', err);
         }
     }, []);
 
@@ -860,7 +861,7 @@ const ChartComponent = forwardRef(({
 
                 setPanePositions(positions);
             } catch (e) {
-                console.warn('Error updating pane positions:', e);
+                logger.warn('Error updating pane positions:', e);
             }
         };
 
@@ -1089,7 +1090,7 @@ const ChartComponent = forwardRef(({
                             manager.setSessionStartTimes(sessionStartTimes);
                         }
                     } catch (err) {
-                        console.warn('[ChartComponent] Could not fetch session data, using fallback detection:', err);
+                        logger.warn('[ChartComponent] Could not fetch session data, using fallback detection:', err);
                     }
                 };
 
@@ -1272,7 +1273,7 @@ const ChartComponent = forwardRef(({
                     onIndicatorSettings(riskCalcInd.id, updates);
                 }
             } catch (error) {
-                console.error('Error setting price from Alt+Click:', error);
+                logger.error('Error setting price from Alt+Click:', error);
             }
         };
 
@@ -1450,7 +1451,7 @@ const ChartComponent = forwardRef(({
                 return prev;
             });
         } catch (err) {
-            console.error('Error in updateAxisLabel:', err);
+            logger.error('Error in updateAxisLabel:', err);
         }
     }, [comparisonSymbols]);
 
@@ -1556,7 +1557,7 @@ const ChartComponent = forwardRef(({
             // Enable session highlighting if the setting is active
             // This ensures session breaks appear immediately when switching symbols
             if (isSessionBreakVisibleRef.current && typeof manager.enableSessionHighlighting === 'function') {
-                console.log('[ChartComponent] Enabling session highlighting on new manager');
+                logger.debug('[ChartComponent] Enabling session highlighting on new manager');
                 manager.enableSessionHighlighting();
             }
 
@@ -1592,7 +1593,7 @@ const ChartComponent = forwardRef(({
                                 // GlobalAlertMonitor refresh disabled - conflicts with watchlist WebSocket
                             }
                         } catch (err) {
-                            console.warn('Failed to sync chart alerts to app', err);
+                            logger.warn('Failed to sync chart alerts to app', err);
                         }
                     }, manager);
                 }
@@ -1611,7 +1612,7 @@ const ChartComponent = forwardRef(({
                                 condition: evt.condition,
                             });
                         } catch (err) {
-                            console.warn('Failed to propagate alertTriggered event to app', err);
+                            logger.warn('Failed to propagate alertTriggered event to app', err);
                         }
                     }, manager);
                 }
@@ -1628,12 +1629,12 @@ const ChartComponent = forwardRef(({
                                 price: evt.price
                             });
                         } catch (err) {
-                            console.warn('Failed to show price scale menu', err);
+                            logger.warn('Failed to show price scale menu', err);
                         }
                     }, manager);
                 }
             } catch (err) {
-                console.warn('Failed to initialize alert symbol name', err);
+                logger.warn('Failed to initialize alert symbol name', err);
             }
 
             window.lineToolManager = manager;
@@ -1917,7 +1918,7 @@ const ChartComponent = forwardRef(({
                         const newTo = currentLogicalRange.to + prependCount;
                         timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
                     } catch (e) {
-                        console.warn('[ScrollBack] Failed to restore visible range:', e);
+                        logger.warn('[ScrollBack] Failed to restore visible range:', e);
                     }
                 }
 
@@ -1931,7 +1932,7 @@ const ChartComponent = forwardRef(({
 
             } catch (error) {
                 if (error.name !== 'AbortError') {
-                    console.error('[ScrollBack] Error loading older data:', error);
+                    logger.error('[ScrollBack] Error loading older data:', error);
                 }
             } finally {
                 isLoadingOlderDataRef.current = false;
@@ -2067,7 +2068,7 @@ const ChartComponent = forwardRef(({
                 try {
                     clickPrice = mainSeriesRef.current.coordinateToPrice(relativeY);
                 } catch (e) {
-                    console.warn('Failed to convert coordinate to price', e);
+                    logger.warn('Failed to convert coordinate to price', e);
                 }
             }
 
@@ -2087,19 +2088,19 @@ const ChartComponent = forwardRef(({
             try {
                 chart.unsubscribeCrosshairMove(handleCrosshairMove);
             } catch (e) {
-                console.warn('Failed to unsubscribe crosshair move', e);
+                logger.warn('Failed to unsubscribe crosshair move', e);
             }
 
             try {
                 chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleTimeRangeChange);
             } catch (e) {
-                console.warn('Failed to unsubscribe visible logical range change', e);
+                logger.warn('Failed to unsubscribe visible logical range change', e);
             }
 
             try {
                 container.removeEventListener('contextmenu', handleContextMenu, true);
             } catch (error) {
-                console.warn('Failed to remove contextmenu listener', error);
+                logger.warn('Failed to remove contextmenu listener', error);
             }
 
 
@@ -2124,13 +2125,13 @@ const ChartComponent = forwardRef(({
                         alertSubscriptionsRef.current.priceScaleClicked = null;
                     }
                 } catch (error) {
-                    console.warn('Failed to unsubscribe alert listeners', error);
+                    logger.warn('Failed to unsubscribe alert listeners', error);
                 }
 
                 try {
                     lineToolManagerRef.current.destroy();
                 } catch (error) {
-                    console.warn('Failed to destroy lineToolManager', error);
+                    logger.warn('Failed to destroy lineToolManager', error);
                 }
                 lineToolManagerRef.current = null;
             }
@@ -2147,19 +2148,19 @@ const ChartComponent = forwardRef(({
                         seriesMarkersRef.current = null;
                     }
                 } catch (error) {
-                    console.warn('Failed to detach primitives', error);
+                    logger.warn('Failed to detach primitives', error);
                 }
             }
 
             try {
                 if (wsRef.current) wsRef.current.close();
             } catch (error) {
-                console.warn('Failed to close chart WebSocket', error);
+                logger.warn('Failed to close chart WebSocket', error);
             }
             try {
                 chart.remove();
             } catch (error) {
-                console.warn('Failed to remove chart instance', error);
+                logger.warn('Failed to remove chart instance', error);
             } finally {
                 chartRef.current = null;
             }
@@ -2189,7 +2190,7 @@ const ChartComponent = forwardRef(({
                     replacementSeries.applyOptions({ lastValueVisible: false });
                 }
             } catch (e) {
-                console.warn('Error re-attaching timer to new series:', e);
+                logger.warn('Error re-attaching timer to new series:', e);
             }
         }
 
@@ -2215,7 +2216,7 @@ const ChartComponent = forwardRef(({
             try {
                 chart.removeSeries(fadedSeriesRef.current);
             } catch (e) {
-                console.warn('Error removing faded series on chart type change:', e);
+                logger.warn('Error removing faded series on chart type change:', e);
             }
             fadedSeriesRef.current = null;
 
@@ -2238,15 +2239,15 @@ const ChartComponent = forwardRef(({
                         // Use captured symbol (what it was when effect started), not symbolRef (which is now new)
                         if (capturedSymbol) {
                             const alertsToSave = userAlerts.exportAlerts();
-                            console.log('[Alerts] Exporting alerts for', capturedSymbol, ':', alertsToSave);
+                            logger.debug('[Alerts] Exporting alerts for', capturedSymbol, ':', alertsToSave);
                             if (alertsToSave.length > 0) {
                                 saveAlertsForSymbol(capturedSymbol, capturedExchange, alertsToSave);
-                                console.log('[Alerts] Saved', alertsToSave.length, 'alerts for', capturedSymbol, 'before cleanup');
+                                logger.debug('[Alerts] Saved', alertsToSave.length, 'alerts for', capturedSymbol, 'before cleanup');
                             }
                         }
                     }
                 } catch (err) {
-                    console.warn('[Alerts] Failed to save alerts in cleanup:', err);
+                    logger.warn('[Alerts] Failed to save alerts in cleanup:', err);
                 }
 
                 // HIGH FIX ML-3: Unsubscribe alert event listeners before clearing manager
@@ -2264,20 +2265,20 @@ const ChartComponent = forwardRef(({
                         alertSubscriptionsRef.current.priceScaleClicked = null;
                     }
                 } catch (err) {
-                    console.warn('Failed to unsubscribe alert listeners before chart type switch', err);
+                    logger.warn('Failed to unsubscribe alert listeners before chart type switch', err);
                 }
 
                 try {
                     lineToolManagerRef.current.clearTools();
                 } catch (err) {
-                    console.warn('Failed to clear tools before switching chart type', err);
+                    logger.warn('Failed to clear tools before switching chart type', err);
                 }
                 try {
                     if (mainSeriesRef.current) {
                         mainSeriesRef.current.detachPrimitive(lineToolManagerRef.current);
                     }
                 } catch (err) {
-                    console.warn('Failed to detach line tools from series', err);
+                    logger.warn('Failed to detach line tools from series', err);
                 }
                 lineToolManagerRef.current = null;
             }
@@ -2290,7 +2291,7 @@ const ChartComponent = forwardRef(({
                 } catch (e) {
                     // Ignore 'Value is undefined' which happens during strict mode cleanup
                     if (e.message !== 'Value is undefined') {
-                        console.warn('Error removing series:', e);
+                        logger.warn('Error removing series:', e);
                     }
                 }
                 mainSeriesRef.current = null;
@@ -2536,7 +2537,7 @@ const ChartComponent = forwardRef(({
                             const closePrice = Number(ticker.close);
                             const tickVolume = Number(ticker.volume) || 0;
                             if (!Number.isFinite(closePrice) || closePrice <= 0) {
-                                console.warn('Received invalid close price:', ticker);
+                                logger.warn('Received invalid close price:', ticker);
                                 return;
                             }
 
@@ -2632,7 +2633,7 @@ const ChartComponent = forwardRef(({
                                     const dataWithFuture = addFutureWhitespacePoints(transformedFullData, intervalSeconds);
                                     mainSeriesRef.current.setData(dataWithFuture);
                                 } catch (setDataErr) {
-                                    console.warn('[WebSocket] Failed to update chart with setData:', setDataErr);
+                                    logger.warn('[WebSocket] Failed to update chart with setData:', setDataErr);
                                 }
 
                                 updateRealtimeIndicators(currentData);
@@ -2655,7 +2656,7 @@ const ChartComponent = forwardRef(({
                 if (error.name === 'AbortError') {
                     return;
                 }
-                console.error('Error loading chart data:', error);
+                logger.error('Error loading chart data:', error);
 
                 // Set user-friendly error message
                 let errorMessage = 'Failed to load chart data';
@@ -2929,9 +2930,9 @@ const ChartComponent = forwardRef(({
     }, [indicators, onIndicatorSettings]);
 
     const updateIndicators = useCallback((data, indicatorsArray) => {
-        console.log('[DEBUG] updateIndicators CALLED');
-        console.log('[DEBUG] Indicators param:', indicatorsArray?.length, 'indicators');
-        console.log('[DEBUG] Indicator IDs param:', indicatorsArray?.map(i => i.id));
+        logger.debug('[DEBUG] updateIndicators CALLED');
+        logger.debug('[DEBUG] Indicators param:', indicatorsArray?.length, 'indicators');
+        logger.debug('[DEBUG] Indicator IDs param:', indicatorsArray?.map(i => i.id));
 
         if (!chartRef.current) return;
 
@@ -2973,7 +2974,7 @@ const ChartComponent = forwardRef(({
                             indicatorTypesMap.current.set(id, type); // Track type for cleanup
                         }
                     } catch (e) {
-                        console.error(`Error creating series for ${type} (${id})`, e);
+                        logger.error(`Error creating series for ${type} (${id})`, e);
                     }
                 }
 
@@ -2988,7 +2989,7 @@ const ChartComponent = forwardRef(({
             });
         }
 
-        console.log('[DEBUG] validIds constructed with', validIds.size, 'IDs:', Array.from(validIds));
+        logger.debug('[DEBUG] validIds constructed with', validIds.size, 'IDs:', Array.from(validIds));
 
         // ========== FIRST RED CANDLE INDICATOR (5-min only) ==========
         const firstCandleInd = indicatorsArray?.find(ind => ind.type === 'firstCandle');
@@ -3061,15 +3062,15 @@ const ChartComponent = forwardRef(({
             }
         } else if (!firstCandleEnabled) {
             // Remove first candle series when disabled
-            console.log('[MANUAL CLEANUP] First Candle manual cleanup triggered. Series count:', firstCandleSeriesRef.current.length);
+            logger.debug('[MANUAL CLEANUP] First Candle manual cleanup triggered. Series count:', firstCandleSeriesRef.current.length);
             for (const series of firstCandleSeriesRef.current) {
                 try {
-                    console.log('[MANUAL CLEANUP] Removing First Candle series');
+                    logger.debug('[MANUAL CLEANUP] Removing First Candle series');
                     chartRef.current.removeSeries(series);
                 } catch (e) { /* ignore */ }
             }
             firstCandleSeriesRef.current = [];
-            console.log('[MANUAL CLEANUP] First Candle array cleared');
+            logger.debug('[MANUAL CLEANUP] First Candle array cleared');
         }
 
         // ========== RANGE BREAKOUT INDICATOR ==========
@@ -3147,15 +3148,15 @@ const ChartComponent = forwardRef(({
             }
         } else if (!rangeBreakoutEnabled) {
             // Remove range breakout series when disabled
-            console.log('[MANUAL CLEANUP] Range Breakout manual cleanup triggered. Series count:', rangeBreakoutSeriesRef.current.length);
+            logger.debug('[MANUAL CLEANUP] Range Breakout manual cleanup triggered. Series count:', rangeBreakoutSeriesRef.current.length);
             for (const series of rangeBreakoutSeriesRef.current) {
                 try {
-                    console.log('[MANUAL CLEANUP] Removing Range Breakout series');
+                    logger.debug('[MANUAL CLEANUP] Removing Range Breakout series');
                     chartRef.current.removeSeries(series);
                 } catch (e) { /* ignore */ }
             }
             rangeBreakoutSeriesRef.current = [];
-            console.log('[MANUAL CLEANUP] Range Breakout array cleared');
+            logger.debug('[MANUAL CLEANUP] Range Breakout array cleared');
             // Note: markers are handled collectively at the end of updateIndicators
         }
 
@@ -3290,15 +3291,15 @@ const ChartComponent = forwardRef(({
             }
         } else if (!parEnabled) {
             // Remove PAR series when disabled
-            console.log('[MANUAL CLEANUP] PAR manual cleanup triggered. Series count:', priceActionRangeSeriesRef.current.length);
+            logger.debug('[MANUAL CLEANUP] PAR manual cleanup triggered. Series count:', priceActionRangeSeriesRef.current.length);
             for (const series of priceActionRangeSeriesRef.current) {
                 try {
-                    console.log('[MANUAL CLEANUP] Removing PAR series');
+                    logger.debug('[MANUAL CLEANUP] Removing PAR series');
                     chartRef.current.removeSeries(series);
                 } catch (e) { /* ignore */ }
             }
             priceActionRangeSeriesRef.current = [];
-            console.log('[MANUAL CLEANUP] PAR array cleared');
+            logger.debug('[MANUAL CLEANUP] PAR array cleared');
         }
 
         // --- UNIFIED CLEANUP LOGIC ---
@@ -3311,17 +3312,17 @@ const ChartComponent = forwardRef(({
         }
 
         // DEBUG: Log cleanup detection
-        console.log('[CLEANUP DEBUG] ===== CLEANUP DETECTION =====');
-        console.log('[CLEANUP DEBUG] Valid IDs from indicators:', Array.from(validIds));
-        console.log('[CLEANUP DEBUG] Series map keys (existing):', Array.from(indicatorSeriesMap.current.keys()));
-        console.log('[CLEANUP DEBUG] IDs to remove:', idsToRemove);
-        console.log('[CLEANUP DEBUG] Types map entries:', Array.from(indicatorTypesMap.current.entries()));
+        logger.debug('[CLEANUP DEBUG] ===== CLEANUP DETECTION =====');
+        logger.debug('[CLEANUP DEBUG] Valid IDs from indicators:', Array.from(validIds));
+        logger.debug('[CLEANUP DEBUG] Series map keys (existing):', Array.from(indicatorSeriesMap.current.keys()));
+        logger.debug('[CLEANUP DEBUG] IDs to remove:', idsToRemove);
+        logger.debug('[CLEANUP DEBUG] Types map entries:', Array.from(indicatorTypesMap.current.entries()));
 
         if (idsToRemove.length > 0) {
-            console.log('[CLEANUP] Detected indicators to remove:', idsToRemove);
-            console.log('[CLEANUP] Valid IDs:', Array.from(validIds));
-            console.log('[CLEANUP] Series map keys:', Array.from(indicatorSeriesMap.current.keys()));
-            console.log('[CLEANUP] Types map:', Array.from(indicatorTypesMap.current.entries()));
+            logger.debug('[CLEANUP] Detected indicators to remove:', idsToRemove);
+            logger.debug('[CLEANUP] Valid IDs:', Array.from(validIds));
+            logger.debug('[CLEANUP] Series map keys:', Array.from(indicatorSeriesMap.current.keys()));
+            logger.debug('[CLEANUP] Types map:', Array.from(indicatorTypesMap.current.entries()));
         }
 
         // Prepare cleanup context with all necessary references
@@ -3341,16 +3342,16 @@ const ChartComponent = forwardRef(({
 
         // Execute unified cleanup using metadata-driven engine
         if (idsToRemove.length > 0) {
-            console.log('[CLEANUP] Calling cleanupIndicators with', idsToRemove.length, 'indicators');
+            logger.debug('[CLEANUP] Calling cleanupIndicators with', idsToRemove.length, 'indicators');
             cleanupIndicators(idsToRemove, indicatorTypesMap.current, cleanupContext);
-            console.log('[CLEANUP] Cleanup complete');
+            logger.debug('[CLEANUP] Cleanup complete');
 
             // Explicit ref null assignments for cleanup hygiene (Phase 4.1)
             idsToRemove.forEach(id => {
                 const type = indicatorTypesMap.current.get(id);
                 if (type === 'annStrategy') {
                     annStrategyPaneRef.current = null;
-                    console.log('[CLEANUP] Nulled annStrategyPaneRef');
+                    logger.debug('[CLEANUP] Nulled annStrategyPaneRef');
                 }
             });
         }
@@ -3371,7 +3372,7 @@ const ChartComponent = forwardRef(({
                     seriesMarkersRef.current.setMarkers(allMarkers);
                 }
             } catch (e) {
-                console.warn('[Markers] Error setting markers:', e);
+                logger.warn('[Markers] Error setting markers:', e);
             }
         }
 
@@ -3388,7 +3389,7 @@ const ChartComponent = forwardRef(({
         const relevantPositions = (positions || []).filter(p => areSymbolsEquivalent(p.symbol, currentSym));
 
         if (process.env.NODE_ENV === 'development') {
-            console.log('[VisualTrading] Sync:', {
+            logger.debug('[VisualTrading] Sync:', {
                 currentSym,
                 totalOrders: (orders || []).length,
                 relevantOrders: relevantOrders.length,
@@ -3490,15 +3491,15 @@ const ChartComponent = forwardRef(({
 
     // Separate effect for indicators to prevent data reload
     useEffect(() => {
-        console.log('[DEBUG] Indicators effect TRIGGERED. Count:', indicators?.length);
-        console.log('[DEBUG] Indicator IDs:', indicators?.map(i => i.id));
+        logger.debug('[DEBUG] Indicators effect TRIGGERED. Count:', indicators?.length);
+        logger.debug('[DEBUG] Indicator IDs:', indicators?.map(i => i.id));
 
         if (dataRef.current.length > 0) {
             // Update indicators with current data
             try {
                 updateIndicators(dataRef.current, indicators);
             } catch (error) {
-                console.error('Error updating indicators:', error);
+                logger.error('Error updating indicators:', error);
             }
         }
     }, [indicators, updateIndicators]);
@@ -3698,7 +3699,7 @@ const ChartComponent = forwardRef(({
         // Add new series with cancellation support
         const loadComparisonData = async (comp) => {
             const key = `${comp.symbol}_${comp.exchange}_${comp.scaleMode || 'samePercent'}`;
-            console.log('[Comparison] Processing:', key, 'Exists:', activeSeries.has(key));
+            logger.debug('[Comparison] Processing:', key, 'Exists:', activeSeries.has(key));
 
             // Check if series exists AND has data - if it exists but has no data, reload it
             if (activeSeries.has(key)) {
@@ -3706,16 +3707,16 @@ const ChartComponent = forwardRef(({
                 try {
                     const existingData = existingSeries.data();
                     if (existingData && existingData.length > 0) {
-                        console.log('[Comparison] Series already has data:', key);
+                        logger.debug('[Comparison] Series already has data:', key);
                         return; // Already has data, skip
                     }
-                    console.log('[Comparison] Series exists but no data, removing and recreating:', key);
+                    logger.debug('[Comparison] Series exists but no data, removing and recreating:', key);
                     // Remove the empty series and recreate
                     chartRef.current.removeSeries(existingSeries);
                     activeSeries.delete(key);
                 } catch (e) {
                     // Series might be invalid, recreate it
-                    console.log('[Comparison] Series check error, recreating:', key, e);
+                    logger.debug('[Comparison] Series check error, recreating:', key, e);
                     try { chartRef.current.removeSeries(existingSeries); } catch (e2) { /* ignore */ }
                     activeSeries.delete(key);
                 }
@@ -3763,28 +3764,28 @@ const ChartComponent = forwardRef(({
             }
 
             activeSeries.set(key, series);
-            console.log('[Comparison] Created series for:', key, 'Color:', comp.color);
+            logger.debug('[Comparison] Created series for:', key, 'Color:', comp.color);
 
             try {
                 const data = await getKlines(comp.symbol, comp.exchange || 'NSE', interval, 1000, abortController.signal);
-                console.log('[Comparison] Data loaded for:', key, 'Length:', data?.length);
+                logger.debug('[Comparison] Data loaded for:', key, 'Length:', data?.length);
                 // Check if still valid before setting data
                 if (cancelled || !activeSeries.has(key)) return;
                 if (data && data.length > 0) {
                     const transformedData = data.map(d => ({ time: d.time, value: d.close }));
                     series.setData(transformedData);
-                    console.log('[Comparison] Data set for:', key);
+                    logger.debug('[Comparison] Data set for:', key);
                 } else {
-                    console.warn('[Comparison] No data for:', key);
+                    logger.warn('[Comparison] No data for:', key);
                 }
             } catch (err) {
                 if (err.name !== 'AbortError') {
-                    console.error(`Failed to load comparison data for ${comp.symbol}`, err);
+                    logger.error(`Failed to load comparison data for ${comp.symbol}`, err);
                 }
             }
         };
 
-        console.log('[Comparison] Processing symbols:', comparisonSymbols.map(c => c.symbol));
+        logger.debug('[Comparison] Processing symbols:', comparisonSymbols.map(c => c.symbol));
         comparisonSymbols.forEach(comp => loadComparisonData(comp));
 
         // Update Price Scale Mode based on comparison mode
@@ -4014,7 +4015,7 @@ const ChartComponent = forwardRef(({
                     chartRef.current.timeScale().setVisibleRange({ from, to });
                 } catch (e) {
                     if (e.message !== 'Value is null') {
-                        console.warn('Failed to set visible range:', e);
+                        logger.warn('Failed to set visible range:', e);
                     }
                 }
             }
@@ -4173,7 +4174,7 @@ const ChartComponent = forwardRef(({
                             }
                         }
                     } catch (e) {
-                        console.warn('Failed to restore visible range in Jump to Bar:', e);
+                        logger.warn('Failed to restore visible range in Jump to Bar:', e);
                     }
                 }
             }, 50);
@@ -4329,7 +4330,7 @@ const ChartComponent = forwardRef(({
                     }, 0);
                 }
             } catch (e) {
-                console.warn('Error handling replay click:', e);
+                logger.warn('Error handling replay click:', e);
             }
         };
 
@@ -4487,12 +4488,12 @@ const ChartComponent = forwardRef(({
                                 }
                             }, 100);
                         } catch (e) {
-                            console.warn('Failed to set visible range after selection:', e);
+                            logger.warn('Failed to set visible range after selection:', e);
                         }
                     }
                 }
             } catch (e) {
-                console.warn('Error handling chart click in Jump to Bar:', e);
+                logger.warn('Error handling chart click in Jump to Bar:', e);
             }
         };
 
@@ -4521,7 +4522,7 @@ const ChartComponent = forwardRef(({
             visible: tpoIndicators[0].visible,
             settings: effectiveSettings
         });
-        console.log('[TPO] Settings hash updated:', hash);
+        logger.debug('[TPO] Settings hash updated:', hash);
         return hash;
     }, [indicators, tpoLocalSettings]);
 
@@ -4536,7 +4537,7 @@ const ChartComponent = forwardRef(({
             try {
                 mainSeriesRef.current.detachPrimitive(tpoProfileRef.current);
             } catch (e) {
-                console.warn('[TPO] Error detaching primitive:', e);
+                logger.warn('[TPO] Error detaching primitive:', e);
             }
             tpoProfileRef.current = null;
         }
@@ -4554,7 +4555,7 @@ const ChartComponent = forwardRef(({
 
             // Skip creation if not visible (primitive already removed above)
             if (!isVisible) {
-                console.log('[TPO] Indicator hidden, primitive removed');
+                logger.debug('[TPO] Indicator hidden, primitive removed');
                 return;
             }
 
@@ -4571,7 +4572,7 @@ const ChartComponent = forwardRef(({
                     interval: interval
                 });
 
-                console.log('[TPO] Calculated profiles:', profiles.length, 'Settings:', effectiveSettings);
+                logger.debug('[TPO] Calculated profiles:', profiles.length, 'Settings:', effectiveSettings);
 
                 const tpoPrimitive = new TPOProfilePrimitive({
                     visible: isVisible,
@@ -4592,9 +4593,9 @@ const ChartComponent = forwardRef(({
                     indicatorTypesMap.current.set(tpoInd.id, 'tpo');
                 }
 
-                console.log('[TPO] Primitive attached successfully');
+                logger.debug('[TPO] Primitive attached successfully');
             } catch (error) {
-                console.error('[TPO] Error rendering TPO:', error);
+                logger.error('[TPO] Error rendering TPO:', error);
             }
         }
     }, [interval, symbol, exchange, tpoSettingsHash]);
@@ -4744,10 +4745,7 @@ const ChartComponent = forwardRef(({
                         if (data.scaleMode === 'newPriceScale') return null;
 
                         const isLeftScale = false; // Always right/overlay if not newPriceScale
-                        const formattedPrice = data.price?.toLocaleString('en-IN', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        }) ?? '0.00';
+                        const formattedPrice = data.price != null ? formatCurrency(data.price, { showSymbol: false, decimals: 2 }) : '0.00';
 
                         return (
                             <div
@@ -4825,7 +4823,7 @@ const ChartComponent = forwardRef(({
                         indicatorType={activeInd ? activeInd.type : null}
                         settings={activeInd || {}}
                         onSave={(newSettings) => {
-                            console.log('[TPO] Settings dialog onSave called:', { indicatorSettingsOpen, newSettings, hasCallback: !!onIndicatorSettings });
+                            logger.debug('[TPO] Settings dialog onSave called:', { indicatorSettingsOpen, newSettings, hasCallback: !!onIndicatorSettings });
 
                             // Store TPO settings locally (workaround for broken parent callback)
                             const activeInd = indicators?.find(i => i.id === indicatorSettingsOpen);
@@ -4834,7 +4832,7 @@ const ChartComponent = forwardRef(({
                                     ...prev,
                                     [indicatorSettingsOpen]: newSettings
                                 }));
-                                console.log('[TPO] Stored settings locally:', newSettings);
+                                logger.debug('[TPO] Stored settings locally:', newSettings);
                             }
 
                             // Also call parent callback
@@ -4957,7 +4955,7 @@ const ChartComponent = forwardRef(({
                 }
                 onMergeScales={(type) => {
                     // TODO: Implement merge scales functionality
-                    console.log('Merge scales:', type);
+                    logger.debug('Merge scales:', type);
                 }}
                 onOpenSettings={onOpenSettings}
                 onClose={() => setPriceScaleContextMenu({ visible: false, x: 0, y: 0 })}
@@ -4983,7 +4981,7 @@ const ChartComponent = forwardRef(({
                 }}
                 onCopyPrice={(price) => {
                     // Price is copied in the component, just a notification hook
-                    console.log('Price copied:', price);
+                    logger.debug('Price copied:', price);
                 }}
                 onAddAlert={(price) => {
                     // Add alert at the clicked price

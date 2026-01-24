@@ -3,6 +3,7 @@
  * Manages draggable price lines for risk calculator using primitives
  */
 
+import logger from '../logger';
 import { RiskCalculatorLines } from '../../plugins/risk-calculator/RiskCalculatorLines';
 
 /**
@@ -37,7 +38,7 @@ export function createRiskCalculatorPrimitive({ series, results, settings, side,
       target: settings.targetColor || '#42a5f5',
     },
     lineWidth: settings.lineWidth || 2,
-    onPriceChange: onPriceChange || (() => {}),
+    onPriceChange: onPriceChange || (() => { }),
   });
 
   series.attachPrimitive(primitive);
@@ -57,7 +58,7 @@ export function removeRiskCalculatorPrimitive({ series, primitiveRef }) {
   try {
     series.detachPrimitive(primitiveRef.current);
   } catch (e) {
-    console.error('Failed to detach risk calculator primitive:', e);
+    logger.error('Failed to detach risk calculator primitive:', e);
   }
 
   primitiveRef.current = null;
@@ -77,7 +78,7 @@ export function initRiskCalculatorPrimitiveRef() {
  * Use createRiskCalculatorPrimitive instead
  */
 export function updateRiskCalculatorLines({ series, linesRef, results, settings, isActive }) {
-  console.warn('updateRiskCalculatorLines is deprecated. Use createRiskCalculatorPrimitive instead.');
+  logger.warn('updateRiskCalculatorLines is deprecated. Use createRiskCalculatorPrimitive instead.');
 
   if (!isActive || !results || !results.success || !series) {
     removeRiskCalculatorLines({ series, linesRef });
@@ -92,7 +93,7 @@ export function updateRiskCalculatorLines({ series, linesRef, results, settings,
  * Use removeRiskCalculatorPrimitive instead
  */
 export function removeRiskCalculatorLines({ series, linesRef }) {
-  console.warn('removeRiskCalculatorLines is deprecated. Use removeRiskCalculatorPrimitive instead.');
+  logger.warn('removeRiskCalculatorLines is deprecated. Use removeRiskCalculatorPrimitive instead.');
 
   if (!linesRef.current) return;
 

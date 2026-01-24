@@ -3,6 +3,8 @@
  * Single source of truth for all keyboard shortcuts in the application.
  */
 
+import logger from '../utils/logger';
+
 /**
  * Shortcut Categories
  */
@@ -384,6 +386,8 @@ export const isInputField = (event) => {
 // SHORTCUT CUSTOMIZATION - User-defined overrides
 // ============================================
 
+import { getJSON, setJSON } from '../services/storageService';
+
 const CUSTOM_SHORTCUTS_KEY = 'custom_keyboard_shortcuts';
 
 /**
@@ -392,10 +396,9 @@ const CUSTOM_SHORTCUTS_KEY = 'custom_keyboard_shortcuts';
  */
 export const loadCustomShortcuts = () => {
     try {
-        const saved = localStorage.getItem(CUSTOM_SHORTCUTS_KEY);
-        return saved ? JSON.parse(saved) : {};
+        return getJSON(CUSTOM_SHORTCUTS_KEY, {});
     } catch (e) {
-        console.warn('Failed to load custom shortcuts:', e);
+        logger.warn('Failed to load custom shortcuts:', e);
         return {};
     }
 };
@@ -406,9 +409,9 @@ export const loadCustomShortcuts = () => {
  */
 export const saveCustomShortcuts = (customizations) => {
     try {
-        localStorage.setItem(CUSTOM_SHORTCUTS_KEY, JSON.stringify(customizations));
+        setJSON(CUSTOM_SHORTCUTS_KEY, customizations);
     } catch (e) {
-        console.warn('Failed to save custom shortcuts:', e);
+        logger.warn('Failed to save custom shortcuts:', e);
     }
 };
 

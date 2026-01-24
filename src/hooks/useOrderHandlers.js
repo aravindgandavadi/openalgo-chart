@@ -5,6 +5,7 @@
 
 import { useCallback } from 'react';
 import { modifyOrder, cancelOrder } from '../services/openalgo';
+import logger from '../utils/logger';
 
 /**
  * Custom hook for order operations
@@ -22,7 +23,7 @@ export const useOrderHandlers = ({
     // Modify an existing order
     const handleModifyOrder = useCallback(async (orderId, newPrice) => {
         // Debug: Log what we are looking for
-        console.log('[App] handleModifyOrder called with:', { orderId, newPrice });
+        logger.debug('[App] handleModifyOrder called with:', { orderId, newPrice });
 
         // Find order to get other details
         // Check both orderid and order_id, and handle string/number mismatch
@@ -31,7 +32,7 @@ export const useOrderHandlers = ({
         );
 
         if (!order) {
-            console.error('[App] Order mismatch! Available IDs:', activeOrders.map(o => o.orderid));
+            logger.error('[App] Order mismatch! Available IDs:', activeOrders.map(o => o.orderid));
             showToast(`Order ${orderId} not found`, 'error');
             return;
         }
@@ -56,11 +57,11 @@ export const useOrderHandlers = ({
                     : (parseFloat(order.trigger_price) || 0)
             };
 
-            console.log('[App] Modifying order with payload:', payload);
+            logger.debug('[App] Modifying order with payload:', payload);
 
             const result = await modifyOrder(payload);
 
-            console.log('[App] Modify order result:', result);
+            logger.debug('[App] Modify order result:', result);
 
             if (result.status === 'success') {
                 showToast(
@@ -70,11 +71,11 @@ export const useOrderHandlers = ({
                 // Refresh trading data to update UI
                 refreshTradingData();
             } else {
-                console.error('[App] Modify order failed:', result.message);
+                logger.error('[App] Modify order failed:', result.message);
                 showToast(`Modify failed: ${result.message}`, 'error');
             }
         } catch (e) {
-            console.error('[App] Order modification error:', e);
+            logger.error('[App] Order modification error:', e);
             showToast(e.message || 'Failed to modify order', 'error');
         }
     }, [activeOrders, showToast, refreshTradingData]);
@@ -88,7 +89,7 @@ export const useOrderHandlers = ({
         );
 
         if (!order) {
-            console.error('[App] Cancel Order: Order not found', { orderId });
+            logger.error('[App] Cancel Order: Order not found', { orderId });
             showToast(`Order ${orderId} not found`, 'error');
             return;
         }
@@ -107,7 +108,7 @@ export const useOrderHandlers = ({
             }
         } catch (e) {
             if (process.env.NODE_ENV === 'development') {
-                console.error('[App] Order cancellation error:', e);
+                logger.error('[App] Order cancellation error:', e);
             }
             showToast(e.message || 'Failed to cancel order', 'error');
         }

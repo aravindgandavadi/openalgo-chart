@@ -4,7 +4,9 @@
  */
 
 import { useCallback } from 'react';
+import { getJSON, setJSON, get, STORAGE_KEYS } from '../services/storageService';
 import { saveUserPreferences } from '../services/openalgo';
+import logger from '../utils/logger';
 
 // Keys to sync with cloud when saving layout
 const SYNC_KEYS = [
@@ -110,12 +112,12 @@ export const useLayoutHandlers = ({
         };
         try {
             // Save to localStorage
-            localStorage.setItem('tv_saved_layout', JSON.stringify(layoutData));
+            setJSON(STORAGE_KEYS.SAVED_LAYOUT, layoutData);
 
             // Immediately sync to cloud
             const prefsToSave = {};
             SYNC_KEYS.forEach(key => {
-                const value = localStorage.getItem(key);
+                const value = get(key);
                 if (value !== null) {
                     prefsToSave[key] = value;
                 }
@@ -128,7 +130,7 @@ export const useLayoutHandlers = ({
                 showSnapshotToast('Layout saved locally');
             }
         } catch (error) {
-            console.error('Failed to save layout:', error);
+            logger.error('Failed to save layout:', error);
             showToast('Failed to save layout', 'error');
         }
     }, [layout, charts, showSnapshotToast, showToast]);

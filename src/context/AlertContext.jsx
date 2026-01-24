@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
-import { safeParseJSON, STORAGE_KEYS } from '../services/storageService';
+import { getJSON, setJSON, STORAGE_KEYS } from '../services/storageService';
+import logger from '../utils/logger';
 
 const AlertContext = createContext();
 
@@ -18,7 +19,7 @@ export const AlertProvider = ({ children }) => {
 
     // Active alerts with 24h retention
     const [alerts, setAlerts] = useState(() => {
-        const saved = safeParseJSON(localStorage.getItem(STORAGE_KEYS.ALERTS), []);
+        const saved = getJSON(STORAGE_KEYS.ALERTS, []);
         // Filter out expired alerts (older than 24 hours)
         const cutoff = Date.now() - ALERT_RETENTION_MS;
         return saved.filter(a => !a.triggeredAt || a.triggeredAt > cutoff);
@@ -30,7 +31,7 @@ export const AlertProvider = ({ children }) => {
 
     // Alert logs with 24h retention
     const [alertLogs, setAlertLogs] = useState(() => {
-        const saved = safeParseJSON(localStorage.getItem(STORAGE_KEYS.ALERT_LOGS), []);
+        const saved = getJSON(STORAGE_KEYS.ALERT_LOGS, []);
         const cutoff = Date.now() - ALERT_RETENTION_MS;
         return saved.filter(l => !l.timestamp || l.timestamp > cutoff);
     });
@@ -55,9 +56,9 @@ export const AlertProvider = ({ children }) => {
             setAlerts(filtered);
         }
         try {
-            localStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(filtered));
+            setJSON(STORAGE_KEYS.ALERTS, filtered);
         } catch (error) {
-            console.error('Failed to persist alerts:', error);
+            logger.error('Failed to persist alerts:', error);
         }
     }, [alerts]);
 
@@ -72,9 +73,9 @@ export const AlertProvider = ({ children }) => {
             setAlertLogs(filtered);
         }
         try {
-            localStorage.setItem(STORAGE_KEYS.ALERT_LOGS, JSON.stringify(filtered));
+            setJSON(STORAGE_KEYS.ALERT_LOGS, filtered);
         } catch (error) {
-            console.error('Failed to persist alert logs:', error);
+            logger.error('Failed to persist alert logs:', error);
         }
     }, [alertLogs]);
 

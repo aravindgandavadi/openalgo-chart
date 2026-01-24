@@ -27,37 +27,6 @@ const tickSubscriptions = new Map();
 const tickStore = new Map();
 
 /**
- * Get WebSocket URL
- * Auto-detects protocol and uses Vite proxy in development
- */
-const getWebSocketUrl = () => {
-    const wsHost = localStorage.getItem('oa_ws_url') || DEFAULT_WS_HOST;
-
-    // Check if we're in local development with default WebSocket host
-    const isDefaultWsHost = wsHost === DEFAULT_WS_HOST || wsHost === '127.0.0.1:8765' || wsHost === 'localhost:8765';
-    const isLocalDev = typeof window !== 'undefined' &&
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-    // Use Vite proxy in development for localhost
-    if (isDefaultWsHost && isLocalDev) {
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        return `${protocol}://${window.location.host}/ws`;
-    }
-
-    // For custom hosts, auto-detect protocol
-    const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
-    const protocol = isSecure ? 'wss' : 'ws';
-    return `${protocol}://${wsHost}`;
-};
-
-/**
- * Get API Key from localStorage
- */
-const getApiKey = () => {
-    return localStorage.getItem('oa_apikey') || '';
-};
-
-/**
  * Tick data structure
  * @typedef {Object} Tick
  * @property {number} time - Milliseconds timestamp
@@ -262,11 +231,14 @@ export const calculateFootprintForCandle = (symbol, exchange, candleStartTime, c
 };
 
 /**
- * Subscribe to real-time tick data via WebSocket (Mode 3)
+ * Subscribe to real-time tick data via SHARED WebSocket (Mode 3)
+ * REFACTORED: Now uses sharedWebSocket from openalgo.js instead of creating a separate connection.
+ * This consolidates WebSocket usage and prevents connection limit issues.
+ * 
  * @param {string} symbol - Trading symbol
  * @param {string} exchange - Exchange code
  * @param {function} callback - Callback for each tick
- * @returns {Object} - WebSocket manager with close() method
+ * @returns {Object} - Subscription handle with close() method
  */
 export const subscribeToTicks = (symbol, exchange = 'NSE', callback) => {
     const key = `${symbol}:${exchange}`;
@@ -274,207 +246,75 @@ export const subscribeToTicks = (symbol, exchange = 'NSE', callback) => {
     // Initialize store
     const store = initTickStore(symbol, exchange);
 
-    let socket = null;
-    let manualClose = false;
-    let reconnectAttempts = 0;
-    let authenticated = false;
-    const maxAttempts = 5;
-    const apiKey = getApiKey();
+    // Import sharedWebSocket dynamically to avoid circular dependency
+    // The sharedWebSocket is a singleton managing a single connection
+    const { sharedWebSocket } = require('./openalgo.js');
 
-    const sendSubscription = () => {
-        if (!socket || socket.readyState !== WebSocket.OPEN || !authenticated) return;
+    // Subscribe using the shared WebSocket manager
+    const subscription = sharedWebSocket.subscribe(
+        [{ symbol, exchange }],
+        (message) => {
+            // Only process messages for our symbol
+            if (message.type !== 'market_data' && message.type !== 'tick_data') return;
+            if (message.symbol !== symbol) return;
 
-        const subscribeMsg = {
-            action: 'subscribe',
-            symbol: symbol,
-            exchange: exchange,
-            mode: WS_MODES.TICK  // Mode 3 for tick data
-        };
-        logger.debug('[TickService] Subscribing to ticks:', subscribeMsg);
-        socket.send(JSON.stringify(subscribeMsg));
-    };
+            const data = message.data || message.tick || {};
+            const ltp = parseFloat(data.ltp || data.last_price || data.price || 0);
+            const volume = parseFloat(data.volume || data.last_traded_qty || data.qty || 1);
 
-    const sendUnsubscription = () => {
-        if (!socket || socket.readyState !== WebSocket.OPEN) return;
-
-        const unsubscribeMsg = {
-            action: 'unsubscribe',
-            symbol: symbol,
-            exchange: exchange
-        };
-        logger.debug('[TickService] Unsubscribing from ticks:', unsubscribeMsg);
-        try {
-            socket.send(JSON.stringify(unsubscribeMsg));
-        } catch (error) {
-            logger.debug('[TickService] Error sending unsubscribe:', error);
-        }
-    };
-
-    const connect = () => {
-        const url = getWebSocketUrl();
-        authenticated = false;
-
-        try {
-            socket = new WebSocket(url);
-        } catch (error) {
-            console.error('[TickService] Failed to create WebSocket:', error);
-            return;
-        }
-
-        socket.onopen = () => {
-            logger.debug('[TickService] Connected, authenticating...');
-            reconnectAttempts = 0;
-
-            const authMsg = {
-                action: 'authenticate',
-                api_key: apiKey
-            };
-            socket.send(JSON.stringify(authMsg));
-        };
-
-        socket.onmessage = (event) => {
-            try {
-                const message = JSON.parse(event.data);
-
-                // Handle ping
-                if (message.type === 'ping') {
-                    socket.send(JSON.stringify({ type: 'pong' }));
-                    return;
-                }
-
-                // Handle authentication response
-                if ((message.type === 'auth' && message.status === 'success') ||
-                    message.type === 'authenticated' ||
-                    message.status === 'authenticated') {
-                    logger.debug('[TickService] Authenticated successfully');
-                    authenticated = true;
-                    sendSubscription();
-                    return;
-                }
-
-                // Handle auth error
-                if (message.type === 'error' || (message.type === 'auth' && message.status !== 'success')) {
-                    console.error('[TickService] Error:', message.message || message.code);
-                    return;
-                }
-
-                // Handle tick data
-                // Expected format: { type: 'tick_data', symbol, tick: { time, price, volume, side, bid, ask } }
-                // Or fallback to market_data with additional fields
-                if (message.type === 'tick_data' && message.symbol === symbol) {
-                    const tickData = message.tick || message.data;
-                    if (tickData) {
-                        const tick = {
-                            time: tickData.time || Date.now(),
-                            price: parseFloat(tickData.price || tickData.ltp || 0),
-                            volume: parseFloat(tickData.volume || tickData.qty || 1),
-                            side: tickData.side || (tickData.buyer_initiated ? 'buy' : 'sell'),
-                            bid: parseFloat(tickData.bid || 0),
-                            ask: parseFloat(tickData.ask || 0),
-                        };
-
-                        if (tick.price > 0) {
-                            // Store the tick
-                            addTick(symbol, exchange, tick);
-
-                            // Call the callback
-                            if (callback) {
-                                callback(tick);
-                            }
-                        }
-                    }
-                }
-
-                // Fallback: Handle market_data messages and infer tick from OHLC changes
-                // This is a graceful degradation when true tick data isn't available
-                if (message.type === 'market_data' && message.symbol === symbol) {
-                    const data = message.data || {};
-                    const ltp = parseFloat(data.ltp || data.last_price || 0);
-                    const volume = parseFloat(data.volume || data.last_traded_qty || 1);
-
-                    // Infer trade direction from LTP vs bid/ask if available
-                    let side = 'buy';
-                    if (data.bid && data.ask) {
-                        const mid = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
-                        side = ltp >= mid ? 'buy' : 'sell';
-                    }
-
-                    if (ltp > 0) {
-                        const tick = {
-                            time: data.timestamp || Date.now(),
-                            price: ltp,
-                            volume: volume,
-                            side: side,
-                            bid: parseFloat(data.bid || 0),
-                            ask: parseFloat(data.ask || 0),
-                        };
-
-                        addTick(symbol, exchange, tick);
-
-                        if (callback) {
-                            callback(tick);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('[TickService] Error parsing message:', error);
+            // Infer trade direction from LTP vs bid/ask if available
+            let side = 'buy';
+            if (data.bid && data.ask) {
+                const mid = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
+                side = ltp >= mid ? 'buy' : 'sell';
+            } else if (data.side) {
+                side = data.side;
+            } else if (data.buyer_initiated !== undefined) {
+                side = data.buyer_initiated ? 'buy' : 'sell';
             }
-        };
 
-        socket.onerror = (error) => {
-            console.error('[TickService] Error:', error);
-        };
+            if (ltp > 0) {
+                const tick = {
+                    time: data.timestamp || Date.now(),
+                    price: ltp,
+                    volume: volume,
+                    side: side,
+                    bid: parseFloat(data.bid || 0),
+                    ask: parseFloat(data.ask || 0),
+                };
 
-        socket.onclose = (event) => {
-            authenticated = false;
-            if (manualClose) return;
+                // Store the tick
+                addTick(symbol, exchange, tick);
 
-            if (!event.wasClean && reconnectAttempts < maxAttempts) {
-                const delay = Math.min(1000 * 2 ** reconnectAttempts, 10000);
-                logger.debug(`[TickService] Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxAttempts})`);
-                reconnectAttempts += 1;
-                setTimeout(connect, delay);
-            }
-        };
-    };
-
-    connect();
-
-    // Store subscription
-    tickSubscriptions.set(key, { socket, close: null });
-
-    // Return managed WebSocket interface
-    const managedWs = {
-        close: () => {
-            manualClose = true;
-            tickSubscriptions.delete(key);
-
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                sendUnsubscription();
-                setTimeout(() => {
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.close();
-                    }
-                }, 100);
+                // Call the callback
+                if (callback) {
+                    callback(tick);
+                }
             }
         },
+        WS_MODES.TICK // Mode 3 for tick data
+    );
 
-        forceClose: () => {
-            manualClose = true;
+    // Store subscription reference
+    tickSubscriptions.set(key, {
+        subscription,
+        close: () => subscription.close()
+    });
+
+    // Return managed interface compatible with existing code
+    return {
+        close: () => {
             tickSubscriptions.delete(key);
-            if (socket) {
-                try {
-                    socket.close();
-                } catch (e) {
-                    // Ignore
-                }
-            }
+            subscription.close();
+        },
+        forceClose: () => {
+            tickSubscriptions.delete(key);
+            subscription.close();
+        },
+        get readyState() {
+            return subscription.readyState;
         }
     };
-
-    tickSubscriptions.get(key).close = managedWs.close;
-
-    return managedWs;
 };
 
 /**

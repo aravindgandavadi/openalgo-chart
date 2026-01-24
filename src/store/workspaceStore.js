@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, subscribeWithSelector } from 'zustand/middleware';
+import logger from '../utils/logger';
+import { getJSON, STORAGE_KEYS } from '../services/storageService';
 
 // Helper to safely parse JSON
 const safeParseJSON = (value, fallback) => {
@@ -7,7 +9,7 @@ const safeParseJSON = (value, fallback) => {
     try {
         return JSON.parse(value);
     } catch (error) {
-        console.error('Failed to parse JSON from localStorage:', error);
+        logger.error('Failed to parse JSON from localStorage:', error);
         return fallback;
     }
 };
@@ -49,7 +51,7 @@ const migrateIndicators = (indicators) => {
 
 // Load initial state from OLD storage if new storage is empty
 const loadInitialState = () => {
-    const oldData = safeParseJSON(localStorage.getItem('tv_saved_layout'), null);
+    const oldData = getJSON(STORAGE_KEYS.SAVED_LAYOUT, null);
 
     if (oldData) {
         // Perform migration on old data
@@ -175,7 +177,7 @@ export const useWorkspaceStore = create(
                             ? JSON.parse(cloudLayoutData)
                             : cloudLayoutData;
                     } catch (e) {
-                        console.error('[WorkspaceStore] Failed to parse cloud data:', e);
+                        logger.error('[WorkspaceStore] Failed to parse cloud data:', e);
                         return state;
                     }
 
@@ -205,7 +207,7 @@ export const useWorkspaceStore = create(
                         return state;
                     }
 
-                    console.log('[WorkspaceStore] Hydrating from cloud:', {
+                    logger.debug('[WorkspaceStore] Hydrating from cloud:', {
                         layout: layoutData.layout,
                         chartsCount: migratedCharts.length
                     });

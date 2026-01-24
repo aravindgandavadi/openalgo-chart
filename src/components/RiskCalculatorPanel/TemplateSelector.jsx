@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTemplates, saveTemplate } from '../../utils/riskTemplates';
+import { formatCurrency } from '../../utils/shared/formatters';
 import styles from './RiskCalculatorPanel.module.css';
 
 /**
@@ -112,7 +113,7 @@ const TemplateSelector = ({ currentValues, onTemplateSelect }) => {
           <div className={styles.dialogContent}>
             <h3 className={styles.dialogTitle}>Save Template</h3>
             <p className={styles.dialogDescription}>
-              Capital: ₹{currentValues.capital.toLocaleString('en-IN')}<br />
+              Capital: {formatCurrency(currentValues.capital, { showSymbol: true, decimals: 0 })}<br />
               Risk: {currentValues.riskPercent}%
             </p>
             <input

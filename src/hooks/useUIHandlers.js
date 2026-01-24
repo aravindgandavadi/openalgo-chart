@@ -4,15 +4,17 @@
  */
 
 import { useCallback } from 'react';
+import { set, STORAGE_KEYS } from '../services/storageService';
+import { CHART_COLORS } from '../utils/colorUtils';
 
 // Default chart appearance settings
 const DEFAULT_CHART_APPEARANCE = {
-    wickUpColor: '#089981',
-    wickDownColor: '#F23645',
-    borderUpColor: '#089981',
-    borderDownColor: '#F23645',
-    upColor: '#089981',
-    downColor: '#F23645',
+    wickUpColor: CHART_COLORS.UP.primary,
+    wickDownColor: CHART_COLORS.DOWN.primary,
+    borderUpColor: CHART_COLORS.UP.primary,
+    borderDownColor: CHART_COLORS.DOWN.primary,
+    upColor: CHART_COLORS.UP.primary,
+    downColor: CHART_COLORS.DOWN.primary,
     lineColor: '#2962FF',
     areaTopColor: 'rgba(41, 98, 255, 0.3)',
     areaBottomColor: 'rgba(41, 98, 255, 0)',
@@ -22,8 +24,8 @@ const DEFAULT_CHART_APPEARANCE = {
     baselineBottomFillColor2: 'rgba(239, 83, 80, 0.28)',
     baselineTopLineColor: 'rgba(38, 166, 154, 1)',
     baselineBottomLineColor: 'rgba(239, 83, 80, 1)',
-    rangeUpColor: '#089981',
-    rangeDownColor: '#F23645'
+    rangeUpColor: CHART_COLORS.UP.primary,
+    rangeDownColor: CHART_COLORS.DOWN.primary
 };
 
 // Default drawing options
@@ -242,25 +244,25 @@ export const useUIHandlers = ({
     // API key save
     const handleApiKeySaveFromSettings = useCallback((newApiKey) => {
         setApiKey(newApiKey);
-        localStorage.setItem('oa_apikey', newApiKey);
+        set(STORAGE_KEYS.API_KEY, newApiKey);
     }, [setApiKey]);
 
     // WebSocket URL save
     const handleWebsocketUrlSave = useCallback((newUrl) => {
         setWebsocketUrl(newUrl);
-        localStorage.setItem('oa_ws_url', newUrl);
+        set(STORAGE_KEYS.WS_URL, newUrl);
     }, [setWebsocketUrl]);
 
     // Host URL save
     const handleHostUrlSave = useCallback((newUrl) => {
         setHostUrl(newUrl);
-        localStorage.setItem('oa_host_url', newUrl);
+        set(STORAGE_KEYS.HOST_URL, newUrl);
     }, [setHostUrl]);
 
     // Username save
     const handleUsernameSave = useCallback((newUsername) => {
         setOpenalgoUsername(newUsername);
-        localStorage.setItem('oa_username', newUsername);
+        set(STORAGE_KEYS.USERNAME, newUsername);
     }, [setOpenalgoUsername]);
 
     return {

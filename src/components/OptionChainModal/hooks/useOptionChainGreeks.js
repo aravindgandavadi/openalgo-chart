@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { getMultiOptionGreeks } from '../../../services/openalgo';
+import logger from '../../../utils/logger';
 
 /**
  * Custom hook for fetching and managing option Greeks data
@@ -29,9 +30,9 @@ export function useOptionChainGreeks({
 
         if (newCount >= MAX_GREEKS_RETRY_COUNT) {
             failedGreeksSymbolsRef.current.add(symbol);
-            console.log(`[OptionChain] Symbol ${symbol} permanently blocked after ${newCount} failed attempts`);
+            logger.debug(`[OptionChain] Symbol ${symbol} permanently blocked after ${newCount} failed attempts`);
         } else {
-            console.log(`[OptionChain] Symbol ${symbol} failed attempt ${newCount}/${MAX_GREEKS_RETRY_COUNT}`);
+            logger.debug(`[OptionChain] Symbol ${symbol} failed attempt ${newCount}/${MAX_GREEKS_RETRY_COUNT}`);
         }
     }, []);
 
@@ -54,14 +55,14 @@ export function useOptionChainGreeks({
 
         if (symbolsToFetch.length === 0) return;
 
-        console.log('[OptionChain] Fetching Greeks for', symbolsToFetch.length, 'options, requestId:', requestId);
+        logger.debug('[OptionChain] Fetching Greeks for', symbolsToFetch.length, 'options, requestId:', requestId);
         setGreeksLoading(true);
 
         try {
             const response = await getMultiOptionGreeks(symbolsToFetch);
 
             if (requestId !== greeksRequestIdRef.current) {
-                console.log('[OptionChain] Discarding stale Greeks response');
+                logger.debug('[OptionChain] Discarding stale Greeks response');
                 return;
             }
 
@@ -91,12 +92,12 @@ export function useOptionChainGreeks({
                 });
 
                 setGreeksData(newGreeksData);
-                console.log('[OptionChain] Greeks loaded:', response.summary);
+                logger.debug('[OptionChain] Greeks loaded:', response.summary);
             } else {
                 symbolsToFetch.forEach(s => markSymbolFailed(s.symbol));
             }
         } catch (error) {
-            console.error('[OptionChain] Greeks API error:', error);
+            logger.error('[OptionChain] Greeks API error:', error);
             symbolsToFetch.forEach(s => markSymbolFailed(s.symbol));
         } finally {
             if (requestId === greeksRequestIdRef.current) {
@@ -121,7 +122,7 @@ export function useOptionChainGreeks({
 
         if (missingSymbols.length === 0) return;
 
-        console.log('[OptionChain] Retrying', missingSymbols.length, 'missing Greeks...');
+        logger.debug('[OptionChain] Retrying', missingSymbols.length, 'missing Greeks...');
         setGreeksLoading(true);
 
         await new Promise(r => setTimeout(r, 2000));
@@ -161,7 +162,7 @@ export function useOptionChainGreeks({
                 missingSymbols.forEach(s => markSymbolFailed(s.symbol));
             }
         } catch (error) {
-            console.error('[OptionChain] Retry failed:', error);
+            logger.error('[OptionChain] Retry failed:', error);
             missingSymbols.forEach(s => markSymbolFailed(s.symbol));
         } finally {
             if (requestId === greeksRequestIdRef.current) {

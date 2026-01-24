@@ -4,20 +4,8 @@
  */
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { STORAGE_KEYS } from '../constants/storageKeys';
+import { getJSON, setJSON, safeParseJSON, STORAGE_KEYS } from '../services/storageService';
 import logger from '../utils/logger';
-
-// Local safeParseJSON to avoid import issues
-const safeParseJSON = (value, fallback = null) => {
-    if (value === null || value === undefined) {
-        return fallback;
-    }
-    try {
-        return JSON.parse(value);
-    } catch {
-        return fallback;
-    }
-};
 
 // Default watchlist configuration
 const DEFAULT_WATCHLIST = {
@@ -32,7 +20,7 @@ const DEFAULT_WATCHLIST = {
  * Migrate old watchlist format to new multi-watchlist format
  */
 const migrateWatchlistData = () => {
-    const newData = safeParseJSON(localStorage.getItem(STORAGE_KEYS.WATCHLISTS), null);
+    const newData = getJSON(STORAGE_KEYS.WATCHLISTS, null);
 
     // If new format exists, validate and use it
     if (newData && newData.lists && Array.isArray(newData.lists)) {
@@ -51,7 +39,7 @@ const migrateWatchlistData = () => {
     }
 
     // Check for old format
-    const oldData = safeParseJSON(localStorage.getItem(STORAGE_KEYS.WATCHLIST), null);
+    const oldData = getJSON(STORAGE_KEYS.WATCHLIST, null);
 
     if (oldData && Array.isArray(oldData) && oldData.length > 0) {
         // Migrate old format to new format
@@ -116,7 +104,7 @@ export const WatchlistProvider = ({ children }) => {
     // Auto-save to localStorage
     useEffect(() => {
         try {
-            localStorage.setItem(STORAGE_KEYS.WATCHLISTS, JSON.stringify(watchlistsState));
+            setJSON(STORAGE_KEYS.WATCHLISTS, watchlistsState);
             logger.debug('[WatchlistContext] Saved watchlists');
         } catch (e) {
             logger.warn('[WatchlistContext] Failed to save:', e);

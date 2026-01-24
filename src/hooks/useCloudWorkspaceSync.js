@@ -3,6 +3,7 @@ import { shallow } from 'zustand/shallow';
 import openalgo from '../services/openalgo';
 import logger from '../utils/logger';
 import { useWorkspaceStore } from '../store/workspaceStore';
+import { get, set, remove, getJSON, STORAGE_KEYS } from '../services/storageService';
 
 // Debounce delay in milliseconds (2 seconds for quicker UX)
 const SYNC_DEBOUNCE_DELAY = 2000;
@@ -119,20 +120,20 @@ export const useCloudWorkspaceSync = (isAuthenticated) => {
 
         // Check if preferences were already loaded during login validation
         // This flag is set by ApiKeyDialog when it saves preferences from the validation response
-        const cloudSyncDone = localStorage.getItem('_cloud_sync_done');
+        const cloudSyncDone = get(STORAGE_KEYS.CLOUD_SYNC_DONE);
         if (cloudSyncDone === 'true') {
-            logger.info('[CloudSync] Preferences already loaded during login, skipping fetch. Current Theme:', localStorage.getItem('tv_theme'));
+            logger.info('[CloudSync] Preferences already loaded during login, skipping fetch. Current Theme:', get(STORAGE_KEYS.THEME));
             // Clear the flag for future sessions
-            localStorage.removeItem('_cloud_sync_done');
+            remove(STORAGE_KEYS.CLOUD_SYNC_DONE);
             hasLoadedFromServer.current = true;
             // Initialize lastSavedState with current localStorage
             SYNC_KEYS.forEach(key => {
-                lastSavedState.current[key] = localStorage.getItem(key);
+                lastSavedState.current[key] = get(key);
             });
 
             // IMPORTANT: Hydrate the Zustand store from localStorage
             // ApiKeyDialog saved to localStorage but didn't update the store
-            const savedLayout = localStorage.getItem('tv_saved_layout');
+            const savedLayout = get(STORAGE_KEYS.SAVED_LAYOUT);
             if (savedLayout) {
                 logger.info('[CloudSync] Hydrating workspace store from login-loaded data');
                 setFromCloud(savedLayout);
@@ -187,7 +188,7 @@ export const useCloudWorkspaceSync = (isAuthenticated) => {
                     Object.entries(prefs).forEach(([key, value]) => {
                         try {
                             if (value !== null && value !== undefined) {
-                                localStorage.setItem(key, value);
+                                set(key, value);
                                 lastSavedState.current[key] = value;
                                 appliedCount++;
                             }
@@ -215,14 +216,14 @@ export const useCloudWorkspaceSync = (isAuthenticated) => {
                     // No cloud data or timeout - use local state
                     logger.info('[CloudSync] No cloud preferences, using local state.');
                     SYNC_KEYS.forEach(key => {
-                        lastSavedState.current[key] = localStorage.getItem(key);
+                        lastSavedState.current[key] = get(key);
                     });
                 }
             } catch (error) {
                 logger.error('[CloudSync] Failed to load preferences:', error);
                 // Initialize lastSavedState with current localStorage
                 SYNC_KEYS.forEach(key => {
-                    lastSavedState.current[key] = localStorage.getItem(key);
+                    lastSavedState.current[key] = get(key);
                 });
             }
 
@@ -246,7 +247,7 @@ export const useCloudWorkspaceSync = (isAuthenticated) => {
             let hasChanges = false;
 
             SYNC_KEYS.forEach(key => {
-                const currentValue = localStorage.getItem(key);
+                const currentValue = get(key);
                 const lastValue = lastSavedState.current[key];
 
                 if (currentValue !== lastValue) {
@@ -270,7 +271,7 @@ export const useCloudWorkspaceSync = (isAuthenticated) => {
                 // Re-collect changes at save time (in case more changes happened)
                 const finalToSave = {};
                 SYNC_KEYS.forEach(key => {
-                    const currentValue = localStorage.getItem(key);
+                    const currentValue = get(key);
                     const lastValue = lastSavedState.current[key];
                     if (currentValue !== lastValue && !(currentValue == null && lastValue == null)) {
                         finalToSave[key] = currentValue || "";

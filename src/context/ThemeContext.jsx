@@ -1,16 +1,17 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { getThemeType } from '../utils/chartTheme';
+import { getString, set, STORAGE_KEYS } from '../services/storageService';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
     const [theme, setTheme] = useState(() => {
-        return localStorage.getItem('tv_theme') || 'dark';
+        return getString(STORAGE_KEYS.THEME, 'dark');
     });
 
     // Re-sync theme from localStorage (called after cloud sync)
     const refreshFromStorage = useCallback(() => {
-        const storedTheme = localStorage.getItem('tv_theme');
+        const storedTheme = getString(STORAGE_KEYS.THEME, 'dark');
         if (storedTheme && storedTheme !== theme) {
             setTheme(storedTheme);
         }
@@ -42,7 +43,7 @@ export const ThemeProvider = ({ children }) => {
     // Apply theme to document
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('tv_theme', theme);
+        set(STORAGE_KEYS.THEME, theme);
     }, [theme]);
 
     const toggleTheme = () => {

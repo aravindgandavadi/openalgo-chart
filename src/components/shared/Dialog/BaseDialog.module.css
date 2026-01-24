@@ -1,0 +1,100 @@
+/**
+ * BaseDialog Styles
+ */
+
+.content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+}
+
+.icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iconDefault {
+    color: var(--text-secondary, #787b86);
+}
+
+.iconDanger {
+    color: #f44336;
+}
+
+.iconSuccess {
+    color: #4caf50;
+}
+
+.iconError {
+    color: #f44336;
+}
+
+.message {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary, #787b86);
+    margin: 0;
+}
+
+/* Buttons */
+.cancelBtn,
+.confirmBtn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: none;
+}
+
+.cancelBtn {
+    background: var(--bg-secondary, #2a2e39);
+    color: var(--text-primary, #d1d4dc);
+    border: 1px solid var(--border-color, #363a45);
+}
+
+.cancelBtn:hover:not(:disabled) {
+    background: var(--bg-hover, #363a45);
+}
+
+.confirmBtn {
+    background: #2962ff;
+    color: white;
+}
+
+.confirmBtn:hover:not(:disabled) {
+    background: #1e4fd8;
+}
+
+.confirmBtn.danger {
+    background: #f44336;
+}
+
+.confirmBtn.danger:hover:not(:disabled) {
+    background: #d32f2f;
+}
+
+.cancelBtn:disabled,
+.confirmBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Light theme */
+[data-theme="light"] .cancelBtn {
+    background: #f0f3fa;
+    color: #131722;
+    border-color: #e0e3eb;
+}
+
+[data-theme="light"] .cancelBtn:hover:not(:disabled) {
+    background: #e0e3eb;
+}
+
+[data-theme="light"] .message {
+    color: #787b86;
+}

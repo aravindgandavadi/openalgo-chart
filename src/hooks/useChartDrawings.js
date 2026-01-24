@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { loadDrawings, saveDrawings } from '../services/openalgo';
+import logger from '../utils/logger';
 
 /**
  * Hook to handle loading and auto-saving of drawings.
@@ -19,26 +20,37 @@ export const useChartDrawings = (manager, symbol, exchange, interval, onDrawings
 
         managerRef.current = manager;
 
+        // Track if effect is still active
+        let isMounted = true;
+
         // Load saved drawings from backend
         const loadSavedDrawings = async () => {
-            console.log('[ChartComponent] loadSavedDrawings called for:', symbol, exchange, interval);
+            logger.debug('[ChartComponent] loadSavedDrawings called for:', symbol, exchange, interval);
             try {
                 const drawings = await loadDrawings(symbol, exchange, interval);
-                console.log('[ChartComponent] loadDrawings result:', drawings);
-                if (drawings && drawings.length > 0 && manager.importDrawings) {
-                    console.log('[ChartComponent] Importing', drawings.length, 'drawings...');
-                    manager.importDrawings(drawings, true);
-                    console.log('[ChartComponent] Import complete!');
+                if (!isMounted) return; // Abort if unmounted
 
-                    // Initial sync after load
-                    if (onDrawingsSync && manager.exportDrawings) {
-                        onDrawingsSync(manager.exportDrawings());
+                logger.debug('[ChartComponent] loadDrawings result:', drawings);
+                if (drawings && drawings.length > 0 && manager.importDrawings) {
+                    logger.debug('[ChartComponent] Importing', drawings.length, 'drawings...');
+                    try {
+                        manager.importDrawings(drawings, true);
+                        logger.debug('[ChartComponent] Import complete!');
+
+                        // Initial sync after load
+                        if (onDrawingsSync && manager.exportDrawings) {
+                            onDrawingsSync(manager.exportDrawings());
+                        }
+                    } catch (importErr) {
+                        logger.warn('[ChartComponent] Error importing drawings (chart likely disposed):', importErr);
                     }
                 } else {
-                    console.log('[ChartComponent] No drawings to import or importDrawings not available');
+                    logger.debug('[ChartComponent] No drawings to import or importDrawings not available');
                 }
             } catch (error) {
-                console.warn('[ChartComponent] Failed to load saved drawings:', error);
+                if (isMounted) {
+                    logger.warn('[ChartComponent] Failed to load saved drawings:', error);
+                }
             }
         };
         loadSavedDrawings();
@@ -51,10 +63,10 @@ export const useChartDrawings = (manager, symbol, exchange, interval, onDrawings
                     if (manager.exportDrawings) {
                         const drawings = manager.exportDrawings();
                         await saveDrawings(symbol, exchange, interval, drawings);
-                        console.log('[ChartComponent] Auto-saved', drawings.length, 'drawings');
+                        logger.debug('[ChartComponent] Auto-saved', drawings.length, 'drawings');
                     }
                 } catch (error) {
-                    console.warn('[ChartComponent] Failed to auto-save drawings:', error);
+                    logger.warn('[ChartComponent] Failed to auto-save drawings:', error);
                 }
             }, 1000); // Debounce 1 second
         };
@@ -62,7 +74,7 @@ export const useChartDrawings = (manager, symbol, exchange, interval, onDrawings
         // Connect auto-save to LineToolManager's onDrawingsChanged callback
         if (manager.setOnDrawingsChanged) {
             manager.setOnDrawingsChanged(() => {
-                console.log('[ChartComponent] Drawing changed, triggering auto-save...');
+                logger.debug('[ChartComponent] Drawing changed, triggering auto-save...');
                 autoSaveDrawings();
 
                 // Sync with parent for Object Tree
@@ -76,6 +88,7 @@ export const useChartDrawings = (manager, symbol, exchange, interval, onDrawings
         manager._autoSaveDrawings = autoSaveDrawings;
 
         return () => {
+            isMounted = false; // Cancel async operations
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
             // Unset the drawings changed callback to prevent memory leaks
             if (manager && manager.setOnDrawingsChanged) {

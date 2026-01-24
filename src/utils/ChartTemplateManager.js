@@ -3,6 +3,9 @@
  * Templates store complete chart configurations: indicators, chart type, appearance settings
  */
 
+import logger from './logger';
+import { getJSON, setJSON } from '../services/storageService';
+
 const STORAGE_KEY = 'chart_templates';
 
 /**
@@ -46,10 +49,9 @@ class ChartTemplateManager {
     getAllTemplates() {
         if (this._templates === null) {
             try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                this._templates = saved ? JSON.parse(saved) : [];
+                this._templates = getJSON(STORAGE_KEY, []);
             } catch (e) {
-                console.warn('Failed to load chart templates:', e);
+                logger.warn('Failed to load chart templates:', e);
                 this._templates = [];
             }
         }
@@ -61,10 +63,10 @@ class ChartTemplateManager {
      */
     _saveTemplates() {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this._templates));
+            setJSON(STORAGE_KEY, this._templates);
             this._notifyListeners();
         } catch (e) {
-            console.warn('Failed to save chart templates:', e);
+            logger.warn('Failed to save chart templates:', e);
         }
     }
 

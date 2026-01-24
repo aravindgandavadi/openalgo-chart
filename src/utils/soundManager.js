@@ -3,6 +3,9 @@
  * Handles playing alert sounds with proper browser compatibility
  */
 
+import logger from './logger';
+import { getJSON, setJSON } from '../services/storageService';
+
 // Settings stored in localStorage
 const SETTINGS_KEY = 'tv_alert_sound_settings';
 
@@ -18,12 +21,12 @@ const DEFAULT_SETTINGS = {
  */
 export const getSoundSettings = () => {
     try {
-        const saved = localStorage.getItem(SETTINGS_KEY);
+        const saved = getJSON(SETTINGS_KEY, null);
         if (saved) {
-            return JSON.parse(saved);
+            return saved;
         }
     } catch (e) {
-        console.warn('[SoundManager] Error reading settings:', e);
+        logger.warn('[SoundManager] Error reading settings:', e);
     }
     return { ...DEFAULT_SETTINGS };
 };
@@ -33,9 +36,9 @@ export const getSoundSettings = () => {
  */
 export const saveSoundSettings = (settings) => {
     try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        setJSON(SETTINGS_KEY, settings);
     } catch (e) {
-        console.warn('[SoundManager] Error saving settings:', e);
+        logger.warn('[SoundManager] Error saving settings:', e);
     }
 };
 
@@ -69,7 +72,7 @@ const createBeepSound = (frequency = 800, duration = 200, type = 'sine') => {
                 audioContext.close();
             };
         } catch (error) {
-            console.warn('[SoundManager] Audio playback failed:', error);
+            logger.warn('[SoundManager] Audio playback failed:', error);
         }
     };
 };
@@ -103,7 +106,7 @@ export const playAlertSound = (type = 'default') => {
         generator();
         return true;
     } catch (error) {
-        console.warn('[SoundManager] Failed to play sound:', error);
+        logger.warn('[SoundManager] Failed to play sound:', error);
         return false;
     }
 };

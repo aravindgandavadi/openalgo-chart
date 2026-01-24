@@ -6,6 +6,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Search, X, Filter } from 'lucide-react';
 import styles from '../AccountPanel.module.css';
 import { formatCurrency, sortData } from '../utils/accountFormatters';
+import { BaseTable } from '../../shared';
 
 const HoldingsTable = ({ holdings, onRowClick }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -67,13 +68,98 @@ const HoldingsTable = ({ holdings, onRowClick }) => {
         }));
     }, []);
 
-    // Get sort indicator
-    const getSortIndicator = (key) => {
-        if (sortConfig.key !== key) return null;
-        return sortConfig.direction === 'asc' ? '↑' : '↓';
-    };
-
     const hasActiveFilters = searchTerm || filters.exchange.length > 0;
+
+    // Define columns for BaseTable
+    const columns = useMemo(() => [
+        {
+            key: 'symbol',
+            title: 'Symbol',
+            width: '20%',
+            sortable: true,
+            render: (row) => <span className={styles.symbolCell}>{row.symbol}</span>
+        },
+        { key: 'exchange', title: 'Exchange', width: '10%' },
+        {
+            key: 'quantity',
+            title: 'Qty',
+            width: '10%',
+            align: 'right',
+            sortable: true
+        },
+        {
+            key: 'avgCost',
+            title: 'Avg Cost',
+            width: '12%',
+            align: 'right',
+            render: (row) => {
+                const pnl = parseFloat(row.pnl || 0);
+                const ltp = parseFloat(row.close || row.ltp || 0);
+                const qty = parseFloat(row.quantity || 0);
+                const currentValue = ltp * qty;
+                const costValue = currentValue - pnl;
+                const avgCost = qty > 0 ? costValue / qty : 0;
+                return formatCurrency(avgCost);
+            }
+        },
+        {
+            key: 'ltp',
+            title: 'LTP',
+            width: '12%',
+            align: 'right',
+            sortable: true,
+            render: (row) => formatCurrency(parseFloat(row.close || row.ltp || 0))
+        },
+        {
+            key: 'value',
+            title: 'Value',
+            width: '12%',
+            align: 'right',
+            render: (row) => {
+                const ltp = parseFloat(row.close || row.ltp || 0);
+                const qty = parseFloat(row.quantity || 0);
+                const currentValue = ltp * qty;
+                return formatCurrency(currentValue);
+            }
+        },
+        {
+            key: 'pnl',
+            title: 'P&L',
+            width: '12%',
+            align: 'right',
+            sortable: true,
+            render: (row) => {
+                const pnl = parseFloat(row.pnl || 0);
+                return (
+                    <span className={pnl >= 0 ? styles.positive : styles.negative}>
+                        {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
+                    </span>
+                );
+            }
+        },
+        {
+            key: 'pnlpercent',
+            title: 'P&L %',
+            width: '12%',
+            align: 'right',
+            sortable: true,
+            render: (row) => {
+                const pnlPercent = parseFloat(row.pnlpercent || 0);
+                return (
+                    <span className={pnlPercent >= 0 ? styles.positive : styles.negative}>
+                        {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
+                    </span>
+                );
+            }
+        }
+    ], []);
+
+    // Create custom row click handler
+    const handleRowClick = useCallback((row) => {
+        if (onRowClick) {
+            onRowClick(row.symbol, row.exchange);
+        }
+    }, [onRowClick]);
 
     if (holdings.length === 0) {
         return (
@@ -158,128 +244,24 @@ const HoldingsTable = ({ holdings, onRowClick }) => {
                 </div>
             )}
 
-            {/* Table */}
-            {sortedHoldings.length === 0 ? (
-                <div className={styles.emptyState}>
-                    <span className={styles.emptyIcon}>🔍</span>
-                    <p>No holdings match your filters</p>
-                    <button className={styles.clearFiltersBtn} onClick={handleClearFilters}>
-                        Clear Filters
-                    </button>
-                </div>
-            ) : (
-                <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-                <colgroup>
-                    <col style={{ width: '20%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '12%' }} />
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th
-                            className={`${styles.sortableHeader} ${sortConfig.key === 'symbol' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('symbol')}
-                        >
-                            Symbol
-                            {getSortIndicator('symbol') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('symbol')}
-                                </span>
-                            )}
-                        </th>
-                        <th>Exchange</th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'quantity' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('quantity')}
-                        >
-                            Qty
-                            {getSortIndicator('quantity') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('quantity')}
-                                </span>
-                            )}
-                        </th>
-                        <th className={styles.alignRight}>Avg Cost</th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'close' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('close')}
-                        >
-                            LTP
-                            {getSortIndicator('close') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('close')}
-                                </span>
-                            )}
-                        </th>
-                        <th className={styles.alignRight}>Value</th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'pnl' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('pnl')}
-                        >
-                            P&L
-                            {getSortIndicator('pnl') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('pnl')}
-                                </span>
-                            )}
-                        </th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'pnlpercent' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('pnlpercent')}
-                        >
-                            P&L %
-                            {getSortIndicator('pnlpercent') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('pnlpercent')}
-                                </span>
-                            )}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedHoldings.map((holding, idx) => {
-                        const pnl = parseFloat(holding.pnl || 0);
-                        const pnlPercent = parseFloat(holding.pnlpercent || 0);
-                        const qty = parseFloat(holding.quantity || 0);
-                        const ltp = parseFloat(holding.close || holding.ltp || 0);
-
-                        // Calculate average cost from P&L if not provided directly
-                        // Formula: avgCost = (currentValue - pnl) / qty
-                        const currentValue = ltp * qty;
-                        const costValue = currentValue - pnl;
-                        const avgCost = qty > 0 ? costValue / qty : 0;
-
-                        return (
-                            <tr
-                                key={`${holding.symbol}-${idx}`}
-                                onClick={() => onRowClick(holding.symbol, holding.exchange)}
-                                className={styles.clickableRow}
-                            >
-                                <td className={styles.symbolCell}>{holding.symbol}</td>
-                                <td>{holding.exchange}</td>
-                                <td className={styles.alignRight}>{qty}</td>
-                                <td className={styles.alignRight}>{formatCurrency(avgCost)}</td>
-                                <td className={styles.alignRight}>{formatCurrency(ltp)}</td>
-                                <td className={styles.alignRight}>{formatCurrency(currentValue)}</td>
-                                <td className={`${styles.alignRight} ${pnl >= 0 ? styles.positive : styles.negative}`}>
-                                    {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
-                                </td>
-                                <td className={`${styles.alignRight} ${pnlPercent >= 0 ? styles.positive : styles.negative}`}>
-                                    {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-            )}
+            {/* Use BaseTable */}
+            <BaseTable
+                columns={columns}
+                data={sortedHoldings}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+                onRowClick={handleRowClick}
+                keyField="symbol"
+                emptyState={
+                    <div className={styles.emptyState}>
+                        <span className={styles.emptyIcon}>🔍</span>
+                        <p>No holdings match your filters</p>
+                        <button className={styles.clearFiltersBtn} onClick={handleClearFilters}>
+                            Clear Filters
+                        </button>
+                    </div>
+                }
+            />
         </div>
     );
 };

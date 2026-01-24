@@ -4,6 +4,7 @@
  */
 
 import logger from '../utils/logger.js';
+import { safeParseJSON } from './storageService';
 import { ConnectionState, setConnectionStatus } from './connectionStatus';
 import {
     DEFAULT_HOST,
@@ -171,7 +172,7 @@ class SharedWebSocketManager {
 
         // Validate API key before connecting
         if (!apiKey) {
-            console.error('[SharedWS] No API key found. Please configure your API key in settings.');
+            logger.error('[SharedWS] No API key found. Please configure your API key in settings.');
             return;
         }
 
@@ -188,7 +189,8 @@ class SharedWebSocketManager {
 
         this._ws.onmessage = (event) => {
             try {
-                const message = JSON.parse(event.data);
+                const message = safeParseJSON(event.data);
+                if (!message) return;
 
                 // Handle ping - respond with pong
                 if (message.type === 'ping') {
@@ -211,7 +213,7 @@ class SharedWebSocketManager {
 
                 // Handle auth error
                 if (message.type === 'error' || (message.type === 'auth' && message.status !== 'success')) {
-                    console.error('[SharedWS] Auth error:', message.message || message.code);
+                    logger.error('[SharedWS] Auth error:', message.message || message.code);
                     return;
                 }
 
@@ -226,7 +228,7 @@ class SharedWebSocketManager {
                             try {
                                 sub.callback({ ...message, data: message.data || {} });
                             } catch (err) {
-                                console.error('[SharedWS] Callback error for subscriber', id, ':', err);
+                                logger.error('[SharedWS] Callback error for subscriber', id, ':', err);
                                 // Log error but continue processing other subscribers
                             }
                         }
@@ -234,7 +236,7 @@ class SharedWebSocketManager {
                 }
             } catch (err) {
                 // Log JSON parse errors instead of silently ignoring
-                console.error('[SharedWS] Failed to parse WebSocket message:', err);
+                logger.error('[SharedWS] Failed to parse WebSocket message:', err);
                 logger.debug('[SharedWS] Raw message data:', event.data);
             }
         };
@@ -250,7 +252,7 @@ class SharedWebSocketManager {
         };
 
         this._ws.onerror = (err) => {
-            console.error('[SharedWS] Error:', err);
+            logger.error('[SharedWS] Error:', err);
         };
     }
 
@@ -297,7 +299,7 @@ class SharedWebSocketManager {
         // Validate symbolKey format before splitting
         const parts = symbolKey.split(':');
         if (parts.length !== 2) {
-            console.warn('[SharedWS] Invalid symbolKey format:', symbolKey);
+            logger.warn('[SharedWS] Invalid symbolKey format:', symbolKey);
             return;
         }
 
@@ -413,21 +415,21 @@ const createManagedWebSocket = (urlBuilder, options) => {
 
         // Warn if API key is missing
         if (!apiKey) {
-            console.warn('[WebSocket] No API key found! Set your API key in Settings or run: localStorage.setItem("oa_apikey", "YOUR_KEY")');
+            logger.warn('[WebSocket] No API key found! Set your API key in Settings or run: localStorage.setItem("oa_apikey", "YOUR_KEY")');
         }
 
-        console.log('[WebSocket] Connecting to:', url);
+        logger.debug('[WebSocket] Connecting to:', url);
 
         try {
             socket = new WebSocket(url);
         } catch (error) {
-            console.error('[WebSocket] Failed to create WebSocket:', error);
+            logger.error('[WebSocket] Failed to create WebSocket:', error);
             setConnectionStatus(ConnectionState.DISCONNECTED);
             return;
         }
 
         socket.onopen = () => {
-            console.log('[WebSocket] Connected, authenticating...');
+            logger.debug('[WebSocket] Connected, authenticating...');
             reconnectAttempts = 0;
 
             // Send authentication message
@@ -441,7 +443,8 @@ const createManagedWebSocket = (urlBuilder, options) => {
 
         socket.onmessage = (event) => {
             try {
-                const message = JSON.parse(event.data);
+                const message = safeParseJSON(event.data);
+                if (!message) return;
 
                 // Log all incoming messages for debugging
                 logger.debug('[WebSocket] Received message:', message);
@@ -457,7 +460,7 @@ const createManagedWebSocket = (urlBuilder, options) => {
                 if ((message.type === 'auth' && message.status === 'success') ||
                     message.type === 'authenticated' ||
                     message.status === 'authenticated') {
-                    console.log('[WebSocket] ✓ Authenticated successfully, broker:', message.broker || 'unknown');
+                    logger.debug('[WebSocket] ✓ Authenticated successfully, broker:', message.broker || 'unknown');
                     authenticated = true;
                     setConnectionStatus(ConnectionState.CONNECTED);
                     sendSubscriptions();
@@ -466,7 +469,7 @@ const createManagedWebSocket = (urlBuilder, options) => {
 
                 // Handle auth error
                 if (message.type === 'error' || (message.type === 'auth' && message.status !== 'success')) {
-                    console.error('[WebSocket] ✗ Authentication failed:', message.message || message.code || 'Unknown error');
+                    logger.error('[WebSocket] ✗ Authentication failed:', message.message || message.code || 'Unknown error');
                     setConnectionStatus(ConnectionState.DISCONNECTED);
                     return;
                 }
@@ -476,32 +479,32 @@ const createManagedWebSocket = (urlBuilder, options) => {
                     onMessage(message);
                 }
             } catch (error) {
-                console.error('[WebSocket] Error parsing message:', error);
+                logger.error('[WebSocket] Error parsing message:', error);
             }
         };
 
         socket.onerror = () => {
-            console.error('[WebSocket] ✗ Connection error - check if OpenAlgo WebSocket server is running on port 8765');
+            logger.error('[WebSocket] ✗ Connection error - check if OpenAlgo WebSocket server is running on port 8765');
         };
 
         socket.onclose = (event) => {
             authenticated = false;
             if (manualClose) {
-                console.log('[WebSocket] Connection closed');
+                logger.debug('[WebSocket] Connection closed');
                 setConnectionStatus(ConnectionState.DISCONNECTED);
                 return;
             }
 
-            console.warn('[WebSocket] Connection closed unexpectedly, code:', event.code, 'reason:', event.reason || 'none');
+            logger.warn('[WebSocket] Connection closed unexpectedly, code:', event.code, 'reason:', event.reason || 'none');
 
             if (!event.wasClean && reconnectAttempts < maxAttempts) {
                 const delay = Math.min(1000 * 2 ** reconnectAttempts, 10000);
-                console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxAttempts})`);
+                logger.debug(`[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxAttempts})`);
                 setConnectionStatus(ConnectionState.RECONNECTING);
                 reconnectAttempts += 1;
                 setTimeout(connect, delay);
             } else {
-                console.error('[WebSocket] ✗ Max reconnection attempts reached or clean close');
+                logger.error('[WebSocket] ✗ Max reconnection attempts reached or clean close');
                 setConnectionStatus(ConnectionState.DISCONNECTED);
             }
         };
@@ -561,7 +564,7 @@ const createManagedWebSocket = (urlBuilder, options) => {
                 try {
                     socket.send(JSON.stringify(unsubscribeMsg));
                 } catch (error) {
-                    console.error('[WebSocket] Error sending unsubscribe:', error);
+                    logger.error('[WebSocket] Error sending unsubscribe:', error);
                 }
             });
         },

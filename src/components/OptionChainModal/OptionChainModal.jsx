@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { BaseModal } from '../shared';
 import { X, Loader2, RefreshCw, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getOptionChain, getAvailableExpiries, UNDERLYINGS } from '../../services/optionChain';
 import { subscribeToMultiTicker, getMultiOptionGreeks } from '../../services/openalgo';
 import styles from './OptionChainModal.module.css';
 import classNames from 'classnames';
+import logger from '../../utils/logger';
 
 // Import extracted components and format helpers
+import { formatCurrency, formatPrice } from '../../utils/shared/formatters';
 import { formatOI, formatLTP, formatLtpChange, formatGreek, formatDelta, formatIv, formatTheta, formatVega, formatGamma } from './components';
 import { useOptionChainKeyboard } from './hooks';
 
@@ -221,7 +224,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
     const fetchExpiries = useCallback(async () => {
         // Skip if pending initialSymbol processing
         if (pendingInitialSymbolRef.current) {
-            console.log('[OptionChain] Skipping fetchExpiries - waiting for initialSymbol');
+            logger.debug('[OptionChain] Skipping fetchExpiries - waiting for initialSymbol');
             return;
         }
 
@@ -230,7 +233,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
         const currentSymbol = underlying.symbol;
         const currentExchange = underlying.exchange;
 
-        console.log('[OptionChain] Fetching expiries for', currentSymbol, 'requestId:', requestId);
+        logger.debug('[OptionChain] Fetching expiries for', currentSymbol, 'requestId:', requestId);
         setIsLoadingExpiries(true);
 
         try {
@@ -238,7 +241,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
             // Check if this request is still current (user hasn't switched symbols)
             if (requestId !== expiryRequestIdRef.current) {
-                console.log('[OptionChain] Discarding stale expiry response for', currentSymbol, 'requestId:', requestId, 'current:', expiryRequestIdRef.current);
+                logger.debug('[OptionChain] Discarding stale expiry response for', currentSymbol, 'requestId:', requestId, 'current:', expiryRequestIdRef.current);
                 return;
             }
 
@@ -250,7 +253,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
         } catch (err) {
             // Only handle error if request is still current
             if (requestId === expiryRequestIdRef.current) {
-                console.error('Failed to fetch expiries:', err);
+                logger.error('Failed to fetch expiries:', err);
                 setAvailableExpiries([]);
             }
         } finally {
@@ -271,7 +274,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
         const currentExchange = underlying.exchange;
         const currentExpiry = selectedExpiry;
 
-        console.log('[OptionChain] Fetching chain for', currentSymbol, currentExpiry, 'requestId:', requestId);
+        logger.debug('[OptionChain] Fetching chain for', currentSymbol, currentExpiry, 'requestId:', requestId);
         setIsLoading(true);
         setError(null);
 
@@ -280,7 +283,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
             // Check if this request is still current
             if (requestId !== chainRequestIdRef.current) {
-                console.log('[OptionChain] Discarding stale chain response for', currentSymbol, 'requestId:', requestId, 'current:', chainRequestIdRef.current);
+                logger.debug('[OptionChain] Discarding stale chain response for', currentSymbol, 'requestId:', requestId, 'current:', chainRequestIdRef.current);
                 return;
             }
 
@@ -289,7 +292,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
             // Only handle error if request is still current
             if (requestId === chainRequestIdRef.current) {
                 setError('Failed to fetch option chain');
-                console.error(err);
+                logger.error(err);
             }
         } finally {
             // Only update loading state if request is still current
@@ -311,7 +314,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
             setOptionChain(chain);
             setStrikeCount(newStrikeCount);
         } catch (err) {
-            console.error('Failed to load more strikes:', err);
+            logger.error('Failed to load more strikes:', err);
         } finally {
             setIsLoadingMore(false);
         }
@@ -366,7 +369,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
         if (symbols.length === 0) return;
 
-        console.log('[OptionChain] Subscribing to', symbols.length, 'option symbols for live LTP');
+        logger.debug('[OptionChain] Subscribing to', symbols.length, 'option symbols for live LTP');
 
         // Subscribe to WebSocket
         wsRef.current = subscribeToMultiTicker(symbols, (ticker) => {
@@ -383,7 +386,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
         return () => {
             if (wsRef.current) {
-                console.log('[OptionChain] Unsubscribing from live LTP');
+                logger.debug('[OptionChain] Unsubscribing from live LTP');
                 wsRef.current.close();
                 wsRef.current = null;
             }
@@ -412,7 +415,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
         if (symbolsToFetch.length === 0) return;
 
-        console.log('[OptionChain] Fetching Greeks for', symbolsToFetch.length, 'options using batch API, requestId:', requestId);
+        logger.debug('[OptionChain] Fetching Greeks for', symbolsToFetch.length, 'options using batch API, requestId:', requestId);
         setGreeksLoading(true);
 
         // Helper to increment retry count and check if should block
@@ -423,9 +426,9 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
             if (newCount >= MAX_GREEKS_RETRY_COUNT) {
                 failedGreeksSymbolsRef.current.add(symbol);
-                console.log(`[OptionChain] Symbol ${symbol} permanently blocked after ${newCount} failed attempts`);
+                logger.debug(`[OptionChain] Symbol ${symbol} permanently blocked after ${newCount} failed attempts`);
             } else {
-                console.log(`[OptionChain] Symbol ${symbol} failed attempt ${newCount}/${MAX_GREEKS_RETRY_COUNT}`);
+                logger.debug(`[OptionChain] Symbol ${symbol} failed attempt ${newCount}/${MAX_GREEKS_RETRY_COUNT}`);
             }
         };
 
@@ -435,7 +438,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
             // Check if request is still current
             if (requestId !== greeksRequestIdRef.current) {
-                console.log('[OptionChain] Discarding stale Greeks response, requestId:', requestId, 'current:', greeksRequestIdRef.current);
+                logger.debug('[OptionChain] Discarding stale Greeks response, requestId:', requestId, 'current:', greeksRequestIdRef.current);
                 return;
             }
 
@@ -468,16 +471,16 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
                 });
 
                 setGreeksData(newGreeksData);
-                console.log('[OptionChain] Greeks batch loaded:', response.summary, '- Total:', newGreeksData.size, ', Permanently failed:', failedGreeksSymbolsRef.current.size);
+                logger.debug('[OptionChain] Greeks batch loaded:', response.summary, '- Total:', newGreeksData.size, ', Permanently failed:', failedGreeksSymbolsRef.current.size);
             } else {
                 // API returned null/empty - increment retry count for all requested symbols
-                console.log('[OptionChain] Greeks batch returned empty/null, incrementing retry count for', symbolsToFetch.length, 'symbols');
+                logger.debug('[OptionChain] Greeks batch returned empty/null, incrementing retry count for', symbolsToFetch.length, 'symbols');
                 symbolsToFetch.forEach(s => {
                     markSymbolFailed(s.symbol);
                 });
             }
         } catch (error) {
-            console.error('[OptionChain] Greeks batch API error:', error);
+            logger.error('[OptionChain] Greeks batch API error:', error);
             // On error, increment retry count for all symbols
             symbolsToFetch.forEach(s => {
                 markSymbolFailed(s.symbol);
@@ -506,11 +509,11 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
         });
 
         if (missingSymbols.length === 0) {
-            console.log('[OptionChain] No more Greeks to retry (permanently failed:', failedGreeksSymbolsRef.current.size, ')');
+            logger.debug('[OptionChain] No more Greeks to retry (permanently failed:', failedGreeksSymbolsRef.current.size, ')');
             return;
         }
 
-        console.log('[OptionChain] Retrying', missingSymbols.length, 'missing Greeks...');
+        logger.debug('[OptionChain] Retrying', missingSymbols.length, 'missing Greeks...');
         setGreeksLoading(true);
 
         // Wait 2 seconds to avoid rate limits
@@ -524,7 +527,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
             if (newCount >= MAX_GREEKS_RETRY_COUNT) {
                 failedGreeksSymbolsRef.current.add(symbol);
-                console.log(`[OptionChain] Symbol ${symbol} permanently blocked after ${newCount} failed attempts`);
+                logger.debug(`[OptionChain] Symbol ${symbol} permanently blocked after ${newCount} failed attempts`);
             }
         };
 
@@ -562,16 +565,16 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
                 });
 
                 setGreeksData(newGreeksData);
-                console.log('[OptionChain] Retry loaded:', response.summary, '- Permanently failed:', failedGreeksSymbolsRef.current.size);
+                logger.debug('[OptionChain] Retry loaded:', response.summary, '- Permanently failed:', failedGreeksSymbolsRef.current.size);
             } else {
                 // API returned null/empty - increment retry count
-                console.log('[OptionChain] Retry returned empty, incrementing retry count for', missingSymbols.length, 'symbols');
+                logger.debug('[OptionChain] Retry returned empty, incrementing retry count for', missingSymbols.length, 'symbols');
                 missingSymbols.forEach(s => {
                     markSymbolFailed(s.symbol);
                 });
             }
         } catch (error) {
-            console.error('[OptionChain] Retry failed:', error);
+            logger.error('[OptionChain] Retry failed:', error);
             // On error, increment retry count
             missingSymbols.forEach(s => {
                 markSymbolFailed(s.symbol);
@@ -603,13 +606,13 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
         );
 
         if (hasMissing) {
-            console.log('[OptionChain] Some Greeks missing (excluding failed), scheduling retry...');
+            logger.debug('[OptionChain] Some Greeks missing (excluding failed), scheduling retry...');
             const timeoutId = setTimeout(() => {
                 retryFailedGreeks();
             }, 500);
             return () => clearTimeout(timeoutId);
         } else if (failedGreeksSymbolsRef.current.size > 0) {
-            console.log('[OptionChain] All retryable Greeks loaded. Permanently failed:', failedGreeksSymbolsRef.current.size, 'symbols');
+            logger.debug('[OptionChain] All retryable Greeks loaded. Permanently failed:', failedGreeksSymbolsRef.current.size, 'symbols');
         }
     }, [isOpen, viewMode, greeksLoading, greeksData.size, optionChain?.chain, retryFailedGreeks]);
 
@@ -622,7 +625,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
             failedGreeksSymbolsRef.current = new Set(); // Clear failed symbols
             greeksRetryCountRef.current = new Map(); // Reset retry counts
             setViewMode('ltp-oi'); // Reset view mode for next open
-            console.log('[OptionChain] Modal closed - Greeks state reset');
+            logger.debug('[OptionChain] Modal closed - Greeks state reset');
             return;
         }
     }, [isOpen]);
@@ -709,7 +712,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
         const isPositive = change >= 0;
 
         return {
-            price: spotLTP.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+            price: formatCurrency(spotLTP, { showSymbol: false, decimals: 2 }),
             change: (isPositive ? '+' : '') + change.toFixed(2),
             percent: (isPositive ? '+' : '') + changePercent.toFixed(2) + '%',
             isPositive
@@ -775,7 +778,7 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
 
                 {/* STRIKE */}
                 <div className={classNames(styles.cell, styles.strikeCell)}>
-                    {row.strike.toLocaleString('en-IN')}
+                    {formatPrice(row.strike, 0)}
                 </div>
 
                 {/* PUTS - Combined LTP + OI */}
@@ -878,223 +881,227 @@ const OptionChainModal = ({ isOpen, onClose, onSelectOption, initialSymbol }) =>
     const spotInfo = formatSpotChange();
 
     return (
-        <div className={styles.overlay} onClick={onClose}>
-            <div className={classNames(styles.modal, { [styles.modalWide]: viewMode === 'greeks' })} onClick={e => e.stopPropagation()}>
-                {/* Header */}
-                <div className={styles.header}>
-                    <div className={styles.headerLeft}>
-                        <ChevronLeft size={20} className={styles.backIcon} onClick={onClose} />
-                        <select
-                            className={styles.headerSelect}
-                            value={underlying.symbol}
-                            onChange={(e) => {
-                                const found = UNDERLYINGS.find(u => u.symbol === e.target.value);
-                                if (found) {
-                                    setUnderlying(found);
-                                    setIsCustomSymbol(false);
-                                    setSelectedExpiry(null);
-                                    setOptionChain(null);
-                                }
-                            }}
-                        >
-                            {isCustomSymbol && (
-                                <option key={underlying.symbol} value={underlying.symbol}>
-                                    {underlying.symbol}
-                                </option>
-                            )}
-                            {UNDERLYINGS.map(u => (
-                                <option key={u.symbol} value={u.symbol}>{u.symbol}</option>
-                            ))}
-                        </select>
-                        <span className={styles.headerTitle}>Options</span>
-                        <button className={styles.refreshBtnHeader} onClick={fetchChain} disabled={isLoading || !selectedExpiry}>
-                            <RefreshCw size={16} className={isLoading ? styles.spin : ''} />
-                        </button>
-                    </div>
-                    <div className={styles.headerRight}>
-                        {/* View Mode Toggle */}
-                        <div className={styles.viewToggle}>
-                            <button
-                                className={classNames(styles.viewToggleBtn, { [styles.viewToggleBtnActive]: viewMode === 'ltp-oi' })}
-                                onClick={() => setViewMode('ltp-oi')}
-                            >
-                                LTP & OI
-                            </button>
-                            <button
-                                className={classNames(styles.viewToggleBtn, { [styles.viewToggleBtnActive]: viewMode === 'greeks' })}
-                                onClick={() => setViewMode('greeks')}
-                            >
-                                Greeks
-                            </button>
-                        </div>
-                        {greeksLoading && (
-                            <div className={styles.greeksLoading}>
-                                <Loader2 size={14} className={styles.spin} />
-                                <span>Loading Greeks...</span>
-                            </div>
+        <BaseModal
+            isOpen={isOpen}
+            onClose={onClose}
+            showHeader={false}
+            noPadding={true}
+            className={classNames(styles.modalBase, { [styles.modalBaseWide]: viewMode === 'greeks' })}
+        >
+            {/* Header */}
+            <div className={styles.header}>
+                <div className={styles.headerLeft}>
+                    <ChevronLeft size={20} className={styles.backIcon} onClick={onClose} />
+                    <select
+                        className={styles.headerSelect}
+                        value={underlying.symbol}
+                        onChange={(e) => {
+                            const found = UNDERLYINGS.find(u => u.symbol === e.target.value);
+                            if (found) {
+                                setUnderlying(found);
+                                setIsCustomSymbol(false);
+                                setSelectedExpiry(null);
+                                setOptionChain(null);
+                            }
+                        }}
+                    >
+                        {isCustomSymbol && (
+                            <option key={underlying.symbol} value={underlying.symbol}>
+                                {underlying.symbol}
+                            </option>
                         )}
-                        <button className={styles.closeBtn} onClick={onClose}>
-                            <X size={20} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Expiry Picker */}
-                <div className={styles.expiryPicker}>
-                    {canScrollLeft && (
-                        <button className={styles.scrollBtn} onClick={() => setExpiryScrollIndex(prev => Math.max(0, prev - 11))}>
-                            <ChevronLeft size={14} />
-                        </button>
-                    )}
-
-                    <div className={styles.expiryGrid}>
-                        {visibleData.groups.map((group, idx) => (
-                            <div key={idx} className={styles.monthColumn}>
-                                <span className={styles.monthLabel}>{group.monthYear}</span>
-                                <div className={styles.dateGroup}>
-                                    {group.dates.map((d) => (
-                                        <button
-                                            key={d.expiry}
-                                            className={classNames(styles.dateBtn, {
-                                                [styles.activeDate]: selectedExpiry === d.expiry
-                                            })}
-                                            onClick={() => setSelectedExpiry(d.expiry)}
-                                        >
-                                            {d.day}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                        {UNDERLYINGS.map(u => (
+                            <option key={u.symbol} value={u.symbol}>{u.symbol}</option>
                         ))}
-                    </div>
-
-                    {canScrollRight && (
-                        <button className={styles.scrollBtn} onClick={() => setExpiryScrollIndex(prev => prev + visibleData.scrollAmount)}>
-                            <ChevronRight size={14} />
-                        </button>
-                    )}
+                    </select>
+                    <span className={styles.headerTitle}>Options</span>
+                    <button className={styles.refreshBtnHeader} onClick={fetchChain} disabled={isLoading || !selectedExpiry}>
+                        <RefreshCw size={16} className={isLoading ? styles.spin : ''} />
+                    </button>
                 </div>
-
-                {/* Column Headers - conditional based on view mode */}
-                {viewMode === 'ltp-oi' ? (
-                    <div className={styles.colHeaders}>
-                        <div className={styles.colHeaderCalls}>
-                            <span className={styles.colHeaderLabel}>CALLS</span>
-                            <span className={styles.colHeaderSub}>OI · LTP</span>
-                        </div>
-                        <span className={styles.colHeaderStrike}>STRIKE</span>
-                        <div className={styles.colHeaderPuts}>
-                            <span className={styles.colHeaderLabel}>PUTS</span>
-                            <span className={styles.colHeaderSub}>LTP · OI</span>
-                        </div>
-                    </div>
-                ) : (
-                    <div className={styles.colHeadersGreeks}>
-                        <div className={styles.greeksHeaderGroup}>
-                            <span className={styles.greeksHeaderLabel}>Gamma</span>
-                            <span className={styles.greeksHeaderLabel}>Vega</span>
-                            <span className={styles.greeksHeaderLabel}>Theta</span>
-                            <span className={styles.greeksHeaderLabel}>Delta</span>
-                            <span className={styles.greeksHeaderLabel}>LTP</span>
-                        </div>
-                        <span className={styles.colHeaderStrike}>STRIKE<br /><small>IV</small></span>
-                        <div className={styles.greeksHeaderGroup}>
-                            <span className={styles.greeksHeaderLabel}>LTP</span>
-                            <span className={styles.greeksHeaderLabel}>Delta</span>
-                            <span className={styles.greeksHeaderLabel}>Theta</span>
-                            <span className={styles.greeksHeaderLabel}>Vega</span>
-                            <span className={styles.greeksHeaderLabel}>Gamma</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* Table */}
-                <div className={styles.tableContainer}>
-                    {isLoading ? (
-                        <div className={styles.loading}>
-                            <Loader2 size={28} className={styles.spin} />
-                            <p>Loading option chain...</p>
-                        </div>
-                    ) : error ? (
-                        <div className={styles.error}>
-                            <p>{error}</p>
-                            <button onClick={fetchChain}>Retry</button>
-                        </div>
-                    ) : chainData.length === 0 ? (
-                        <div className={styles.empty}>
-                            <p>No options found</p>
-                            <span>Select an expiry to load option chain</span>
-                        </div>
-                    ) : (
-                        <div
-                            className={styles.tableBody}
-                            ref={tableBodyRef}
-                            tabIndex={0}
-                            onKeyDown={handleKeyDown}
+                <div className={styles.headerRight}>
+                    {/* View Mode Toggle */}
+                    <div className={styles.viewToggle}>
+                        <button
+                            className={classNames(styles.viewToggleBtn, { [styles.viewToggleBtnActive]: viewMode === 'ltp-oi' })}
+                            onClick={() => setViewMode('ltp-oi')}
                         >
-                            {/* Load more strikes button - TOP */}
-                            {strikeCount < MAX_STRIKE_COUNT && (
-                                <button
-                                    className={styles.loadMoreBtn}
-                                    onClick={loadMoreStrikes}
-                                    disabled={isLoadingMore}
-                                >
-                                    {isLoadingMore ? (
-                                        <Loader2 size={14} className={styles.spin} />
-                                    ) : (
-                                        <ChevronUp size={14} />
-                                    )}
-                                    <span>Load more strikes</span>
-                                </button>
-                            )}
-
-                            {aboveATM.map((row, idx) =>
-                                viewMode === 'greeks'
-                                    ? renderGreeksRow(row, row.strike < atmStrike, false, idx)
-                                    : renderRow(row, row.strike < atmStrike, false, idx)
-                            )}
-
-                            {optionChain && (
-                                <div className={styles.spotBar} data-spot-bar="true">
-                                    <div className={styles.spotLine}></div>
-                                    <div className={styles.spotBadge}>
-                                        <span>Spot price</span>
-                                        <strong>{spotInfo.price}</strong>
-                                        <span className={classNames(styles.spotChange, { [styles.positive]: spotInfo.isPositive, [styles.negative]: !spotInfo.isPositive })}>
-                                            {spotInfo.change} ({spotInfo.percent})
-                                        </span>
-                                    </div>
-                                    <div className={styles.spotLine}></div>
-                                </div>
-                            )}
-
-                            {belowATM.map((row, idx) =>
-                                viewMode === 'greeks'
-                                    ? renderGreeksRow(row, false, row.strike > atmStrike, aboveATM.length + idx)
-                                    : renderRow(row, false, row.strike > atmStrike, aboveATM.length + idx)
-                            )}
-
-
-                            {/* Load more strikes button - BOTTOM */}
-                            {strikeCount < MAX_STRIKE_COUNT && (
-                                <button
-                                    className={styles.loadMoreBtn}
-                                    onClick={loadMoreStrikes}
-                                    disabled={isLoadingMore}
-                                >
-                                    {isLoadingMore ? (
-                                        <Loader2 size={14} className={styles.spin} />
-                                    ) : (
-                                        <ChevronDown size={14} />
-                                    )}
-                                    <span>Load more strikes</span>
-                                </button>
-                            )}
+                            LTP & OI
+                        </button>
+                        <button
+                            className={classNames(styles.viewToggleBtn, { [styles.viewToggleBtnActive]: viewMode === 'greeks' })}
+                            onClick={() => setViewMode('greeks')}
+                        >
+                            Greeks
+                        </button>
+                    </div>
+                    {greeksLoading && (
+                        <div className={styles.greeksLoading}>
+                            <Loader2 size={14} className={styles.spin} />
+                            <span>Loading Greeks...</span>
                         </div>
                     )}
+                    <button className={styles.closeBtn} onClick={onClose}>
+                        <X size={20} />
+                    </button>
                 </div>
             </div>
-        </div>
+
+            {/* Expiry Picker */}
+            <div className={styles.expiryPicker}>
+                {canScrollLeft && (
+                    <button className={styles.scrollBtn} onClick={() => setExpiryScrollIndex(prev => Math.max(0, prev - 11))}>
+                        <ChevronLeft size={14} />
+                    </button>
+                )}
+
+                <div className={styles.expiryGrid}>
+                    {visibleData.groups.map((group, idx) => (
+                        <div key={idx} className={styles.monthColumn}>
+                            <span className={styles.monthLabel}>{group.monthYear}</span>
+                            <div className={styles.dateGroup}>
+                                {group.dates.map((d) => (
+                                    <button
+                                        key={d.expiry}
+                                        className={classNames(styles.dateBtn, {
+                                            [styles.activeDate]: selectedExpiry === d.expiry
+                                        })}
+                                        onClick={() => setSelectedExpiry(d.expiry)}
+                                    >
+                                        {d.day}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {canScrollRight && (
+                    <button className={styles.scrollBtn} onClick={() => setExpiryScrollIndex(prev => prev + visibleData.scrollAmount)}>
+                        <ChevronRight size={14} />
+                    </button>
+                )}
+            </div>
+
+            {/* Column Headers - conditional based on view mode */}
+            {viewMode === 'ltp-oi' ? (
+                <div className={styles.colHeaders}>
+                    <div className={styles.colHeaderCalls}>
+                        <span className={styles.colHeaderLabel}>CALLS</span>
+                        <span className={styles.colHeaderSub}>OI · LTP</span>
+                    </div>
+                    <span className={styles.colHeaderStrike}>STRIKE</span>
+                    <div className={styles.colHeaderPuts}>
+                        <span className={styles.colHeaderLabel}>PUTS</span>
+                        <span className={styles.colHeaderSub}>LTP · OI</span>
+                    </div>
+                </div>
+            ) : (
+                <div className={styles.colHeadersGreeks}>
+                    <div className={styles.greeksHeaderGroup}>
+                        <span className={styles.greeksHeaderLabel}>Gamma</span>
+                        <span className={styles.greeksHeaderLabel}>Vega</span>
+                        <span className={styles.greeksHeaderLabel}>Theta</span>
+                        <span className={styles.greeksHeaderLabel}>Delta</span>
+                        <span className={styles.greeksHeaderLabel}>LTP</span>
+                    </div>
+                    <span className={styles.colHeaderStrike}>STRIKE<br /><small>IV</small></span>
+                    <div className={styles.greeksHeaderGroup}>
+                        <span className={styles.greeksHeaderLabel}>LTP</span>
+                        <span className={styles.greeksHeaderLabel}>Delta</span>
+                        <span className={styles.greeksHeaderLabel}>Theta</span>
+                        <span className={styles.greeksHeaderLabel}>Vega</span>
+                        <span className={styles.greeksHeaderLabel}>Gamma</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Table */}
+            <div className={styles.tableContainer}>
+                {isLoading ? (
+                    <div className={styles.loading}>
+                        <Loader2 size={28} className={styles.spin} />
+                        <p>Loading option chain...</p>
+                    </div>
+                ) : error ? (
+                    <div className={styles.error}>
+                        <p>{error}</p>
+                        <button onClick={fetchChain}>Retry</button>
+                    </div>
+                ) : chainData.length === 0 ? (
+                    <div className={styles.empty}>
+                        <p>No options found</p>
+                        <span>Select an expiry to load option chain</span>
+                    </div>
+                ) : (
+                    <div
+                        className={styles.tableBody}
+                        ref={tableBodyRef}
+                        tabIndex={0}
+                        onKeyDown={handleKeyDown}
+                    >
+                        {/* Load more strikes button - TOP */}
+                        {strikeCount < MAX_STRIKE_COUNT && (
+                            <button
+                                className={styles.loadMoreBtn}
+                                onClick={loadMoreStrikes}
+                                disabled={isLoadingMore}
+                            >
+                                {isLoadingMore ? (
+                                    <Loader2 size={14} className={styles.spin} />
+                                ) : (
+                                    <ChevronUp size={14} />
+                                )}
+                                <span>Load more strikes</span>
+                            </button>
+                        )}
+
+                        {aboveATM.map((row, idx) =>
+                            viewMode === 'greeks'
+                                ? renderGreeksRow(row, row.strike < atmStrike, false, idx)
+                                : renderRow(row, row.strike < atmStrike, false, idx)
+                        )}
+
+                        {optionChain && (
+                            <div className={styles.spotBar} data-spot-bar="true">
+                                <div className={styles.spotLine}></div>
+                                <div className={styles.spotBadge}>
+                                    <span>Spot price</span>
+                                    <strong>{spotInfo.price}</strong>
+                                    <span className={classNames(styles.spotChange, { [styles.positive]: spotInfo.isPositive, [styles.negative]: !spotInfo.isPositive })}>
+                                        {spotInfo.change} ({spotInfo.percent})
+                                    </span>
+                                </div>
+                                <div className={styles.spotLine}></div>
+                            </div>
+                        )}
+
+                        {belowATM.map((row, idx) =>
+                            viewMode === 'greeks'
+                                ? renderGreeksRow(row, false, row.strike > atmStrike, aboveATM.length + idx)
+                                : renderRow(row, false, row.strike > atmStrike, aboveATM.length + idx)
+                        )}
+
+
+                        {/* Load more strikes button - BOTTOM */}
+                        {strikeCount < MAX_STRIKE_COUNT && (
+                            <button
+                                className={styles.loadMoreBtn}
+                                onClick={loadMoreStrikes}
+                                disabled={isLoadingMore}
+                            >
+                                {isLoadingMore ? (
+                                    <Loader2 size={14} className={styles.spin} />
+                                ) : (
+                                    <ChevronDown size={14} />
+                                )}
+                                <span>Load more strikes</span>
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </BaseModal>
     );
 };
 

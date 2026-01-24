@@ -3,6 +3,9 @@
  * Stores and retrieves preset risk calculator configurations
  */
 
+import logger from './logger';
+import { getJSON, setJSON } from '../services/storageService';
+
 const STORAGE_KEY = 'riskCalculatorTemplates';
 
 export const DEFAULT_TEMPLATES = [
@@ -37,11 +40,10 @@ export const DEFAULT_TEMPLATES = [
  */
 export const getTemplates = () => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const customTemplates = stored ? JSON.parse(stored) : [];
+    const customTemplates = getJSON(STORAGE_KEY, []);
     return [...DEFAULT_TEMPLATES, ...customTemplates];
   } catch (error) {
-    console.error('Error loading templates:', error);
+    logger.error('Error loading templates:', error);
     return DEFAULT_TEMPLATES;
   }
 };
@@ -51,8 +53,7 @@ export const getTemplates = () => {
  */
 export const saveTemplate = (template) => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const customTemplates = stored ? JSON.parse(stored) : [];
+    const customTemplates = getJSON(STORAGE_KEY, []);
 
     const newTemplate = {
       id: `custom_${Date.now()}`,
@@ -69,11 +70,11 @@ export const saveTemplate = (template) => {
     }
 
     customTemplates.push(newTemplate);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+    setJSON(STORAGE_KEY, customTemplates);
 
     return newTemplate;
   } catch (error) {
-    console.error('Error saving template:', error);
+    logger.error('Error saving template:', error);
     return null;
   }
 };
@@ -83,8 +84,7 @@ export const saveTemplate = (template) => {
  */
 export const updateTemplate = (templateId, updates) => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const customTemplates = stored ? JSON.parse(stored) : [];
+    const customTemplates = getJSON(STORAGE_KEY, []);
 
     const index = customTemplates.findIndex(t => t.id === templateId);
     if (index === -1) return false;
@@ -95,11 +95,11 @@ export const updateTemplate = (templateId, updates) => {
     }
 
     customTemplates[index] = { ...customTemplates[index], ...updates };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+    setJSON(STORAGE_KEY, customTemplates);
 
     return true;
   } catch (error) {
-    console.error('Error updating template:', error);
+    logger.error('Error updating template:', error);
     return false;
   }
 };
@@ -109,15 +109,14 @@ export const updateTemplate = (templateId, updates) => {
  */
 export const deleteTemplate = (templateId) => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const customTemplates = stored ? JSON.parse(stored) : [];
+    const customTemplates = getJSON(STORAGE_KEY, []);
 
     const filtered = customTemplates.filter(t => t.id !== templateId);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    setJSON(STORAGE_KEY, filtered);
 
     return true;
   } catch (error) {
-    console.error('Error deleting template:', error);
+    logger.error('Error deleting template:', error);
     return false;
   }
 };

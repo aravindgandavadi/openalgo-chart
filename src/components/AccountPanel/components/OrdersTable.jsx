@@ -6,6 +6,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { XCircle, Search, X, Filter, Edit } from 'lucide-react';
 import styles from '../AccountPanel.module.css';
 import { formatCurrency, isOpenOrderStatus, sortData } from '../utils/accountFormatters';
+import { BaseTable } from '../../shared';
 
 const OrdersTable = ({ orders, onRowClick, onCancelOrder, onModifyOrder }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -62,7 +63,7 @@ const OrdersTable = ({ orders, onRowClick, onCancelOrder, onModifyOrder }) => {
                     filters.product.includes(order.product);
 
                 return matchesSearch && matchesAction && matchesStatus &&
-                       matchesExchange && matchesProduct;
+                    matchesExchange && matchesProduct;
             });
 
         // Apply sorting if configured, otherwise default sort
@@ -109,14 +110,137 @@ const OrdersTable = ({ orders, onRowClick, onCancelOrder, onModifyOrder }) => {
         }));
     }, []);
 
-    // Get sort indicator
-    const getSortIndicator = (key) => {
-        if (sortConfig.key !== key) return null;
-        return sortConfig.direction === 'asc' ? '↑' : '↓';
-    };
-
     const hasActiveFilters = searchTerm || filters.action.length > 0 ||
         filters.status.length > 0 || filters.exchange.length > 0 || filters.product.length > 0;
+
+    // Define columns for BaseTable
+    const columns = useMemo(() => [
+        {
+            key: 'timestamp',
+            title: 'Time',
+            width: '12%',
+            sortable: true,
+            render: (row) => <span className={styles.timeCell}>{row.timestamp}</span>
+        },
+        {
+            key: 'symbol',
+            title: 'Symbol',
+            width: '15%',
+            sortable: true,
+            render: (row) => <span className={styles.symbolCell}>{row.symbol}</span>
+        },
+        {
+            key: 'action',
+            title: 'Action',
+            width: '7%',
+            render: (row) => (
+                <span className={row.action === 'BUY' ? styles.positive : styles.negative}>
+                    {row.action}
+                </span>
+            )
+        },
+        { key: 'pricetype', title: 'Type', width: '8%' },
+        {
+            key: 'quantity',
+            title: 'Qty',
+            width: '10%',
+            align: 'right',
+            sortable: true,
+            render: (row) => {
+                const totalQty = parseFloat(row.quantity || 0);
+                const filledQty = parseFloat(row.filledqty || row.filled_quantity || 0);
+                const pendingQty = totalQty - filledQty;
+
+                let qtyDisplay;
+                if (filledQty > 0 && filledQty < totalQty) {
+                    qtyDisplay = `${filledQty}/${totalQty}`;
+                } else {
+                    qtyDisplay = totalQty.toString();
+                }
+
+                return (
+                    <>
+                        {qtyDisplay}
+                        {filledQty > 0 && filledQty < totalQty && (
+                            <span className={styles.partialFill} title={`${pendingQty} pending`}> ⏳</span>
+                        )}
+                    </>
+                );
+            }
+        },
+        {
+            key: 'price',
+            title: 'Limit Price',
+            width: '10%',
+            align: 'right',
+            sortable: true,
+            render: (row) => formatCurrency(parseFloat(row.price || 0))
+        },
+        {
+            key: 'average_price',
+            title: 'Fill Price',
+            width: '10%',
+            align: 'right',
+            sortable: true,
+            render: (row) => {
+                const avgPrice = parseFloat(row.average_price || 0);
+                return avgPrice > 0 ? formatCurrency(avgPrice) : '-';
+            }
+        },
+        {
+            key: 'status',
+            title: 'Status',
+            width: '15%',
+            render: (row) => (
+                <span className={`${styles.statusBadge} ${styles[`status${row.order_status}`]}`}>
+                    {row.order_status}
+                </span>
+            )
+        },
+        {
+            key: 'orderAction',
+            title: 'Action',
+            width: '13%',
+            align: 'center',
+            render: (row) => {
+                const canCancel = isOpenOrderStatus(row.order_status);
+                if (!canCancel) return <span className={styles.noAction}>-</span>;
+
+                return (
+                    <div className={styles.actionButtons}>
+                        <button
+                            className={styles.modifyBtn}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onModifyOrder(row, e);
+                            }}
+                            title="Modify order"
+                        >
+                            <Edit size={12} />
+                            <span>Modify</span>
+                        </button>
+                        <button
+                            className={styles.cancelBtn}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onCancelOrder(row, e);
+                            }}
+                            title="Cancel order"
+                        >
+                            <XCircle size={12} />
+                            <span>Cancel</span>
+                        </button>
+                    </div>
+                );
+            }
+        }
+    ], [onModifyOrder, onCancelOrder]);
+
+    const handleRowClick = useCallback((row) => {
+        if (onRowClick) {
+            onRowClick(row.symbol, row.exchange);
+        }
+    }, [onRowClick]);
 
     if (orders.length === 0) {
         return (
@@ -249,167 +373,24 @@ const OrdersTable = ({ orders, onRowClick, onCancelOrder, onModifyOrder }) => {
                 </div>
             )}
 
-            {/* Table */}
-            {sortedOrders.length === 0 ? (
-                <div className={styles.emptyState}>
-                    <span className={styles.emptyIcon}>🔍</span>
-                    <p>No orders match your filters</p>
-                    <button className={styles.clearFiltersBtn} onClick={handleClearFilters}>
-                        Clear Filters
-                    </button>
-                </div>
-            ) : (
-                <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-                <colgroup>
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '15%' }} />
-                    <col style={{ width: '7%' }} />
-                    <col style={{ width: '8%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '15%' }} />
-                    <col style={{ width: '13%' }} />
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th
-                            className={`${styles.sortableHeader} ${sortConfig.key === 'timestamp' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('timestamp')}
-                        >
-                            Time
-                            {getSortIndicator('timestamp') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('timestamp')}
-                                </span>
-                            )}
-                        </th>
-                        <th
-                            className={`${styles.sortableHeader} ${sortConfig.key === 'symbol' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('symbol')}
-                        >
-                            Symbol
-                            {getSortIndicator('symbol') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('symbol')}
-                                </span>
-                            )}
-                        </th>
-                        <th>Action</th>
-                        <th>Type</th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'quantity' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('quantity')}
-                        >
-                            Qty
-                            {getSortIndicator('quantity') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('quantity')}
-                                </span>
-                            )}
-                        </th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'price' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('price')}
-                        >
-                            Limit Price
-                            {getSortIndicator('price') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('price')}
-                                </span>
-                            )}
-                        </th>
-                        <th
-                            className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'average_price' ? styles.sorted : ''}`}
-                            onClick={() => handleSort('average_price')}
-                        >
-                            Fill Price
-                            {getSortIndicator('average_price') && (
-                                <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                    {getSortIndicator('average_price')}
-                                </span>
-                            )}
-                        </th>
-                        <th>Status</th>
-                        <th className={styles.alignCenter}>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedOrders.map((order, idx) => {
-                        const canCancel = isOpenOrderStatus(order.order_status);
-                        const totalQty = parseFloat(order.quantity || 0);
-                        const filledQty = parseFloat(order.filledqty || order.filled_quantity || 0);
-                        const pendingQty = totalQty - filledQty;
-                        const avgPrice = parseFloat(order.average_price || 0);
-                        const limitPrice = parseFloat(order.price || 0);
-
-                        // Determine quantity display
-                        let qtyDisplay;
-                        if (filledQty > 0 && filledQty < totalQty) {
-                            qtyDisplay = `${filledQty}/${totalQty}`;
-                        } else {
-                            qtyDisplay = totalQty.toString();
-                        }
-
-                        return (
-                            <tr
-                                key={order.orderid || idx}
-                                onClick={() => onRowClick(order.symbol, order.exchange)}
-                                className={styles.clickableRow}
-                            >
-                                <td className={styles.timeCell}>{order.timestamp}</td>
-                                <td className={styles.symbolCell}>{order.symbol}</td>
-                                <td className={order.action === 'BUY' ? styles.positive : styles.negative}>
-                                    {order.action}
-                                </td>
-                                <td>{order.pricetype}</td>
-                                <td className={styles.alignRight}>
-                                    {qtyDisplay}
-                                    {filledQty > 0 && filledQty < totalQty && (
-                                        <span className={styles.partialFill} title={`${pendingQty} pending`}> ⏳</span>
-                                    )}
-                                </td>
-                                <td className={styles.alignRight}>{formatCurrency(limitPrice)}</td>
-                                <td className={styles.alignRight}>
-                                    {avgPrice > 0 ? formatCurrency(avgPrice) : '-'}
-                                </td>
-                                <td>
-                                    <span className={`${styles.statusBadge} ${styles[`status${order.order_status}`]}`}>
-                                        {order.order_status}
-                                    </span>
-                                </td>
-                                <td className={styles.alignCenter}>
-                                    {canCancel ? (
-                                        <div className={styles.actionButtons}>
-                                            <button
-                                                className={styles.modifyBtn}
-                                                onClick={(e) => onModifyOrder(order, e)}
-                                                title="Modify order"
-                                            >
-                                                <Edit size={12} />
-                                                <span>Modify</span>
-                                            </button>
-                                            <button
-                                                className={styles.cancelBtn}
-                                                onClick={(e) => onCancelOrder(order, e)}
-                                                title="Cancel order"
-                                            >
-                                                <XCircle size={12} />
-                                                <span>Cancel</span>
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <span className={styles.noAction}>-</span>
-                                    )}
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-            )}
+            {/* Use BaseTable */}
+            <BaseTable
+                columns={columns}
+                data={sortedOrders}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+                onRowClick={handleRowClick}
+                keyField="orderid" // Default key used if present, fallback used otherwise
+                emptyState={
+                    <div className={styles.emptyState}>
+                        <span className={styles.emptyIcon}>🔍</span>
+                        <p>No orders match your filters</p>
+                        <button className={styles.clearFiltersBtn} onClick={handleClearFilters}>
+                            Clear Filters
+                        </button>
+                    </div>
+                }
+            />
         </div>
     );
 };

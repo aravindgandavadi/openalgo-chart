@@ -2,6 +2,7 @@
  * Heatmap Helper Functions
  * Utilities for color calculation, formatting, and layout
  */
+import { CHART_COLORS } from '../../../utils/colorUtils';
 
 /**
  * Get color based on percentage change - TradingView style
@@ -18,7 +19,7 @@ export const getChangeColor = (change, isBackground = false) => {
         if (absChange > 3) return '#00B248';
         if (absChange > 2) return '#00A63E';
         if (absChange > 1.5) return '#009A38';
-        if (absChange > 1) return '#089981';
+        if (absChange > 1) return CHART_COLORS.UP.primary;
         if (absChange > 0.5) return '#0D9668';
         if (absChange > 0.2) return '#26A69A';
         return '#3D8B80'; // Near zero positive

@@ -3,6 +3,8 @@
  * Centralized error handling, retry logic, and resilience patterns
  */
 
+import logger from './logger';
+
 /**
  * Sleep utility for delays
  */
@@ -294,11 +296,11 @@ export const createErrorHandler = (context, options = {}) => {
         // Log with context
         if (!silent) {
             if (error instanceof ApiError) {
-                console.error(`[${context}] API Error (${error.status}):`, error.message);
+                logger.error(`[${context}] API Error (${error.status}):`, error.message);
             } else if (error instanceof TimeoutError) {
-                console.error(`[${context}] Timeout after ${error.timeout}ms:`, error.message);
+                logger.error(`[${context}] Timeout after ${error.timeout}ms:`, error.message);
             } else {
-                console.error(`[${context}] Error:`, error.message);
+                logger.error(`[${context}] Error:`, error.message);
             }
         }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getJSON, setJSON, STORAGE_KEYS } from '../services/storageService';
+import { CHART_COLORS } from '../utils/colorUtils';
 
 /**
  * Default drawing options for line tools
@@ -29,8 +30,8 @@ export const LINE_STYLES = [
  */
 export const PRESET_COLORS = [
     '#2962FF', // Blue (default)
-    '#089981', // Green (up)
-    '#F23645', // Red (down)
+    CHART_COLORS.UP.primary, // Green (up)
+    CHART_COLORS.DOWN.primary, // Red (down)
     '#FF9800', // Orange
     '#9C27B0', // Purple
     '#00BCD4', // Cyan

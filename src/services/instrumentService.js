@@ -54,7 +54,7 @@ export const searchSymbols = async (query, exchange, instrumenttype) => {
         const data = await response.json();
         return data.data || data || [];
     } catch (error) {
-        console.error('Error searching symbols:', error);
+        logger.error('[Instrument] Error searching symbols:', error);
         return [];
     }
 };
@@ -104,7 +104,7 @@ export const getInstruments = async (exchange) => {
 
         return data;
     } catch (error) {
-        console.error('Error fetching instruments:', error);
+        logger.error('[Instrument] Error fetching instruments:', error);
         return [];
     }
 };
@@ -129,7 +129,7 @@ export const getLotSize = async (symbol, exchange) => {
         // Default to 1 for equity or if not found
         return 1;
     } catch (error) {
-        console.error('Error getting lot size:', error);
+        logger.error('[Instrument] Error getting lot size:', error);
         return 1;
     }
 };
@@ -149,7 +149,7 @@ export const getInstrumentInfo = async (symbol, exchange) => {
 
         return instrument || null;
     } catch (error) {
-        console.error('Error getting instrument info:', error);
+        logger.error('[Instrument] Error getting instrument info:', error);
         return null;
     }
 };
@@ -179,7 +179,7 @@ export const getIntervals = async () => {
         });
 
         if (!response.ok) {
-            console.warn('[OpenAlgo] Intervals API returned:', response.status);
+            logger.warn('[OpenAlgo] Intervals API returned:', response.status);
             return null;
         }
 
@@ -193,7 +193,7 @@ export const getIntervals = async () => {
 
         return null;
     } catch (error) {
-        console.error('Error fetching intervals:', error);
+        logger.error('[Instrument] Error fetching intervals:', error);
         return null;
     }
 };

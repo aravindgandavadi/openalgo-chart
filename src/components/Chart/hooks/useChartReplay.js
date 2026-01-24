@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { transformData } from '../utils/seriesFactories';
 import { DEFAULT_VIEW_WINDOW, EXTENDED_VIEW_WINDOW } from '../utils/chartConfig';
+import logger from '../../../utils/logger';
 
 /**
  * Custom hook for chart replay mode functionality
@@ -151,7 +152,7 @@ export function useChartReplay({
                     try {
                         chartRef.current.removeSeries(fadedSeriesRef.current);
                     } catch (e) {
-                        console.warn('Error removing faded series:', e);
+                        logger.warn('Error removing faded series:', e);
                     }
                     fadedSeriesRef.current = null;
                 }
@@ -251,7 +252,7 @@ export function useChartReplay({
                             }
                         }
                     } catch (e) {
-                        console.warn('Failed to restore visible range in Jump to Bar:', e);
+                        logger.warn('Failed to restore visible range in Jump to Bar:', e);
                     }
                 }
             }, 50);
@@ -402,7 +403,7 @@ export function useChartReplay({
                     }, 0);
                 }
             } catch (e) {
-                console.warn('Error handling replay click:', e);
+                logger.warn('Error handling replay click:', e);
             }
         };
 
@@ -547,12 +548,12 @@ export function useChartReplay({
                                 }
                             }, 100);
                         } catch (e) {
-                            console.warn('Failed to set visible range after selection:', e);
+                            logger.warn('Failed to set visible range after selection:', e);
                         }
                     }
                 }
             } catch (e) {
-                console.warn('Error handling chart click in Jump to Bar:', e);
+                logger.warn('Error handling chart click in Jump to Bar:', e);
             }
         };
 

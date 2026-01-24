@@ -1,0 +1,196 @@
+/**
+ * BaseButton Styles
+ */
+
+/* Base button styles */
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Size variants */
+.small {
+    padding: 4px 10px;
+    font-size: 12px;
+    min-height: 28px;
+}
+
+.medium {
+    padding: 6px 14px;
+    font-size: 13px;
+    min-height: 32px;
+}
+
+.large {
+    padding: 10px 20px;
+    font-size: 14px;
+    min-height: 40px;
+}
+
+/* Primary variant */
+.primary {
+    background: #2962ff;
+    color: white;
+}
+
+.primary:hover:not(:disabled) {
+    background: #1e4fd8;
+}
+
+/* Secondary variant */
+.secondary {
+    background: var(--bg-secondary, #2a2e39);
+    color: var(--text-primary, #d1d4dc);
+    border: 1px solid var(--border-color, #363a45);
+}
+
+.secondary:hover:not(:disabled) {
+    background: var(--bg-hover, #363a45);
+}
+
+/* Ghost variant */
+.ghost {
+    background: transparent;
+    color: var(--text-primary, #d1d4dc);
+}
+
+.ghost:hover:not(:disabled) {
+    background: var(--bg-hover, #2a2e39);
+}
+
+/* Danger variant */
+.danger {
+    background: #f44336;
+    color: white;
+}
+
+.danger:hover:not(:disabled) {
+    background: #d32f2f;
+}
+
+/* Buy variant (trading) */
+.buy {
+    background: #089981;
+    color: white;
+}
+
+.buy:hover:not(:disabled) {
+    background: #068c74;
+}
+
+/* Sell variant (trading) */
+.sell {
+    background: #f23645;
+    color: white;
+}
+
+.sell:hover:not(:disabled) {
+    background: #d92d3a;
+}
+
+/* Full width */
+.fullWidth {
+    width: 100%;
+}
+
+/* Loading state */
+.loading {
+    pointer-events: none;
+}
+
+.spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.icon {
+    flex-shrink: 0;
+}
+
+.label {
+    flex: 0 0 auto;
+}
+
+/* Icon Button */
+.iconButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--text-secondary, #787b86);
+}
+
+.iconButton:hover:not(:disabled) {
+    color: var(--text-primary, #d1d4dc);
+}
+
+.iconButton.small {
+    padding: 4px;
+}
+
+.iconButton.medium {
+    padding: 6px;
+}
+
+.iconButton.large {
+    padding: 8px;
+}
+
+/* Button Group */
+.buttonGroup {
+    display: flex;
+    gap: 8px;
+}
+
+/* Light theme */
+[data-theme="light"] .secondary {
+    background: #f0f3fa;
+    color: #131722;
+    border-color: #e0e3eb;
+}
+
+[data-theme="light"] .secondary:hover:not(:disabled) {
+    background: #e0e3eb;
+}
+
+[data-theme="light"] .ghost {
+    color: #131722;
+}
+
+[data-theme="light"] .ghost:hover:not(:disabled) {
+    background: #f0f3fa;
+}
+
+[data-theme="light"] .iconButton {
+    color: #787b86;
+}
+
+[data-theme="light"] .iconButton:hover:not(:disabled) {
+    color: #131722;
+}

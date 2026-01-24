@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import logger from '../utils/logger';
 
 /**
  * Custom hook for syncing state with localStorage
@@ -37,7 +38,7 @@ export function useLocalStorage(key, defaultValue, options = {}) {
 
             return stored;
         } catch (error) {
-            console.warn(`[useLocalStorage] Failed to read '${key}':`, error.message);
+            logger.warn(`[useLocalStorage] Failed to read '${key}':`, error.message);
             return defaultValue;
         }
     });
@@ -64,7 +65,7 @@ export function useLocalStorage(key, defaultValue, options = {}) {
                     localStorage.setItem(key, String(value));
                 }
             } catch (error) {
-                console.warn(`[useLocalStorage] Failed to write '${key}':`, error.message);
+                logger.warn(`[useLocalStorage] Failed to write '${key}':`, error.message);
             }
         }, debounceMs);
 

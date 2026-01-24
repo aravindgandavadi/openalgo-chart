@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getDepth } from '../../services/openalgo';
 import { X, RefreshCw, Layers } from 'lucide-react';
 import styles from './DepthOfMarket.module.css';
+import logger from '../../utils/logger';
+import { formatCompactNumber, formatPrice } from '../../utils/shared/formatters';
 
 /**
  * Depth of Market (DOM) Panel
@@ -34,7 +36,7 @@ const DepthOfMarket = ({ symbol, exchange = 'NSE', isOpen, onClose }) => {
         } catch (err) {
             if (err.name !== 'AbortError') {
                 setError('Failed to fetch depth');
-                console.error('Depth fetch error:', err);
+                logger.error('Depth fetch error:', err);
             }
         }
     }, [symbol, exchange, isPaused]);
@@ -59,18 +61,11 @@ const DepthOfMarket = ({ symbol, exchange = 'NSE', isOpen, onClose }) => {
         };
     }, [isOpen, symbol, fetchDepth]);
 
-    // Format number with commas
-    const formatNumber = (num) => {
-        if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
-        if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
-        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-        return num.toLocaleString('en-IN');
-    };
+    // Format number with commas and crushing
+    const formatNumber = (num) => formatCompactNumber(num, 2);
 
     // Format price
-    const formatPrice = (price) => {
-        return price.toFixed(2);
-    };
+    const formatPriceDisplay = (price) => formatPrice(price, 2);
 
     // Calculate max quantity for bar width scaling
     const getMaxQuantity = () => {
@@ -139,7 +134,7 @@ const DepthOfMarket = ({ symbol, exchange = 'NSE', isOpen, onClose }) => {
                             <div key={`ask-${idx}`} className={styles.row}>
                                 <div className={styles.bidCell}></div>
                                 <div className={styles.priceCell}>
-                                    <span className={styles.askPrice}>{formatPrice(ask.price)}</span>
+                                    <span className={styles.askPrice}>{formatPriceDisplay(ask.price)}</span>
                                 </div>
                                 <div className={styles.askCell}>
                                     <div
@@ -156,7 +151,7 @@ const DepthOfMarket = ({ symbol, exchange = 'NSE', isOpen, onClose }) => {
                             <div className={styles.ltpLine}></div>
                             <div className={styles.ltpBadge}>
                                 <span>LTP</span>
-                                <strong>{formatPrice(depth.ltp)}</strong>
+                                <strong>{formatPriceDisplay(depth.ltp)}</strong>
                                 {depth.ltq > 0 && <span className={styles.ltq}>x{formatNumber(depth.ltq)}</span>}
                             </div>
                             <div className={styles.ltpLine}></div>
@@ -173,7 +168,7 @@ const DepthOfMarket = ({ symbol, exchange = 'NSE', isOpen, onClose }) => {
                                     <span className={styles.qty}>{formatNumber(bid.quantity)}</span>
                                 </div>
                                 <div className={styles.priceCell}>
-                                    <span className={styles.bidPrice}>{formatPrice(bid.price)}</span>
+                                    <span className={styles.bidPrice}>{formatPriceDisplay(bid.price)}</span>
                                 </div>
                                 <div className={styles.askCell}></div>
                             </div>
@@ -206,7 +201,7 @@ const DepthOfMarket = ({ symbol, exchange = 'NSE', isOpen, onClose }) => {
                         )}
                         <div className={styles.footerItem}>
                             <span>H/L:</span>
-                            <span>{formatPrice(depth.high)} / {formatPrice(depth.low)}</span>
+                            <span>{formatPriceDisplay(depth.high)} / {formatPriceDisplay(depth.low)}</span>
                         </div>
                     </div>
                 </>

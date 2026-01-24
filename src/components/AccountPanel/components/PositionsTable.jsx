@@ -6,6 +6,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { LogOut, Search, X, Filter } from 'lucide-react';
 import styles from '../AccountPanel.module.css';
 import { formatCurrency, sortData } from '../utils/accountFormatters';
+import { BaseTable } from '../../shared';
 
 const PositionsTable = ({ positions, onRowClick, onExitPosition, lastUpdateTime = {}, showSearchFilter = true }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -17,12 +18,12 @@ const PositionsTable = ({ positions, onRowClick, onExitPosition, lastUpdateTime 
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     // Check if value was recently updated (within 1 second)
-    const isRecentlyUpdated = (symbol, exchange) => {
+    const isRecentlyUpdated = useCallback((symbol, exchange) => {
         const key = `${symbol}-${exchange}`;
         const updateTime = lastUpdateTime[key];
         if (!updateTime) return false;
         return Date.now() - updateTime < 1000; // 1 second pulse
-    };
+    }, [lastUpdateTime]);
 
     // Get unique values for filters
     const uniqueExchanges = useMemo(() => {
@@ -85,13 +86,138 @@ const PositionsTable = ({ positions, onRowClick, onExitPosition, lastUpdateTime 
         }));
     }, []);
 
-    // Get sort indicator
-    const getSortIndicator = (key) => {
-        if (sortConfig.key !== key) return null;
-        return sortConfig.direction === 'asc' ? '↑' : '↓';
-    };
-
     const hasActiveFilters = searchTerm || filters.exchange.length > 0 || filters.product.length > 0;
+
+    // Define columns for BaseTable
+    const columns = useMemo(() => [
+        {
+            key: 'symbol',
+            title: 'Symbol',
+            width: '16%',
+            sortable: true,
+            render: (row) => <span className={styles.symbolCell}>{row.symbol}</span>
+        },
+        { key: 'exchange', title: 'Exchange', width: '8%' },
+        { key: 'product', title: 'Product', width: '8%' },
+        {
+            key: 'quantity',
+            title: 'Qty',
+            width: '8%',
+            align: 'right',
+            sortable: true,
+            render: (row) => (
+                <span className={row.quantity > 0 ? styles.positive : styles.negative}>
+                    {row.quantity > 0 ? '+' : ''}{row.quantity}
+                </span>
+            )
+        },
+        {
+            key: 'average_price',
+            title: 'Avg Price',
+            width: '11%',
+            align: 'right',
+            sortable: true,
+            render: (row) => formatCurrency(parseFloat(row.average_price || 0))
+        },
+        {
+            key: 'ltp',
+            title: 'LTP',
+            width: '11%',
+            align: 'right',
+            sortable: true,
+            render: (row) => {
+                const isPulsing = isRecentlyUpdated(row.symbol, row.exchange);
+                return (
+                    <span className={isPulsing ? styles.pulse : ''}>
+                        {formatCurrency(parseFloat(row.ltp || 0))}
+                    </span>
+                );
+            }
+        },
+        {
+            key: 'value',
+            title: 'Value',
+            width: '11%',
+            align: 'right',
+            render: (row) => {
+                const ltp = parseFloat(row.ltp || 0);
+                const qty = parseFloat(row.quantity || 0);
+                const value = Math.abs(ltp * qty);
+                const isPulsing = isRecentlyUpdated(row.symbol, row.exchange);
+                return (
+                    <span className={isPulsing ? styles.pulse : ''}>
+                        {formatCurrency(value)}
+                    </span>
+                );
+            }
+        },
+        {
+            key: 'pnl',
+            title: 'P&L',
+            width: '10%',
+            align: 'right',
+            sortable: true,
+            render: (row) => {
+                const pnl = parseFloat(row.pnl || 0);
+                const isPulsing = isRecentlyUpdated(row.symbol, row.exchange);
+                return (
+                    <span className={`
+                        ${pnl >= 0 ? styles.positive : styles.negative} 
+                        ${isPulsing ? styles.pulse : ''}
+                    `}>
+                        {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
+                    </span>
+                );
+            }
+        },
+        {
+            key: 'pnlPercent',
+            title: 'P&L %',
+            width: '9%',
+            align: 'right',
+            render: (row) => {
+                const pnl = parseFloat(row.pnl || 0);
+                const avgPrice = parseFloat(row.average_price || 0);
+                const qty = parseFloat(row.quantity || 0);
+                const costBasis = Math.abs(avgPrice * qty);
+                const pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
+                const isPulsing = isRecentlyUpdated(row.symbol, row.exchange);
+                return (
+                    <span className={`
+                        ${pnlPercent >= 0 ? styles.positive : styles.negative} 
+                        ${isPulsing ? styles.pulse : ''}
+                    `}>
+                        {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
+                    </span>
+                );
+            }
+        },
+        {
+            key: 'action',
+            title: 'Action',
+            width: '8%',
+            align: 'center',
+            render: (row) => (
+                <button
+                    className={styles.exitBtn}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onExitPosition(row, e);
+                    }}
+                    title={`Exit position - ${row.quantity > 0 ? 'SELL' : 'BUY'} ${Math.abs(row.quantity)} qty`}
+                >
+                    <LogOut size={12} />
+                    <span>Exit</span>
+                </button>
+            )
+        }
+    ], [isRecentlyUpdated, onExitPosition]);
+
+    const handleRowClick = useCallback((row) => {
+        if (onRowClick) {
+            onRowClick(row.symbol, row.exchange);
+        }
+    }, [onRowClick]);
 
     if (positions.filter(p => p.quantity !== 0).length === 0) {
         return (
@@ -194,153 +320,24 @@ const PositionsTable = ({ positions, onRowClick, onExitPosition, lastUpdateTime 
                 </div>
             )}
 
-            {/* Table */}
-            {filteredPositions.length === 0 ? (
-                <div className={styles.emptyState}>
-                    <span className={styles.emptyIcon}>🔍</span>
-                    <p>No positions match your filters</p>
-                    <button className={styles.clearFiltersBtn} onClick={handleClearFilters}>
-                        Clear Filters
-                    </button>
-                </div>
-            ) : (
-                <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                        <colgroup>
-                            <col style={{ width: '16%' }} />
-                            <col style={{ width: '8%' }} />
-                            <col style={{ width: '8%' }} />
-                            <col style={{ width: '8%' }} />
-                            <col style={{ width: '11%' }} />
-                            <col style={{ width: '11%' }} />
-                            <col style={{ width: '11%' }} />
-                            <col style={{ width: '10%' }} />
-                            <col style={{ width: '9%' }} />
-                            <col style={{ width: '8%' }} />
-                        </colgroup>
-                        <thead>
-                            <tr>
-                                <th
-                                    className={`${styles.sortableHeader} ${sortConfig.key === 'symbol' ? styles.sorted : ''}`}
-                                    onClick={() => handleSort('symbol')}
-                                >
-                                    Symbol
-                                    {getSortIndicator('symbol') && (
-                                        <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                            {getSortIndicator('symbol')}
-                                        </span>
-                                    )}
-                                </th>
-                                <th>Exchange</th>
-                                <th>Product</th>
-                                <th
-                                    className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'quantity' ? styles.sorted : ''}`}
-                                    onClick={() => handleSort('quantity')}
-                                >
-                                    Qty
-                                    {getSortIndicator('quantity') && (
-                                        <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                            {getSortIndicator('quantity')}
-                                        </span>
-                                    )}
-                                </th>
-                                <th
-                                    className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'average_price' ? styles.sorted : ''}`}
-                                    onClick={() => handleSort('average_price')}
-                                >
-                                    Avg Price
-                                    {getSortIndicator('average_price') && (
-                                        <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                            {getSortIndicator('average_price')}
-                                        </span>
-                                    )}
-                                </th>
-                                <th
-                                    className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'ltp' ? styles.sorted : ''}`}
-                                    onClick={() => handleSort('ltp')}
-                                >
-                                    LTP
-                                    {getSortIndicator('ltp') && (
-                                        <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                            {getSortIndicator('ltp')}
-                                        </span>
-                                    )}
-                                </th>
-                                <th className={styles.alignRight}>Value</th>
-                                <th
-                                    className={`${styles.alignRight} ${styles.sortableHeader} ${sortConfig.key === 'pnl' ? styles.sorted : ''}`}
-                                    onClick={() => handleSort('pnl')}
-                                >
-                                    P&L
-                                    {getSortIndicator('pnl') && (
-                                        <span className={`${styles.sortIndicator} ${styles.active}`}>
-                                            {getSortIndicator('pnl')}
-                                        </span>
-                                    )}
-                                </th>
-                                <th className={styles.alignRight}>P&L %</th>
-                                <th className={styles.alignCenter}>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredPositions.map((pos, idx) => {
-                                const pnl = parseFloat(pos.pnl || 0);
-                                const avgPrice = parseFloat(pos.average_price || 0);
-                                const ltp = parseFloat(pos.ltp || 0);
-                                const qty = parseFloat(pos.quantity || 0);
-
-                                // Calculate position value (current market value)
-                                const positionValue = Math.abs(ltp * qty);
-
-                                // Calculate P&L percentage
-                                const costBasis = Math.abs(avgPrice * qty);
-                                const pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
-
-                                // Check if recently updated for pulse animation
-                                const isPulsing = isRecentlyUpdated(pos.symbol, pos.exchange);
-
-                                return (
-                                    <tr
-                                        key={`${pos.symbol}-${pos.exchange}-${idx}`}
-                                        onClick={() => onRowClick(pos.symbol, pos.exchange)}
-                                        className={styles.clickableRow}
-                                    >
-                                        <td className={styles.symbolCell}>{pos.symbol}</td>
-                                        <td>{pos.exchange}</td>
-                                        <td>{pos.product}</td>
-                                        <td className={`${styles.alignRight} ${pos.quantity > 0 ? styles.positive : styles.negative}`}>
-                                            {pos.quantity > 0 ? '+' : ''}{pos.quantity}
-                                        </td>
-                                        <td className={styles.alignRight}>{formatCurrency(avgPrice)}</td>
-                                        <td className={`${styles.alignRight} ${isPulsing ? styles.pulse : ''}`}>
-                                            {formatCurrency(ltp)}
-                                        </td>
-                                        <td className={`${styles.alignRight} ${isPulsing ? styles.pulse : ''}`}>
-                                            {formatCurrency(positionValue)}
-                                        </td>
-                                        <td className={`${styles.alignRight} ${pnl >= 0 ? styles.positive : styles.negative} ${isPulsing ? styles.pulse : ''}`}>
-                                            {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
-                                        </td>
-                                        <td className={`${styles.alignRight} ${pnlPercent >= 0 ? styles.positive : styles.negative} ${isPulsing ? styles.pulse : ''}`}>
-                                            {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
-                                        </td>
-                                        <td className={styles.alignCenter}>
-                                            <button
-                                                className={styles.exitBtn}
-                                                onClick={(e) => onExitPosition(pos, e)}
-                                                title={`Exit position - ${pos.quantity > 0 ? 'SELL' : 'BUY'} ${Math.abs(pos.quantity)} qty`}
-                                            >
-                                                <LogOut size={12} />
-                                                <span>Exit</span>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            {/* Use BaseTable */}
+            <BaseTable
+                columns={columns}
+                data={filteredPositions}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+                onRowClick={handleRowClick}
+                keyField="symbol" // Using symbol as basic key, but BaseTable also handles fallback index
+                emptyState={
+                    <div className={styles.emptyState}>
+                        <span className={styles.emptyIcon}>🔍</span>
+                        <p>No positions match your filters</p>
+                        <button className={styles.clearFiltersBtn} onClick={handleClearFilters}>
+                            Clear Filters
+                        </button>
+                    </div>
+                }
+            />
         </div>
     );
 };

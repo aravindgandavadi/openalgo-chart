@@ -38,7 +38,7 @@ export const saveDrawings = async (symbol, exchange = 'NSE', interval = '1d', dr
         });
 
         if (!response.ok) {
-            console.error('[DrawingsService] saveDrawings error:', response.status);
+            logger.error('[DrawingsService] saveDrawings error:', response.status);
             return false;
         }
 
@@ -46,7 +46,7 @@ export const saveDrawings = async (symbol, exchange = 'NSE', interval = '1d', dr
         logger.debug('[DrawingsService] saveDrawings success:', { symbol, exchange, interval, count: drawings.length });
         return data.status === 'success';
     } catch (error) {
-        console.error('[DrawingsService] Error saving drawings:', error);
+        logger.error('[DrawingsService] Error saving drawings:', error);
         return false;
     }
 };
@@ -67,10 +67,10 @@ export const loadDrawings = async (symbol, exchange = 'NSE', interval = '1d') =>
             const drawings = typeof window._chartPrefsCache[drawingsKey] === 'string'
                 ? JSON.parse(window._chartPrefsCache[drawingsKey])
                 : window._chartPrefsCache[drawingsKey];
-            console.log('[DrawingsService] loadDrawings from cache:', { symbol, exchange, interval, count: drawings.length });
+            logger.debug('[DrawingsService] loadDrawings from cache:', { symbol, exchange, interval, count: drawings.length });
             return drawings;
         } catch (parseError) {
-            console.warn('[DrawingsService] Failed to parse cached drawings:', parseError);
+            logger.warn('[DrawingsService] Failed to parse cached drawings:', parseError);
         }
     }
 
@@ -113,10 +113,10 @@ export const loadDrawings = async (symbol, exchange = 'NSE', interval = '1d') =>
             if (drawingsJson) {
                 try {
                     const drawings = JSON.parse(drawingsJson);
-                    console.log('[DrawingsService] loadDrawings success:', { symbol, exchange, interval, count: drawings.length });
+                    logger.debug('[DrawingsService] loadDrawings success:', { symbol, exchange, interval, count: drawings.length });
                     return drawings;
                 } catch (parseError) {
-                    console.warn('[DrawingsService] Failed to parse drawings JSON:', parseError);
+                    logger.warn('[DrawingsService] Failed to parse drawings JSON:', parseError);
                     return null;
                 }
             }

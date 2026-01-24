@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { loadAlertsForSymbol } from '../services/alertService';
+import logger from '../utils/logger';
 
 /**
  * Hook to handle restoring alerts for the chart.
@@ -18,24 +19,24 @@ export const useChartAlerts = (manager, symbol, exchange) => {
             // === Alert Persistence: Restore alerts for new symbol ===
             try {
                 const userAlerts = manager._userPriceAlerts;
-                console.log('[Alerts] Checking restore for', symbol, '- userAlerts exists:', !!userAlerts);
+                logger.debug('[Alerts] Checking restore for', symbol, '- userAlerts exists:', !!userAlerts);
                 if (userAlerts && typeof userAlerts.importAlerts === 'function') {
                     // We need loadAlertsForSymbol. 
                     // In ChartComponent it was likely imported or available in scope.
                     // I need to check where it comes from.
                     const savedAlerts = loadAlertsForSymbol(symbol, exchange);
-                    console.log('[Alerts] Found saved alerts:', savedAlerts);
+                    logger.debug('[Alerts] Found saved alerts:', savedAlerts);
                     if (savedAlerts && savedAlerts.length > 0) {
                         userAlerts.importAlerts(savedAlerts);
-                        console.log('[Alerts] Restored', savedAlerts.length, 'alerts for', symbol);
+                        logger.debug('[Alerts] Restored', savedAlerts.length, 'alerts for', symbol);
                     } else {
-                        console.log('[Alerts] No saved alerts for', symbol);
+                        logger.debug('[Alerts] No saved alerts for', symbol);
                     }
                 } else {
-                    console.log('[Alerts] importAlerts not available on userAlerts');
+                    logger.debug('[Alerts] importAlerts not available on userAlerts');
                 }
             } catch (err) {
-                console.warn('[Alerts] Failed to restore alerts:', err);
+                logger.warn('[Alerts] Failed to restore alerts:', err);
             }
         };
 

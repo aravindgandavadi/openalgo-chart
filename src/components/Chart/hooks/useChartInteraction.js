@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { formatTimeDiff, TOOL_MAP } from '../utils/chartHelpers';
+import logger from '../../../utils/logger';
 
 /**
  * Custom hook for chart interaction handlers
@@ -55,7 +56,7 @@ export function useChartInteraction({
 
             timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
         } catch (err) {
-            console.warn('Failed to zoom chart', err);
+            logger.warn('Failed to zoom chart', err);
         }
     }, [chartRef]);
 
@@ -349,7 +350,7 @@ export function useChartInteraction({
                             manager.setSessionStartTimes(sessionStartTimes);
                         }
                     } catch (err) {
-                        console.warn('[ChartComponent] Could not fetch session data:', err);
+                        logger.warn('[ChartComponent] Could not fetch session data:', err);
                     }
                 };
 

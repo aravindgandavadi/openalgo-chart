@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import logger from '../../../utils/logger';
 
 /**
  * Custom hook for managing pane context menu and pane operations
@@ -85,7 +86,7 @@ export const usePaneMenu = ({ chartRef, chartContainerRef, indicatorPanesMap, on
                 setMaximizedPane(paneId);
             }
         } catch (e) {
-            console.warn('Error maximizing pane:', e);
+            logger.warn('Error maximizing pane:', e);
         }
     }, [chartRef, chartContainerRef, indicatorPanesMap, maximizedPane]);
 
@@ -125,7 +126,7 @@ export const usePaneMenu = ({ chartRef, chartContainerRef, indicatorPanesMap, on
             }
             setCollapsedPanes(newCollapsed);
         } catch (e) {
-            console.warn('Error collapsing pane:', e);
+            logger.warn('Error collapsing pane:', e);
         }
     }, [chartRef, indicatorPanesMap, collapsedPanes, maximizedPane]);
 
@@ -144,7 +145,7 @@ export const usePaneMenu = ({ chartRef, chartContainerRef, indicatorPanesMap, on
                 if (currentIndex > 1) {
                     chartRef.current.movePane(currentIndex, currentIndex - 1);
                 }
-            } catch (e) { console.warn(e); }
+            } catch (e) { logger.warn(e); }
         }
     }, [chartRef, indicatorPanesMap, onIndicatorMoveUp]);
 

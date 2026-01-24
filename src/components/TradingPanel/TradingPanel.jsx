@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Briefcase, X, Plus, Minus } from 'lucide-react';
 import styles from './TradingPanel.module.css';
 import { subscribeToTicker, placeOrder, getLotSize } from '../../services/openalgo';
+import { validateOrder, createOrderPayload, safeParseInt } from '../../utils/shared/orderUtils';
+import { ORDER_TYPES, PRODUCTS, ORDER_ACTIONS, FNO_EXCHANGES } from '../../constants/orderConstants';
 import Toast from '../Toast/Toast';
+import logger from '../../utils/logger';
 
 const TradingPanel = ({
     symbol,
@@ -17,7 +20,7 @@ const TradingPanel = ({
     // Local State - use initial values from props
     const [action, setAction] = useState(initialAction);
     const [orderType, setOrderType] = useState(initialOrderType);
-    const [product, setProduct] = useState('MIS'); // MIS | CNC | NRML
+    const [product, setProduct] = useState(PRODUCTS.MIS); // Use constant
     const [quantity, setQuantity] = useState('1');
     const [price, setPrice] = useState(initialPrice);
     const [triggerPrice, setTriggerPrice] = useState('');
@@ -35,8 +38,8 @@ const TradingPanel = ({
     // UI State
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Check if F&O instrument (requires lot size handling)
-    const isFnO = exchange === 'NFO' || exchange === 'MCX' || exchange === 'BFO' || exchange === 'CDS' || exchange === 'BCD';
+    // Check if F&O instrument (requires lot size handling) - use centralized constant
+    const isFnO = FNO_EXCHANGES.includes(exchange);
 
     // Refs
     const unsubscribeRef = useRef(null);
@@ -98,7 +101,7 @@ const TradingPanel = ({
                     setQuantity('1');
                 }
             } catch (error) {
-                console.error('Error fetching lot size:', error);
+                logger.error('Error fetching lot size:', error);
                 setLotSize(1);
                 setQuantity('1');
             } finally {
@@ -125,48 +128,39 @@ const TradingPanel = ({
 
     // Handle Order Placement
     const handleSubmit = async () => {
-        if (!symbol || !quantity) {
-            if (showToast) showToast('Please enter quantity', 'error');
-            else alert('Please enter quantity');
-            return;
-        }
+        // Use centralized validation
+        const validation = validateOrder({
+            symbol,
+            exchange,
+            action,
+            quantity,
+            orderType,
+            price,
+            triggerPrice,
+            lotSize,
+        });
 
-        // Basic Validation
-        const qtyNum = parseInt(quantity, 10);
-        if (isNaN(qtyNum) || qtyNum <= 0) {
-            if (showToast) showToast('Invalid quantity', 'error');
-            return;
-        }
-
-        // Lot size validation for F&O instruments
-        if (lotSize > 1 && qtyNum % lotSize !== 0) {
-            if (showToast) showToast(`Quantity must be a multiple of lot size (${lotSize})`, 'error');
-            return;
-        }
-
-        if ((orderType === 'LIMIT' || orderType === 'SL') && (!price || parseFloat(price) <= 0)) {
-            if (showToast) showToast('Invalid price for Limit order', 'error');
-            return;
-        }
-
-        if ((orderType === 'SL' || orderType === 'SL-M') && (!triggerPrice || parseFloat(triggerPrice) <= 0)) {
-            if (showToast) showToast('Invalid trigger price for Stop Loss order', 'error');
+        if (!validation.isValid) {
+            // Show first error
+            const firstError = Object.values(validation.errors)[0];
+            if (showToast) showToast(firstError, 'error');
             return;
         }
 
         setIsSubmitting(true);
 
-        const orderDetails = {
+        // Use centralized payload creation
+        const orderDetails = createOrderPayload({
             symbol,
             exchange,
             action,
-            quantity: qtyNum,
+            quantity,
             product,
-            pricetype: orderType,
-            price: orderType === 'MARKET' ? 0 : price,
-            trigger_price: (orderType === 'SL' || orderType === 'SL-M') ? triggerPrice : 0,
-            strategy: 'MANUAL_PANEL'
-        };
+            orderType,
+            price,
+            triggerPrice,
+            strategy: 'MANUAL_PANEL',
+        });
 
         try {
             const result = await placeOrder(orderDetails);
@@ -177,7 +171,7 @@ const TradingPanel = ({
             }
         } catch (error) {
             if (showToast) showToast('Failed to place order', 'error');
-            console.error(error);
+            logger.error(error);
         } finally {
             setIsSubmitting(false);
         }

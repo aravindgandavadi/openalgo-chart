@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { BaseModal } from '../shared';
 import {
     X,
     Keyboard,
@@ -98,58 +99,50 @@ const ShortcutsDialog = ({ isOpen, onClose }) => {
     // Get grouped shortcuts
     const groupedShortcuts = useMemo(() => getGroupedShortcuts(), []);
 
-    // Handle overlay click
-    const handleOverlayClick = useCallback((e) => {
-        if (e.target === e.currentTarget) {
-            onClose();
-        }
-    }, [onClose]);
-
     if (!isOpen) return null;
 
     return (
-        <div
-            className={styles.overlay}
-            onClick={handleOverlayClick}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="shortcuts-dialog-title"
+        <BaseModal
+            isOpen={isOpen}
+            onClose={onClose}
+            showHeader={false}
+            noPadding={true}
+            size="medium"
+            className={styles.modalBase}
         >
-            <div ref={focusTrapRef} className={styles.modal}>
-                {/* Header */}
-                <div className={styles.header}>
-                    <h2 id="shortcuts-dialog-title" className={styles.title}>
-                        <Keyboard size={20} />
-                        Keyboard Shortcuts
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className={styles.closeBtn}
-                        aria-label="Close"
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
-
-                {/* Content */}
-                <div className={styles.content}>
-                    {Object.entries(groupedShortcuts).map(([category, shortcuts]) => (
-                        <CategorySection
-                            key={category}
-                            category={category}
-                            shortcuts={shortcuts}
-                        />
-                    ))}
-                </div>
-
-                {/* Footer */}
-                <div className={styles.footer}>
-                    <span className={styles.footerText}>
-                        Press <kbd>?</kbd> to toggle this dialog
-                    </span>
-                </div>
+            {/* Header */}
+            <div className={styles.header}>
+                <h2 id="shortcuts-dialog-title" className={styles.title}>
+                    <Keyboard size={20} />
+                    Keyboard Shortcuts
+                </h2>
+                <button
+                    onClick={onClose}
+                    className={styles.closeBtn}
+                    aria-label="Close"
+                >
+                    <X size={20} />
+                </button>
             </div>
-        </div>
+
+            {/* Content */}
+            <div className={styles.content}>
+                {Object.entries(groupedShortcuts).map(([category, shortcuts]) => (
+                    <CategorySection
+                        key={category}
+                        category={category}
+                        shortcuts={shortcuts}
+                    />
+                ))}
+            </div>
+
+            {/* Footer */}
+            <div className={styles.footer}>
+                <span className={styles.footerText}>
+                    Press <kbd>?</kbd> to toggle this dialog
+                </span>
+            </div>
+        </BaseModal>
     );
 };
 

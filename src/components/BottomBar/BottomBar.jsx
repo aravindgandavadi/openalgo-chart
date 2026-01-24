@@ -3,6 +3,7 @@ import styles from './BottomBar.module.css';
 import classNames from 'classnames';
 import { getAccurateUTCTimestamp, getIsSynced } from '../../services/timeService';
 import { ConnectionState, subscribeToConnectionStatus } from '../../services/connectionStatus';
+import { CHART_COLORS } from '../../utils/colorUtils';
 
 const BottomBar = ({
     onTimeRangeChange,
@@ -62,9 +63,9 @@ const BottomBar = ({
     const getConnectionInfo = () => {
         switch (connectionStatus) {
             case ConnectionState.CONNECTED:
-                return { color: '#089981', title: 'WebSocket connected - receiving live data' };
+                return { color: CHART_COLORS.UP.primary, title: 'WebSocket connected - receiving live data' };
             default:
-                return { color: '#F23645', title: 'WebSocket disconnected' };
+                return { color: CHART_COLORS.DOWN.primary, title: 'WebSocket disconnected' };
         }
     };
 

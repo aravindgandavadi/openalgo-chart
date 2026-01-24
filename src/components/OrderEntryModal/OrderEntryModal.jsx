@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import styles from './OrderEntryModal.module.css';
 import TradingPanel from '../TradingPanel/TradingPanel';
+import { BaseModal } from '../shared';
 
 const OrderEntryModal = ({
     isOpen,
@@ -12,34 +13,29 @@ const OrderEntryModal = ({
     initialPrice,
     initialOrderType
 }) => {
-    // Close on Escape
-    useEffect(() => {
-        const handleEscape = (e) => {
-            if (e.key === 'Escape' && isOpen) {
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
-    }, [isOpen, onClose]);
+    // Esc key handled by BaseModal
 
     if (!isOpen) return null;
 
     return (
-        <div className={styles.overlay} onClick={onClose}>
-            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <TradingPanel
-                    symbol={symbol}
-                    exchange={exchange}
-                    isOpen={true}
-                    onClose={onClose}
-                    showToast={showToast}
-                    initialAction={initialAction}
-                    initialPrice={initialPrice}
-                    initialOrderType={initialOrderType}
-                />
-            </div>
-        </div>
+        <BaseModal
+            isOpen={isOpen}
+            onClose={onClose}
+            showHeader={false}
+            noPadding={true}
+            size="small"
+        >
+            <TradingPanel
+                symbol={symbol}
+                exchange={exchange}
+                isOpen={true}
+                onClose={onClose}
+                showToast={showToast}
+                initialAction={initialAction}
+                initialPrice={initialPrice}
+                initialOrderType={initialOrderType}
+            />
+        </BaseModal>
     );
 };
 

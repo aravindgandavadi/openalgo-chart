@@ -1,6 +1,5 @@
 import React from 'react';
-import classNames from 'classnames';
-import styles from '../Topbar.module.css';
+import { BaseDropdown, DropdownItem } from '../../shared';
 
 /**
  * Layout Dropdown Component
@@ -47,28 +46,27 @@ export function LayoutDropdown({ position, layout, onLayoutChange, onClose }) {
     ];
 
     return (
-        <div
-            className={styles.dropdown}
-            style={{ top: position.top, left: position.left }}
-            onClick={(e) => e.stopPropagation()}
+        <BaseDropdown
+            isOpen={true}
+            onClose={onClose}
+            position={{ top: position.top, left: position.left }}
+            width={200}
         >
             {layouts.map((item) => (
-                <div
+                <DropdownItem
                     key={item.value}
-                    className={classNames(styles.dropdownItem, styles.withIcon, {
-                        [styles.active]: layout === item.value,
-                    })}
+                    icon={item.icon}
+                    label={item.label}
+                    active={layout === item.value}
                     onClick={() => {
                         onLayoutChange(item.value);
                         onClose();
                     }}
-                >
-                    <span className={styles.icon}>{item.icon}</span>
-                    <span>{item.label}</span>
-                </div>
+                />
             ))}
-        </div>
+        </BaseDropdown>
     );
 }
 
 export default LayoutDropdown;
+

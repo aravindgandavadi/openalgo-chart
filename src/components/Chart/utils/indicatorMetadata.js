@@ -6,6 +6,8 @@
  * and their associated resources (series, panes, price lines, primitives).
  */
 
+import logger from '../../../utils/logger';
+
 /**
  * Cleanup type constants defining how each indicator should be cleaned up
  */
@@ -327,6 +329,6 @@ export function validateMetadataRegistry() {
 if (process.env.NODE_ENV === 'development') {
   const validation = validateMetadataRegistry();
   if (!validation.valid) {
-    console.warn('Indicator Metadata Registry Validation Errors:', validation.errors);
+    logger.warn('Indicator Metadata Registry Validation Errors:', validation.errors);
   }
 }

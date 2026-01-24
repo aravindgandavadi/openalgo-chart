@@ -55,7 +55,7 @@ export const getExpiry = async (symbol, exchange = 'NFO', instrumentType = 'opti
 
         return null;
     } catch (error) {
-        console.error('Error fetching expiry dates:', error);
+        logger.error('[OptionsAPI] Error fetching expiry dates:', error);
         return null;
     }
 };
@@ -121,7 +121,7 @@ export const getOptionChain = async (underlying, exchange = 'NFO', expiryDate = 
 
         return null;
     } catch (error) {
-        console.error('Error fetching option chain:', error);
+        logger.error('[OptionsAPI] Error fetching option chain:', error);
         return null;
     }
 };
@@ -180,7 +180,7 @@ export const getOptionGreeks = async (symbol, exchange = 'NFO', options = {}) =>
 
         return null;
     } catch (error) {
-        console.error('Error fetching option greeks:', error);
+        logger.error('[OptionsAPI] Error fetching option greeks:', error);
         return null;
     }
 };
@@ -229,7 +229,7 @@ const fetchMultiGreeksBatch = async (symbols, options = {}) => {
 
         return null;
     } catch (error) {
-        console.error('Error fetching multi option greeks batch:', error);
+        logger.error('[OptionsAPI] Error fetching multi option greeks batch:', error);
         return null;
     }
 };
@@ -268,7 +268,7 @@ export const getMultiOptionGreeks = async (symbols, options = {}) => {
             totalSuccess += result.summary?.success || 0;
             totalFailed += result.summary?.failed || 0;
         } else if (result) {
-            console.warn('[OptionsAPI] Invalid response data format:', result);
+            logger.warn('[OptionsAPI] Invalid response data format:', result);
             totalFailed += batch.length;
         }
     }
@@ -330,7 +330,7 @@ export const fetchExpiryDates = async (symbol, exchange = 'NFO', instrumenttype 
 
         return null;
     } catch (error) {
-        console.error('Error fetching expiry dates:', error);
+        logger.error('[OptionsAPI] Error fetching expiry dates:', error);
         return null;
     }
 };

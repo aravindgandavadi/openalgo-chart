@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Minus, Plus, AlertTriangle } from 'lucide-react';
+import { Minus, Plus, AlertTriangle } from 'lucide-react';
 import { placeOrder } from '../../services/openalgo';
 import { getLotSize } from '../../services/openalgo';
 import styles from './ExitPositionModal.module.css';
-
-// Format currency values
-const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '0.00';
-    const num = parseFloat(value);
-    return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
+import logger from '../../utils/logger';
+import { BaseModal, BaseButton, ButtonGroup } from '../shared';
+import { formatCurrency } from '../../utils/shared/formatters';
 
 // Order types available for exit
 const ORDER_TYPES = [
@@ -51,7 +47,7 @@ const ExitPositionModal = ({
                     const ls = await getLotSize(position.symbol, position.exchange);
                     setLotSize(ls || 1);
                 } catch (error) {
-                    console.error('Error fetching lot size:', error);
+                    logger.error('Error fetching lot size:', error);
                     setLotSize(1);
                 }
                 setIsLoadingLotSize(false);
@@ -59,17 +55,6 @@ const ExitPositionModal = ({
             fetchLotSize();
         }
     }, [isOpen, position]);
-
-    // Close modal on Escape key
-    useEffect(() => {
-        const handleEscape = (e) => {
-            if (e.key === 'Escape' && isOpen) {
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
-    }, [isOpen, onClose]);
 
     // Increment/decrement quantity by lot size
     const adjustQuantity = useCallback((delta) => {
@@ -166,14 +151,14 @@ const ExitPositionModal = ({
                 if (showToast) showToast(`Exit failed: ${result.message}`, 'error');
             }
         } catch (error) {
-            console.error('Error placing exit order:', error);
+            logger.error('Error placing exit order:', error);
             if (showToast) showToast('Failed to place exit order', 'error');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    if (!isOpen || !position) return null;
+    if (!position) return null;
 
     const pnl = parseFloat(position.pnl || 0);
     const pnlPercent = position.average_price > 0
@@ -184,175 +169,174 @@ const ExitPositionModal = ({
     const lotsCount = lotSize > 1 ? Math.floor(Math.abs(parseInt(exitQuantity) || 0) / lotSize) : null;
 
     return (
-        <div className={styles.overlay} onClick={onClose}>
-            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                {/* Header */}
-                <div className={styles.header}>
-                    <h2 className={styles.title}>Exit Position</h2>
-                    <button className={styles.closeBtn} onClick={onClose}>
-                        <X size={18} />
-                    </button>
-                </div>
-
-                {/* Position Summary */}
-                <div className={styles.positionSummary}>
-                    <div className={styles.symbolRow}>
-                        <span className={styles.symbolName}>{position.symbol}</span>
-                        <span className={styles.exchange}>{position.exchange}</span>
-                        <span className={styles.product}>{position.product}</span>
-                    </div>
-                    <div className={styles.statsRow}>
-                        <div className={styles.stat}>
-                            <span className={styles.statLabel}>Position</span>
-                            <span className={`${styles.statValue} ${isLong ? styles.positive : styles.negative}`}>
-                                {isLong ? 'LONG' : 'SHORT'} {Math.abs(position.quantity)}
-                                {lotSize > 1 && (
-                                    <span className={styles.lotsLabel}>
-                                        ({Math.floor(Math.abs(position.quantity) / lotSize)}L)
-                                    </span>
-                                )}
-                            </span>
-                        </div>
-                        <div className={styles.stat}>
-                            <span className={styles.statLabel}>Avg Price</span>
-                            <span className={styles.statValue}>{formatCurrency(position.average_price)}</span>
-                        </div>
-                        <div className={styles.stat}>
-                            <span className={styles.statLabel}>LTP</span>
-                            <span className={styles.statValue}>{formatCurrency(position.ltp)}</span>
-                        </div>
-                        <div className={styles.stat}>
-                            <span className={styles.statLabel}>P&L</span>
-                            <span className={`${styles.statValue} ${pnl >= 0 ? styles.positive : styles.negative}`}>
-                                {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
-                                <span className={styles.pnlPercent}>({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%)</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Order Type Selection */}
-                <div className={styles.section}>
-                    <label className={styles.sectionLabel}>Order Type</label>
-                    <div className={styles.orderTypeGrid}>
-                        {ORDER_TYPES.map(type => (
-                            <button
-                                key={type.id}
-                                className={`${styles.orderTypeBtn} ${orderType === type.id ? styles.active : ''}`}
-                                onClick={() => setOrderType(type.id)}
-                                title={type.description}
-                            >
-                                {type.label}
-                            </button>
-                        ))}
-                    </div>
-                    <p className={styles.orderTypeDesc}>
-                        {ORDER_TYPES.find(t => t.id === orderType)?.description}
-                    </p>
-                </div>
-
-                {/* Quantity Input */}
-                <div className={styles.section}>
-                    <label className={styles.sectionLabel}>
-                        Quantity
-                        {lotSize > 1 && !isLoadingLotSize && (
-                            <span className={styles.lotSizeLabel}>(Lot: {lotSize})</span>
-                        )}
-                    </label>
-                    <div className={styles.quantityWrapper}>
-                        <button
-                            className={styles.qtyBtn}
-                            onClick={() => adjustQuantity(-1)}
-                            disabled={parseInt(exitQuantity) <= (lotSize || 1)}
-                        >
-                            <Minus size={16} />
-                        </button>
-                        <input
-                            type="number"
-                            className={styles.quantityInput}
-                            value={exitQuantity}
-                            onChange={(e) => setExitQuantity(e.target.value)}
-                            min={lotSize || 1}
-                            max={Math.abs(position.quantity)}
-                            step={lotSize || 1}
-                        />
-                        <button
-                            className={styles.qtyBtn}
-                            onClick={() => adjustQuantity(1)}
-                            disabled={parseInt(exitQuantity) >= Math.abs(position.quantity)}
-                        >
-                            <Plus size={16} />
-                        </button>
-                    </div>
-                    {lotsCount !== null && (
-                        <p className={styles.lotsInfo}>
-                            {lotsCount} {lotsCount === 1 ? 'Lot' : 'Lots'}
-                        </p>
-                    )}
-                </div>
-
-                {/* Limit Price (for LIMIT and SL orders) */}
-                {(orderType === 'LIMIT' || orderType === 'SL') && (
-                    <div className={styles.section}>
-                        <label className={styles.sectionLabel}>Limit Price</label>
-                        <div className={styles.inputWrapper}>
-                            <span className={styles.inputPrefix}>₹</span>
-                            <input
-                                type="number"
-                                className={styles.priceInput}
-                                value={limitPrice}
-                                onChange={(e) => setLimitPrice(e.target.value)}
-                                placeholder="Enter limit price"
-                                step="0.05"
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* Trigger Price (for SL and SL-M orders) */}
-                {(orderType === 'SL' || orderType === 'SL-M') && (
-                    <div className={styles.section}>
-                        <label className={styles.sectionLabel}>Trigger Price</label>
-                        <div className={styles.inputWrapper}>
-                            <span className={styles.inputPrefix}>₹</span>
-                            <input
-                                type="number"
-                                className={styles.priceInput}
-                                value={triggerPrice}
-                                onChange={(e) => setTriggerPrice(e.target.value)}
-                                placeholder={isLong ? 'Below LTP for sell' : 'Above LTP for buy'}
-                                step="0.05"
-                            />
-                        </div>
-                        <p className={styles.triggerHint}>
-                            <AlertTriangle size={12} />
-                            {isLong
-                                ? `Trigger should be below LTP (${formatCurrency(position.ltp)})`
-                                : `Trigger should be above LTP (${formatCurrency(position.ltp)})`
-                            }
-                        </p>
-                    </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className={styles.actions}>
-                    <button
-                        className={styles.cancelBtn}
+        <BaseModal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Exit Position"
+            showCloseButton={true}
+            closeOnOverlayClick={true}
+            closeOnEscape={true}
+            size="medium"
+            footer={
+                <>
+                    <BaseButton
+                        variant="secondary"
                         onClick={onClose}
                         disabled={isSubmitting}
                     >
                         Cancel
-                    </button>
-                    <button
-                        className={`${styles.submitBtn} ${isLong ? styles.btnSell : styles.btnBuy}`}
+                    </BaseButton>
+                    <BaseButton
+                        variant={isLong ? 'sell' : 'buy'}
                         onClick={handleSubmit}
                         disabled={isSubmitting}
+                        loading={isSubmitting}
                     >
                         {isSubmitting ? 'Placing Order...' : `${exitAction} ${exitQuantity} Qty`}
-                    </button>
+                    </BaseButton>
+                </>
+            }
+        >
+            {/* Position Summary */}
+            <div className={styles.positionSummary}>
+                <div className={styles.symbolRow}>
+                    <span className={styles.symbolName}>{position.symbol}</span>
+                    <span className={styles.exchange}>{position.exchange}</span>
+                    <span className={styles.product}>{position.product}</span>
+                </div>
+                <div className={styles.statsRow}>
+                    <div className={styles.stat}>
+                        <span className={styles.statLabel}>Position</span>
+                        <span className={`${styles.statValue} ${isLong ? styles.positive : styles.negative}`}>
+                            {isLong ? 'LONG' : 'SHORT'} {Math.abs(position.quantity)}
+                            {lotSize > 1 && (
+                                <span className={styles.lotsLabel}>
+                                    ({Math.floor(Math.abs(position.quantity) / lotSize)}L)
+                                </span>
+                            )}
+                        </span>
+                    </div>
+                    <div className={styles.stat}>
+                        <span className={styles.statLabel}>Avg Price</span>
+                        <span className={styles.statValue}>{formatCurrency(position.average_price)}</span>
+                    </div>
+                    <div className={styles.stat}>
+                        <span className={styles.statLabel}>LTP</span>
+                        <span className={styles.statValue}>{formatCurrency(position.ltp)}</span>
+                    </div>
+                    <div className={styles.stat}>
+                        <span className={styles.statLabel}>P&L</span>
+                        <span className={`${styles.statValue} ${pnl >= 0 ? styles.positive : styles.negative}`}>
+                            {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
+                            <span className={styles.pnlPercent}>({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%)</span>
+                        </span>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            {/* Order Type Selection */}
+            <div className={styles.section}>
+                <label className={styles.sectionLabel}>Order Type</label>
+                <div className={styles.orderTypeGrid}>
+                    {ORDER_TYPES.map(type => (
+                        <button
+                            key={type.id}
+                            className={`${styles.orderTypeBtn} ${orderType === type.id ? styles.active : ''}`}
+                            onClick={() => setOrderType(type.id)}
+                            title={type.description}
+                        >
+                            {type.label}
+                        </button>
+                    ))}
+                </div>
+                <p className={styles.orderTypeDesc}>
+                    {ORDER_TYPES.find(t => t.id === orderType)?.description}
+                </p>
+            </div>
+
+            {/* Quantity Input */}
+            <div className={styles.section}>
+                <label className={styles.sectionLabel}>
+                    Quantity
+                    {lotSize > 1 && !isLoadingLotSize && (
+                        <span className={styles.lotSizeLabel}>(Lot: {lotSize})</span>
+                    )}
+                </label>
+                <div className={styles.quantityWrapper}>
+                    <button
+                        className={styles.qtyBtn}
+                        onClick={() => adjustQuantity(-1)}
+                        disabled={parseInt(exitQuantity) <= (lotSize || 1)}
+                    >
+                        <Minus size={16} />
+                    </button>
+                    <input
+                        type="number"
+                        className={styles.quantityInput}
+                        value={exitQuantity}
+                        onChange={(e) => setExitQuantity(e.target.value)}
+                        min={lotSize || 1}
+                        max={Math.abs(position.quantity)}
+                        step={lotSize || 1}
+                    />
+                    <button
+                        className={styles.qtyBtn}
+                        onClick={() => adjustQuantity(1)}
+                        disabled={parseInt(exitQuantity) >= Math.abs(position.quantity)}
+                    >
+                        <Plus size={16} />
+                    </button>
+                </div>
+                {lotsCount !== null && (
+                    <p className={styles.lotsInfo}>
+                        {lotsCount} {lotsCount === 1 ? 'Lot' : 'Lots'}
+                    </p>
+                )}
+            </div>
+
+            {/* Limit Price (for LIMIT and SL orders) */}
+            {(orderType === 'LIMIT' || orderType === 'SL') && (
+                <div className={styles.section}>
+                    <label className={styles.sectionLabel}>Limit Price</label>
+                    <div className={styles.inputWrapper}>
+                        <span className={styles.inputPrefix}>₹</span>
+                        <input
+                            type="number"
+                            className={styles.priceInput}
+                            value={limitPrice}
+                            onChange={(e) => setLimitPrice(e.target.value)}
+                            placeholder="Enter limit price"
+                            step="0.05"
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Trigger Price (for SL and SL-M orders) */}
+            {(orderType === 'SL' || orderType === 'SL-M') && (
+                <div className={styles.section}>
+                    <label className={styles.sectionLabel}>Trigger Price</label>
+                    <div className={styles.inputWrapper}>
+                        <span className={styles.inputPrefix}>₹</span>
+                        <input
+                            type="number"
+                            className={styles.priceInput}
+                            value={triggerPrice}
+                            onChange={(e) => setTriggerPrice(e.target.value)}
+                            placeholder={isLong ? 'Below LTP for sell' : 'Above LTP for buy'}
+                            step="0.05"
+                        />
+                    </div>
+                    <p className={styles.triggerHint}>
+                        <AlertTriangle size={12} />
+                        {isLong
+                            ? `Trigger should be below LTP (${formatCurrency(position.ltp)})`
+                            : `Trigger should be above LTP (${formatCurrency(position.ltp)})`
+                        }
+                    </p>
+                </div>
+            )}
+        </BaseModal>
     );
 };
 

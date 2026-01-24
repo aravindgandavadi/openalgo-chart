@@ -20,6 +20,7 @@ import {
 } from '../../../utils/indicators';
 import { calculateANNStrategy } from '../../../utils/indicators/annStrategy';
 import { calculateHilengaMilenga } from '../../../utils/indicators/hilengaMilenga';
+import { CHART_COLORS } from '../../../utils/colorUtils';
 
 /**
  * Update SMA/EMA/VWAP series
@@ -49,10 +50,10 @@ export const updateOverlaySeries = (series, ind, data, isVisible) => {
 export const updateRSISeries = (series, ind, data, isVisible) => {
     series.applyOptions({ visible: isVisible, color: ind.color || '#7B1FA2' });
     if (series._obLine) {
-        series._obLine.applyOptions({ price: ind.overbought || 70, color: ind.overboughtColor || '#F23645' });
+        series._obLine.applyOptions({ price: ind.overbought || 70, color: ind.overboughtColor || CHART_COLORS.DOWN.primary });
     }
     if (series._osLine) {
-        series._osLine.applyOptions({ price: ind.oversold || 30, color: ind.oversoldColor || '#089981' });
+        series._osLine.applyOptions({ price: ind.oversold || 30, color: ind.oversoldColor || CHART_COLORS.UP.primary });
     }
     const val = calculateRSI(data, ind.period || 14);
     if (val) series.setData(val);
@@ -128,7 +129,7 @@ export const updateSupertrendSeries = (series, ind, data, isVisible) => {
     if (val) {
         const colored = val.map(d => ({
             ...d,
-            color: d.trend === 1 ? (ind.upColor || '#089981') : (ind.downColor || '#F23645')
+            color: d.trend === 1 ? (ind.upColor || CHART_COLORS.UP.primary) : (ind.downColor || CHART_COLORS.DOWN.primary)
         }));
         series.setData(colored);
     }

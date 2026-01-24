@@ -5,6 +5,7 @@
  */
 
 import marketCapCSV from '../data/market-cap-data.csv?raw';
+import logger from '../utils/logger';
 
 // Parse CSV and create market cap lookup
 const parseMarketCapData = () => {
@@ -69,10 +70,10 @@ const parseMarketCapData = () => {
       }
     }
 
-    console.log(`[MarketCapService] Loaded ${marketCapMap.size} stocks with market cap data`);
+    logger.info(`[MarketCapService] Loaded ${marketCapMap.size} stocks with market cap data`);
 
   } catch (error) {
-    console.error('[MarketCapService] Error parsing market cap data:', error);
+    logger.error('[MarketCapService] Error parsing market cap data:', error);
   }
 
   return marketCapMap;

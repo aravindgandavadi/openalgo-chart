@@ -6,6 +6,7 @@
 
 import { getKlines } from './openalgo';
 import { calculateANNStrategy } from '../utils/indicators/annStrategy';
+import logger from '../utils/logger';
 
 /**
  * Convert timestamp to date string (YYYY-MM-DD)
@@ -142,7 +143,7 @@ export const scanStock = async (stock, options = {}, signal = null) => {
     if (err.name === 'AbortError') {
       throw err; // Re-throw abort errors
     }
-    console.error(`[ANN Scanner] Error scanning ${stock.symbol}:`, err);
+    logger.error(`[ANN Scanner] Error scanning ${stock.symbol}:`, err);
     return {
       symbol: stock.symbol,
       exchange: stock.exchange,

@@ -3,6 +3,8 @@
  * Core calculation functions for TPO profiles
  */
 
+import logger from '../logger';
+
 /**
  * Auto-calculate appropriate tick size based on price range
  * @param {Array} data - OHLC data
@@ -151,7 +153,7 @@ export const getMinutesFromMidnight = (timestamp, timezone = undefined) => {
             const hourPart = parts.find(p => p.type === 'hour');
             const minutePart = parts.find(p => p.type === 'minute');
             if (!hourPart || !minutePart) {
-                console.warn('Failed to parse time parts from formatter');
+                logger.warn('Failed to parse time parts from formatter');
                 return 0;
             }
             const hour = parseInt(hourPart.value, 10);
@@ -160,7 +162,7 @@ export const getMinutesFromMidnight = (timestamp, timezone = undefined) => {
             const h = hour === 24 ? 0 : hour;
             return h * 60 + minute;
         } catch (e) {
-            console.warn('Invalid timezone:', timezone, e);
+            logger.warn('Invalid timezone:', timezone, e);
         }
     }
 

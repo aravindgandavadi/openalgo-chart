@@ -1,5 +1,6 @@
 // Template Manager for saving and loading drawing configurations
-import { getJSON, setJSON, STORAGE_KEYS } from '../services/storageService';
+import { getJSON, setJSON, safeParseJSON, STORAGE_KEYS } from '../services/storageService';
+import logger from './logger';
 
 export class TemplateManager {
     constructor() {
@@ -187,7 +188,7 @@ export class TemplateManager {
     // Import templates from JSON file
     importTemplates(jsonData) {
         try {
-            const imported = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+            const imported = typeof jsonData === 'string' ? safeParseJSON(jsonData) : jsonData;
 
             if (Array.isArray(imported)) {
                 imported.forEach(template => {
@@ -207,7 +208,7 @@ export class TemplateManager {
                 return true;
             }
         } catch (error) {
-            console.error('Error importing templates:', error);
+            logger.error('Error importing templates:', error);
         }
         return false;
     }

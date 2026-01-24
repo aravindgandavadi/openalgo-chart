@@ -6,6 +6,7 @@
 
 import { getApiKey, getApiBase } from './openalgo.js';
 import logger from '../utils/logger.js';
+import { safeParseJSON } from './storageService';
 
 export interface WebhookPayload {
     symbol: string;
@@ -104,11 +105,11 @@ export async function sendWebhook(url: string, payload: WebhookPayload): Promise
 
         if (processedMessage) {
             // Try to parse the message as JSON - if it's valid JSON, use it directly
-            try {
-                const parsed = JSON.parse(processedMessage);
+            const parsed = safeParseJSON(processedMessage);
+            if (parsed) {
                 bodyContent = JSON.stringify(parsed);
                 logger.info('[WebhookService] Sending custom JSON payload');
-            } catch {
+            } else {
                 // Not valid JSON, send as a simple message wrapper
                 bodyContent = JSON.stringify({ message: processedMessage });
                 logger.info('[WebhookService] Sending message as wrapper');
@@ -140,16 +141,11 @@ export async function sendWebhook(url: string, payload: WebhookPayload): Promise
 
             // Try to parse error message from response
             let errorMessage = `Webhook failed (${response.status})`;
-            try {
-                const errorJson = JSON.parse(text);
-                if (errorJson.message) {
-                    errorMessage = typeof errorJson.message === 'string'
-                        ? errorJson.message
-                        : JSON.stringify(errorJson.message);
-                }
-            } catch {
-                // Use raw text if not JSON
-                if (text) errorMessage = text.slice(0, 200);
+            const errorJson = safeParseJSON(text);
+            if (errorJson && errorJson.message) {
+                errorMessage = typeof errorJson.message === 'string'
+                    ? errorJson.message
+                    : JSON.stringify(errorJson.message);
             }
 
             return { success: false, error: errorMessage };

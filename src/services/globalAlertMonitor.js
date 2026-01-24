@@ -6,14 +6,15 @@
  * Triggers callbacks when price crosses alert thresholds.
  */
 
+import { getJSON, setJSON, STORAGE_KEYS } from '../services/storageService';
 import { subscribeToMultiTicker } from './openalgo';
 import logger from '../utils/logger';
 import { IndicatorDataManager } from './indicatorDataManager';
 import { AlertEvaluator } from '../utils/alerts/alertEvaluator';
 
 // Must match ChartComponent.jsx storage key
-const ALERT_STORAGE_KEY = 'tv_chart_alerts';
-const APP_ALERT_STORAGE_KEY = 'tv_alerts'; // App.jsx indicator alerts
+const ALERT_STORAGE_KEY = STORAGE_KEYS.CHART_ALERTS;
+const APP_ALERT_STORAGE_KEY = STORAGE_KEYS.ALERTS; // App.jsx indicator alerts
 const ALERT_RETENTION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes (matches ChartComponent's refresh rate)
 const CACHE_REFRESH_INTERVAL_MS = 5000; // Refresh alert cache every 5 seconds
@@ -120,47 +121,47 @@ class GlobalAlertMonitor {
             const cutoff = Date.now() - ALERT_RETENTION_MS;
 
             // Load price alerts from chart storage
-            const chartStored = localStorage.getItem(ALERT_STORAGE_KEY);
-            if (chartStored) {
-                const data = JSON.parse(chartStored);
-                if (data && typeof data === 'object') {
-                    // Data format: { [symbol-exchange]: [alerts], ... }
-                    for (const [key, alerts] of Object.entries(data)) {
-                        if (!Array.isArray(alerts)) continue;
+            const data = getJSON(ALERT_STORAGE_KEY, {});
+            if (data && typeof data === 'object') {
+                // Data format: { [symbol-exchange]: [alerts], ... }
+                for (const [key, alerts] of Object.entries(data)) {
+                    if (!Array.isArray(alerts)) continue;
 
-                        for (const alert of alerts) {
-                            // Filter expired and already triggered
-                            if (alert.createdAt && alert.createdAt < cutoff) continue;
-                            if (alert.status === 'triggered') continue;
+                    for (const alert of alerts) {
+                        // Filter expired and already triggered
+                        if (alert.createdAt && alert.createdAt < cutoff) continue;
+                        if (alert.status === 'triggered') continue;
 
-                            const [symbol, exchange] = key.split(':');
-                            allAlerts.push({
-                                ...alert,
-                                type: 'price', // Mark as price alert
-                                symbol: symbol || alert.symbol,
-                                exchange: exchange || alert.exchange || 'NSE',
-                            });
-                        }
+                        const [symbol, exchange] = key.split(':');
+                        allAlerts.push({
+                            ...alert,
+                            type: 'price', // Mark as price alert
+                            symbol: symbol || alert.symbol,
+                            exchange: exchange || alert.exchange || 'NSE',
+                        });
                     }
                 }
             }
 
             // Load indicator alerts from App.jsx storage
-            const appStored = localStorage.getItem(APP_ALERT_STORAGE_KEY);
-            if (appStored) {
-                const alerts = JSON.parse(appStored);
-                if (Array.isArray(alerts)) {
-                    for (const alert of alerts) {
-                        // Filter expired, triggered, and paused
-                        if (alert.created_at && alert.created_at < cutoff) continue;
-                        if (alert.status === 'Triggered' || alert.status === 'Paused') continue;
-                        if (alert.type !== 'indicator') continue; // Only indicator alerts
+            // Load indicator alerts from App.jsx storage
+            const alerts = getJSON(APP_ALERT_STORAGE_KEY, []);
+            if (Array.isArray(alerts)) {
+                for (const alert of alerts) {
+                    // Filter expired, triggered, and paused
+                    if (alert.created_at && alert.created_at < cutoff) continue;
+                    if (alert.status === 'Triggered' || alert.status === 'Paused') continue;
+                    if (alert.type !== 'indicator') continue; // Only indicator alerts
 
-                        allAlerts.push({
-                            ...alert,
-                            createdAt: alert.created_at, // Normalize field names
-                        });
-                    }
+                    allAlerts.push({
+                        ...alert,
+                        createdAt: alert.created_at, // Normalize field names
+                        type: 'indicator', // Mark as indicator alert
+                        symbol: alert.symbol,
+                        exchange: alert.exchange || 'NSE',
+                        alertType: alert.alert_type, // 'crossing', 'greater_than', etc.
+                        price: alert.value, // Threshold value
+                    });
                 }
             }
 
@@ -208,7 +209,7 @@ class GlobalAlertMonitor {
                 grouped[key].push(alert);
             }
 
-            localStorage.setItem(ALERT_STORAGE_KEY, JSON.stringify(grouped));
+            setJSON(ALERT_STORAGE_KEY, grouped);
             // Refresh cache after save
             this._refreshAlertCache();
         } catch (error) {
@@ -367,7 +368,7 @@ class GlobalAlertMonitor {
         );
 
         if (alerts.length > 0) {
-            console.log('[GlobalAlertMonitor] Price update', symbol, currentPrice, '- checking', alerts.length, 'alerts');
+            logger.debug('[GlobalAlertMonitor] Price update', symbol, currentPrice, '- checking', alerts.length, 'alerts');
         }
 
         // Separate price and indicator alerts
@@ -379,7 +380,7 @@ class GlobalAlertMonitor {
             const triggerEvent = this._checkCrossing(alert, currentPrice);
 
             if (triggerEvent) {
-                console.log('[GlobalAlertMonitor] Price alert triggered:', triggerEvent);
+                logger.debug('[GlobalAlertMonitor] Price alert triggered:', triggerEvent);
 
                 // Remove the alert (one-shot)
                 this._removeAlert(alert.id);
@@ -426,7 +427,7 @@ class GlobalAlertMonitor {
                         const triggerEvent = this._checkIndicatorAlert(alert, indicatorData.current, previousData, currentPrice, previousPrice);
 
                         if (triggerEvent) {
-                            console.log('[GlobalAlertMonitor] Indicator alert triggered:', triggerEvent);
+                            logger.debug('[GlobalAlertMonitor] Indicator alert triggered:', triggerEvent);
 
                             // Handle frequency: once_per_bar removes alert, every_time keeps it active
                             const frequency = alert.frequency || 'once_per_bar';
@@ -461,17 +462,14 @@ class GlobalAlertMonitor {
      */
     _markIndicatorAlertTriggered(alertId) {
         try {
-            const stored = localStorage.getItem(APP_ALERT_STORAGE_KEY);
-            if (!stored) return;
-
-            const alerts = JSON.parse(stored);
+            const alerts = getJSON(APP_ALERT_STORAGE_KEY, []);
             if (!Array.isArray(alerts)) return;
 
             const updated = alerts.map(a =>
                 a.id === alertId ? { ...a, status: 'Triggered' } : a
             );
 
-            localStorage.setItem(APP_ALERT_STORAGE_KEY, JSON.stringify(updated));
+            setJSON(APP_ALERT_STORAGE_KEY, updated);
             // Refresh cache after updating
             this._refreshAlertCache();
         } catch (error) {
@@ -601,9 +599,9 @@ class GlobalAlertMonitor {
      * @param {function} onTrigger - Callback when alert triggers
      */
     start(onTrigger) {
-        console.log('[GlobalAlertMonitor] start() called, isRunning:', this._isRunning);
+        logger.debug('[GlobalAlertMonitor] start() called, isRunning:', this._isRunning);
         if (this._isRunning) {
-            console.log('[GlobalAlertMonitor] Already running, skipping');
+            logger.debug('[GlobalAlertMonitor] Already running, skipping');
             return;
         }
 
@@ -632,9 +630,9 @@ class GlobalAlertMonitor {
         this._refreshAlertCache();
 
         const alerts = this._cachedAlerts;
-        console.log('[GlobalAlertMonitor] Loaded alerts for monitoring:', alerts);
+        logger.debug('[GlobalAlertMonitor] Loaded alerts for monitoring:', alerts);
         if (alerts.length === 0) {
-            console.log('[GlobalAlertMonitor] No alerts to monitor');
+            logger.debug('[GlobalAlertMonitor] No alerts to monitor');
             return;
         }
 
@@ -651,7 +649,7 @@ class GlobalAlertMonitor {
 
         if (symbols.length === 0) return;
 
-        console.log('[GlobalAlertMonitor] Starting monitor for', symbols.length, 'symbols:', symbols);
+        logger.debug('[GlobalAlertMonitor] Starting monitor for', symbols.length, 'symbols:', symbols);
 
         this._isRunning = true;
 

@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { getOptionChain } from '../services/optionChain';
 import { analyzeOptionChain } from '../utils/optionAnalysis';
 import { isMarketOpen } from '../services/marketService';
+import logger from '../utils/logger';
 
 // Refresh interval: 5 minutes
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
@@ -92,7 +93,7 @@ export function useOILines(symbol, exchange, enabled = true) {
                 foExchange = 'BFO';
             }
 
-            console.log('[useOILines] Fetching option chain:', { underlying, foExchange, exchange });
+            logger.debug('[useOILines] Fetching option chain:', { underlying, foExchange, exchange });
 
             // Fetch option chain with enough strikes to capture OI levels
             // Note: getOptionChain service handles the underlying/index exchange mapping
@@ -110,7 +111,7 @@ export function useOILines(symbol, exchange, enabled = true) {
             // Analyze option chain for Max OI and Max Pain
             const analysis = analyzeOptionChain(chainData.chain);
 
-            console.log('[useOILines] Analysis result:', {
+            logger.debug('[useOILines] Analysis result:', {
                 underlying,
                 chainLength: chainData.chain.length,
                 maxCallOI: analysis.maxCallOI,
@@ -136,11 +137,11 @@ export function useOILines(symbol, exchange, enabled = true) {
 
             // Handle "no F&O support" error silently (expected for non-F&O stocks)
             if (err.code === 'NO_FO_SUPPORT') {
-                console.log('[useOILines] Symbol does not support F&O:', underlying);
+                logger.debug('[useOILines] Symbol does not support F&O:', underlying);
                 setError('No F&O support');
                 setOiLines(null);
             } else {
-                console.error('[useOILines] Error fetching OI data:', err);
+                logger.error('[useOILines] Error fetching OI data:', err);
                 setError(err.message || 'Failed to fetch option chain');
                 setOiLines(null);
             }
@@ -180,14 +181,14 @@ export function useOILines(symbol, exchange, enabled = true) {
             intervalRef.current = setInterval(async () => {
                 // Skip if already fetching (prevents overlapping async operations)
                 if (isFetchingRef.current) {
-                    console.log('[useOILines] Skipping refresh - previous fetch still in progress');
+                    logger.debug('[useOILines] Skipping refresh - previous fetch still in progress');
                     return;
                 }
 
                 // Only refresh during market hours
                 const marketOpen = await isMarketOpen('NSE');
                 if (marketOpen && isMountedRef.current) {
-                    console.log('[useOILines] Auto-refreshing OI data');
+                    logger.debug('[useOILines] Auto-refreshing OI data');
                     isFetchingRef.current = true;
                     try {
                         await fetchOIData();

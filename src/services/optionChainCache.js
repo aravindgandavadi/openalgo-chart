@@ -3,6 +3,9 @@
  * Handles caching to reduce API calls and avoid rate limits
  */
 
+import logger from '../utils/logger';
+import { getJSON, setJSON, remove } from './storageService';
+
 // ==================== OPTION CHAIN CACHE ====================
 const optionChainCache = new Map();
 const CACHE_TTL_MS = 300000; // 5 minutes cache
@@ -56,7 +59,7 @@ export const evictOldestEntries = (cache, maxSize) => {
 
     const toRemove = entries.slice(0, cache.size - maxSize);
     toRemove.forEach(([key]) => cache.delete(key));
-    console.log('[OptionChainCache] Evicted', toRemove.length, 'old cache entries');
+    logger.debug('[OptionChainCache] Evicted', toRemove.length, 'old cache entries');
 };
 
 // ==================== NO F&O CACHE ====================
@@ -66,22 +69,21 @@ export const evictOldestEntries = (cache, maxSize) => {
  */
 export const loadNoFOCacheFromStorage = () => {
     try {
-        const stored = localStorage.getItem(NO_FO_STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
+        const parsed = getJSON(NO_FO_STORAGE_KEY, null);
+        if (parsed) {
             const now = Date.now();
             Object.entries(parsed).forEach(([symbol, timestamp]) => {
                 if (now - timestamp < NO_FO_CACHE_DURATION_MS) {
                     noFOSymbolsCache.add(symbol);
                 }
             });
-            console.log('[OptionChainCache] Loaded', noFOSymbolsCache.size, 'non-F&O symbols from cache');
+            logger.debug('[OptionChainCache] Loaded', noFOSymbolsCache.size, 'non-F&O symbols from cache');
         }
     } catch (e) {
         // Phase 4.3: Enhanced error recovery - clear corrupted cache and reset
-        console.warn('[OptionChainCache] Failed to load no-F&O cache:', e.message);
-        console.log('[OptionChainCache] Clearing corrupted no-F&O cache from localStorage');
-        localStorage.removeItem(NO_FO_STORAGE_KEY);
+        logger.warn('[OptionChainCache] Failed to load no-F&O cache:', e.message);
+        logger.debug('[OptionChainCache] Clearing corrupted no-F&O cache from localStorage');
+        remove(NO_FO_STORAGE_KEY);
         noFOSymbolsCache.clear();
     }
 };
@@ -96,9 +98,9 @@ export const saveNoFOCacheToStorage = () => {
         noFOSymbolsCache.forEach(symbol => {
             obj[symbol] = now;
         });
-        localStorage.setItem(NO_FO_STORAGE_KEY, JSON.stringify(obj));
+        setJSON(NO_FO_STORAGE_KEY, obj);
     } catch (e) {
-        console.warn('[OptionChainCache] Failed to save no-F&O cache:', e.message);
+        logger.warn('[OptionChainCache] Failed to save no-F&O cache:', e.message);
     }
 };
 
@@ -119,11 +121,11 @@ export const markAsNonFOSymbol = (symbol) => {
             const entries = Array.from(noFOSymbolsCache);
             const toRemove = entries[0];
             noFOSymbolsCache.delete(toRemove);
-            console.log('[OptionChainCache] Evicted oldest non-F&O symbol:', toRemove);
+            logger.debug('[OptionChainCache] Evicted oldest non-F&O symbol:', toRemove);
         }
         noFOSymbolsCache.add(upperSymbol);
         saveNoFOCacheToStorage();
-        console.log('[OptionChainCache] Marked as non-F&O symbol:', upperSymbol);
+        logger.debug('[OptionChainCache] Marked as non-F&O symbol:', upperSymbol);
     }
 };
 
@@ -134,19 +136,18 @@ export const markAsNonFOSymbol = (symbol) => {
  */
 export const loadCacheFromStorage = () => {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
+        const parsed = getJSON(STORAGE_KEY, null);
+        if (parsed) {
             Object.entries(parsed).forEach(([key, value]) => {
                 optionChainCache.set(key, value);
             });
-            console.log('[OptionChainCache] Loaded', optionChainCache.size, 'cache entries from storage');
+            logger.debug('[OptionChainCache] Loaded', optionChainCache.size, 'cache entries from storage');
         }
     } catch (e) {
         // Phase 4.3: Enhanced error recovery - clear corrupted cache and reset
-        console.warn('[OptionChainCache] Failed to load cache from storage:', e.message);
-        console.log('[OptionChainCache] Clearing corrupted option chain cache from localStorage');
-        localStorage.removeItem(STORAGE_KEY);
+        logger.warn('[OptionChainCache] Failed to load cache from storage:', e.message);
+        logger.debug('[OptionChainCache] Clearing corrupted option chain cache from localStorage');
+        remove(STORAGE_KEY);
         optionChainCache.clear();
     }
 };
@@ -157,9 +158,9 @@ export const loadCacheFromStorage = () => {
 export const saveCacheToStorage = () => {
     try {
         const obj = Object.fromEntries(optionChainCache);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+        setJSON(STORAGE_KEY, obj);
     } catch (e) {
-        console.warn('[OptionChainCache] Failed to save cache to storage:', e.message);
+        logger.warn('[OptionChainCache] Failed to save cache to storage:', e.message);
     }
 };
 
@@ -180,7 +181,7 @@ export const setOptionChainInCache = (cacheKey, data) => {
         timestamp: Date.now()
     });
     saveCacheToStorage();
-    console.log('[OptionChainCache] Cached data for:', cacheKey);
+    logger.debug('[OptionChainCache] Cached data for:', cacheKey);
 };
 
 /**
@@ -190,17 +191,17 @@ export const clearOptionChainCache = (underlying = null, expiry = null) => {
     if (underlying && expiry) {
         const key = getCacheKey(underlying, expiry);
         optionChainCache.delete(key);
-        console.log('[OptionChainCache] Cache cleared for:', key);
+        logger.debug('[OptionChainCache] Cache cleared for:', key);
     } else if (underlying) {
         for (const key of optionChainCache.keys()) {
             if (key.startsWith(underlying + '_')) {
                 optionChainCache.delete(key);
             }
         }
-        console.log('[OptionChainCache] Cache cleared for underlying:', underlying);
+        logger.debug('[OptionChainCache] Cache cleared for underlying:', underlying);
     } else {
         optionChainCache.clear();
-        console.log('[OptionChainCache] Full cache cleared');
+        logger.debug('[OptionChainCache] Full cache cleared');
     }
     saveCacheToStorage();
 };
@@ -212,19 +213,18 @@ export const clearOptionChainCache = (underlying = null, expiry = null) => {
  */
 export const loadExpiryCacheFromStorage = () => {
     try {
-        const stored = localStorage.getItem(EXPIRY_STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
+        const parsed = getJSON(EXPIRY_STORAGE_KEY, null);
+        if (parsed) {
             Object.entries(parsed).forEach(([key, value]) => {
                 expiryCache.set(key, value);
             });
-            console.log('[OptionChainCache] Loaded', expiryCache.size, 'expiry cache entries');
+            logger.debug('[OptionChainCache] Loaded', expiryCache.size, 'expiry cache entries');
         }
     } catch (e) {
         // Phase 4.3: Enhanced error recovery - clear corrupted cache and reset
-        console.warn('[OptionChainCache] Failed to load expiry cache:', e.message);
-        console.log('[OptionChainCache] Clearing corrupted expiry cache from localStorage');
-        localStorage.removeItem(EXPIRY_STORAGE_KEY);
+        logger.warn('[OptionChainCache] Failed to load expiry cache:', e.message);
+        logger.debug('[OptionChainCache] Clearing corrupted expiry cache from localStorage');
+        remove(EXPIRY_STORAGE_KEY);
         expiryCache.clear();
     }
 };
@@ -235,9 +235,9 @@ export const loadExpiryCacheFromStorage = () => {
 export const saveExpiryCacheToStorage = () => {
     try {
         const obj = Object.fromEntries(expiryCache);
-        localStorage.setItem(EXPIRY_STORAGE_KEY, JSON.stringify(obj));
+        setJSON(EXPIRY_STORAGE_KEY, obj);
     } catch (e) {
-        console.warn('[OptionChainCache] Failed to save expiry cache:', e.message);
+        logger.warn('[OptionChainCache] Failed to save expiry cache:', e.message);
     }
 };
 
@@ -258,7 +258,7 @@ export const setExpiryInCache = (cacheKey, data) => {
         timestamp: Date.now()
     });
     saveExpiryCacheToStorage();
-    console.log('[OptionChainCache] Cached expiries for:', cacheKey);
+    logger.debug('[OptionChainCache] Cached expiries for:', cacheKey);
 };
 
 // ==================== RATE LIMITING ====================

@@ -2799,6 +2799,14 @@ export class LineToolManager extends PluginBase {
      * @param clearExisting If true, remove all existing drawings first
      */
     public importDrawings(drawings: any[], clearExisting: boolean = true): void {
+        // Ensure chart is attached before proceeding
+        try {
+            const c = this.chart;
+        } catch (e) {
+            // Chart detached, abort import silently
+            return;
+        }
+
         if (!drawings || !Array.isArray(drawings)) {
             console.warn('importDrawings: Invalid drawings data');
             return;

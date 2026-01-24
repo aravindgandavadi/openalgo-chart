@@ -4,6 +4,7 @@
  *
  * @module riskCalculator
  */
+import { formatCurrency } from '../shared/formatters';
 
 /**
  * Calculate risk position and target based on capital, risk %, and risk-reward ratio
@@ -128,19 +129,20 @@ export function calculateRiskPosition(params) {
     rewardPoints,
     rewardAmount,
     riskRewardRatio: finalRiskRewardRatio,
+
     // Formatted for display
     formatted: {
-      capital: `₹${capital.toLocaleString('en-IN')}`,
+      capital: formatCurrency(capital, { showSymbol: true, decimals: 0 }),
       riskPercent: `${riskPercent}%`,
-      riskAmount: `₹${riskAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      entryPrice: `₹${entryPrice.toFixed(2)}`,
-      stopLossPrice: `₹${stopLossPrice.toFixed(2)}`,
+      riskAmount: formatCurrency(riskAmount, { showSymbol: true }),
+      entryPrice: formatCurrency(entryPrice, { showSymbol: true }),
+      stopLossPrice: formatCurrency(stopLossPrice, { showSymbol: true }),
       slPoints: slPoints.toFixed(2),
       quantity: quantity.toLocaleString('en-IN'),
-      positionValue: `₹${positionValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      targetPrice: `₹${finalTargetPrice.toFixed(2)}`,
+      positionValue: formatCurrency(positionValue, { showSymbol: true }),
+      targetPrice: formatCurrency(finalTargetPrice, { showSymbol: true }),
       rewardPoints: rewardPoints.toFixed(2),
-      rewardAmount: `₹${rewardAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      rewardAmount: formatCurrency(rewardAmount, { showSymbol: true }),
       rrRatio: `1 : ${finalRiskRewardRatio.toFixed(2)}`
     }
   };

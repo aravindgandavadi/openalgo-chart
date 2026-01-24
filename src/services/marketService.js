@@ -77,7 +77,7 @@ export const getMarketHolidays = async (year = new Date().getFullYear()) => {
 
         return [];
     } catch (error) {
-        console.error('[MarketService] Error fetching holidays:', error);
+        logger.error('[MarketService] Error fetching holidays:', error);
         return [];
     }
 };
@@ -144,7 +144,7 @@ export const getMarketTimings = async (date) => {
 
         return [];
     } catch (error) {
-        console.error('[MarketService] Error fetching timings:', error);
+        logger.error('[MarketService] Error fetching timings:', error);
         return [];
     }
 };
@@ -186,7 +186,7 @@ export const isTradingHoliday = async (date, exchange = 'NSE') => {
     const dateParts = date.split('-');
     const year = parseInt(dateParts[0], 10);
     if (!Number.isFinite(year) || year < 1900 || year > 2100) {
-        console.warn('[MarketService] Invalid year extracted from date:', date);
+        logger.warn('[MarketService] Invalid year extracted from date:', date);
         return { isHoliday: false };
     }
     const holidays = await getMarketHolidays(year);

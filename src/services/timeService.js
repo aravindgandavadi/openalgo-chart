@@ -138,7 +138,7 @@ export const initTimeService = async () => {
         syncTimeWithAPI().catch(err => logger.debug('[TimeService] Interval sync error:', err));
     }, SYNC_INTERVAL_MS);
 
-    console.log('[TimeService] Initialized with NPL India. Offset:', timeOffset.toFixed(3), 'seconds');
+    logger.info('[TimeService] Initialized with NPL India. Offset:', timeOffset.toFixed(3), 'seconds');
 };
 
 /**

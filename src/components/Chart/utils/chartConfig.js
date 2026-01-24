@@ -3,6 +3,7 @@
  * Centralized configuration for chart display and behavior
  */
 
+import { CHART_COLORS } from '../../../utils/colorUtils';
 // === Display Settings ===
 export const DEFAULT_CANDLE_WINDOW = 235;       // Fixed number of candles to show
 export const DEFAULT_RIGHT_OFFSET = 50;         // Right margin in candle units (~50 for TradingView-like future time display)
@@ -25,6 +26,6 @@ export const LARGE_PANE_HEIGHT = 120;           // Height for larger indicator p
 export const REPLAY_SPEEDS = [0.5, 1, 2, 4, 8]; // Available replay speeds
 
 // === Chart Appearance Defaults ===
-export const DEFAULT_CANDLE_UP_COLOR = '#089981';
-export const DEFAULT_CANDLE_DOWN_COLOR = '#F23645';
+export const DEFAULT_CANDLE_UP_COLOR = CHART_COLORS.UP.primary;
+export const DEFAULT_CANDLE_DOWN_COLOR = CHART_COLORS.DOWN.primary;
 export const DEFAULT_LINE_COLOR = '#2962FF';

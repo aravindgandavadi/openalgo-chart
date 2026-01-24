@@ -7,6 +7,7 @@ import {
     getTradeBook,
     subscribeToMultiTicker
 } from '../services/openalgo';
+import logger from '../utils/logger';
 
 /**
  * EVENT-DRIVEN Trading Data Hook
@@ -48,7 +49,7 @@ export const useTradingData = (isAuthenticated) => {
         if (fetchInProgress.current) return;
         fetchInProgress.current = true;
         try {
-            console.log(`[useTradingData] Fetching data (source: ${source})`);
+            logger.debug(`[useTradingData] Fetching data (source: ${source})`);
 
             // HIGH FIX RC-4: Use Promise.allSettled to prevent one failure from canceling all fetches
             const results = await Promise.allSettled([
@@ -72,7 +73,7 @@ export const useTradingData = (isAuthenticated) => {
             results.forEach((result, index) => {
                 if (result.status === 'rejected') {
                     const apiNames = ['positions', 'orders', 'funds', 'holdings', 'trades'];
-                    console.warn(`[useTradingData] Failed to fetch ${apiNames[index]}:`, result.reason);
+                    logger.warn(`[useTradingData] Failed to fetch ${apiNames[index]}:`, result.reason);
                 }
             });
 
@@ -85,13 +86,13 @@ export const useTradingData = (isAuthenticated) => {
 
             // Log order updates for debugging
             if (orderList.length > 0) {
-                console.log('[useTradingData] Orders updated:', orderList.length, 'orders', `(source: ${source})`);
+                logger.debug('[useTradingData] Orders updated:', orderList.length, 'orders', `(source: ${source})`);
                 const openOrders = orderList.filter(o => {
                     const status = (o.status || o.order_status || '').toUpperCase().replace(/\s+/g, '_');
                     return ['OPEN', 'PENDING', 'TRIGGER_PENDING', 'VALIDATION_PENDING'].includes(status);
                 });
                 if (openOrders.length > 0) {
-                    console.log('[useTradingData] Open orders:', openOrders.map(o => ({
+                    logger.debug('[useTradingData] Open orders:', openOrders.map(o => ({
                         id: o.orderid,
                         symbol: o.symbol,
                         price: o.price,
@@ -126,7 +127,7 @@ export const useTradingData = (isAuthenticated) => {
             setActivePositions(activePos);
 
         } catch (error) {
-            console.error("[useTradingData] Error fetching trading data:", error);
+            logger.error("[useTradingData] Error fetching trading data:", error);
         } finally {
             fetchInProgress.current = false;
         }
@@ -140,11 +141,11 @@ export const useTradingData = (isAuthenticated) => {
         fetchData('initial');
 
         // Backup polling every 10 seconds (safety net for missed updates)
-        console.log('[useTradingData] Starting backup polling (10s interval)');
+        logger.debug('[useTradingData] Starting backup polling (10s interval)');
         const intervalId = setInterval(() => fetchData('backup-poll'), 10000);
 
         return () => {
-            console.log('[useTradingData] Stopping backup polling');
+            logger.debug('[useTradingData] Stopping backup polling');
             clearInterval(intervalId);
         };
     }, [isAuthenticated, fetchData]);
@@ -152,7 +153,7 @@ export const useTradingData = (isAuthenticated) => {
     // EVENT-DRIVEN: Manual refresh after order operations (modify/cancel/place)
     // This is called immediately after order operations for instant UI updates
     const refreshTradingData = useCallback(async () => {
-        console.log('[useTradingData] EVENT-DRIVEN refresh triggered (order operation)');
+        logger.debug('[useTradingData] EVENT-DRIVEN refresh triggered (order operation)');
         await fetchData('event-driven');
     }, [fetchData]);
 

@@ -13,6 +13,7 @@ import {
 import { hexToRgba } from './chartHelpers';
 import { calculateHeikinAshi } from '../../../utils/chartUtils';
 import { calculateRenko } from '../../../utils/renkoUtils';
+import { CHART_COLORS } from '../../../utils/colorUtils';
 
 /**
  * Transform OHLC data based on chart type
@@ -44,10 +45,10 @@ export const transformData = (data, type) => {
  */
 export const getChartColors = (appearance = {}) => {
   return {
-    upColor: appearance.candleUpColor || '#089981',
-    downColor: appearance.candleDownColor || '#F23645',
-    wickUpColor: appearance.wickUpColor || appearance.candleUpColor || '#089981',
-    wickDownColor: appearance.wickDownColor || appearance.candleDownColor || '#F23645',
+    upColor: appearance.candleUpColor || CHART_COLORS.UP.primary,
+    downColor: appearance.candleDownColor || CHART_COLORS.DOWN.primary,
+    wickUpColor: appearance.wickUpColor || appearance.candleUpColor || CHART_COLORS.UP.primary,
+    wickDownColor: appearance.wickDownColor || appearance.candleDownColor || CHART_COLORS.DOWN.primary,
   };
 };
 

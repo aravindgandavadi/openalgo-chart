@@ -3,6 +3,8 @@
  * Utility functions for transforming and combining option chain data
  */
 
+import logger from './logger';
+
 // Month codes for option symbols (NSE format)
 const MONTH_CODES = {
     1: 'JAN', 2: 'FEB', 3: 'MAR', 4: 'APR', 5: 'MAY', 6: 'JUN',
@@ -177,7 +179,7 @@ export const combinePremiumOHLC = (ceData, peData) => {
 export const combineMultiLegOHLC = (legDataArrays, legConfigs) => {
     if (!legDataArrays?.length || !legConfigs?.length) return [];
     if (legDataArrays.length !== legConfigs.length) {
-        console.warn('[combineMultiLegOHLC] Mismatch between data arrays and configs');
+        logger.warn('[combineMultiLegOHLC] Mismatch between data arrays and configs');
         return [];
     }
 

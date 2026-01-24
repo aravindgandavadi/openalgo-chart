@@ -6,6 +6,7 @@ import {
 import { useFocusTrap, useKeyboardNav, useListNavigation } from '../../hooks';
 import { layoutTemplateService } from '../../utils/layoutTemplateService';
 import styles from './LayoutTemplateDialog.module.css';
+import logger from '../../utils/logger';
 
 /**
  * Format date for display
@@ -302,7 +303,7 @@ const LayoutTemplateDialog = ({
                 setTemplates(layoutTemplateService.getAllSorted());
                 showToast?.(`Imported ${result.imported} template(s)`, 'success');
                 if (result.errors) {
-                    console.warn('Import warnings:', result.errors);
+                    logger.warn('Import warnings:', result.errors);
                 }
             } else {
                 showToast?.(result.error || 'Failed to import templates', 'error');

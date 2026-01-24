@@ -4,6 +4,7 @@
  */
 
 import { getOptionChain as fetchOptionChainAPI, getOptionGreeks, getMultiOptionGreeks, getKlines, searchSymbols, getExpiry, fetchExpiryDates } from './openalgo';
+import logger from '../utils/logger';
 
 // Import cache functions from dedicated module (used internally)
 import {
@@ -160,7 +161,7 @@ export const formatExpiryTab = (expiryStr, index) => {
 export const getOptionChain = async (underlying, exchange = 'NFO', expiryDate = null, strikeCount = 15, forceRefresh = false) => {
     // Check if symbol is known to not support F&O (negative cache)
     if (isNonFOSymbol(underlying)) {
-        console.log('[OptionChain] Symbol known to not support F&O:', underlying);
+        logger.debug('[OptionChain] Symbol known to not support F&O:', underlying);
         const error = new Error(`${underlying} does not support F&O trading`);
         error.code = 'NO_FO_SUPPORT';
         throw error;
@@ -171,18 +172,18 @@ export const getOptionChain = async (underlying, exchange = 'NFO', expiryDate = 
 
     // Return cached data if valid and not forcing refresh
     if (!forceRefresh && isCacheValid(cached)) {
-        console.log('[OptionChain] Using cached data for:', cacheKey, '(age:', Math.round((Date.now() - cached.timestamp) / 1000), 's)');
+        logger.debug('[OptionChain] Using cached data for:', cacheKey, '(age:', Math.round((Date.now() - cached.timestamp) / 1000), 's)');
         return cached.data;
     }
 
     // Rate limit protection: Don't call API too rapidly
     if (shouldApplyRateLimit()) {
         const waitTime = getRateLimitWaitTime();
-        console.log('[OptionChain] Rate limit protection: waiting', waitTime, 'ms before API call');
+        logger.debug('[OptionChain] Rate limit protection: waiting', waitTime, 'ms before API call');
 
         // If we have stale cache, return it instead of waiting
         if (cached) {
-            console.log('[OptionChain] Using stale cache to avoid rate limit');
+            logger.debug('[OptionChain] Using stale cache to avoid rate limit');
             return cached.data;
         }
 
@@ -202,7 +203,7 @@ export const getOptionChain = async (underlying, exchange = 'NFO', expiryDate = 
         // - BSE_INDEX for BSE index options (SENSEX, BANKEX)
         // - NSE/BSE for stock options (RELIANCE, etc.)
 
-        console.log('[OptionChain] Fetching fresh chain:', { underlying, exchange: indexExchange, expiryDate, strikeCount });
+        logger.debug('[OptionChain] Fetching fresh chain:', { underlying, exchange: indexExchange, expiryDate, strikeCount });
 
         // Update last API call time
         updateLastApiCallTime();
@@ -211,11 +212,11 @@ export const getOptionChain = async (underlying, exchange = 'NFO', expiryDate = 
         const result = await fetchOptionChainAPI(underlying, indexExchange, expiryDate, strikeCount);
 
         if (!result) {
-            console.error('[OptionChain] API returned null');
+            logger.error('[OptionChain] API returned null');
 
             // Use stale cache if available (better than empty data)
             if (cached) {
-                console.log('[OptionChain] API returned null, using stale cache for:', cacheKey);
+                logger.debug('[OptionChain] API returned null, using stale cache for:', cacheKey);
                 return cached.data;
             }
 
@@ -306,7 +307,7 @@ export const getOptionChain = async (underlying, exchange = 'NFO', expiryDate = 
 
         return processedData;
     } catch (error) {
-        console.error('[OptionChain] Error fetching option chain:', error);
+        logger.error('[OptionChain] Error fetching option chain:', error);
 
         // If symbol doesn't support F&O, add to negative cache and re-throw
         if (error.code === 'NO_FO_SUPPORT') {
@@ -316,7 +317,7 @@ export const getOptionChain = async (underlying, exchange = 'NFO', expiryDate = 
 
         // On error, return stale cache if available (better than nothing)
         if (cached) {
-            console.log('[OptionChain] API error, returning stale cache for:', cacheKey);
+            logger.debug('[OptionChain] API error, returning stale cache for:', cacheKey);
             return cached.data;
         }
 
@@ -365,24 +366,24 @@ export const getAvailableExpiries = async (underlying, exchange = null, instrume
         const cached = getExpiryFromCache(cacheKey);
 
         if (isCacheValid(cached, CACHE_CONFIG.EXPIRY_CACHE_TTL_MS)) {
-            console.log('[OptionChain] Using cached expiries for:', cacheKey, '(age:', Math.round((Date.now() - cached.timestamp) / 1000), 's)');
+            logger.debug('[OptionChain] Using cached expiries for:', cacheKey, '(age:', Math.round((Date.now() - cached.timestamp) / 1000), 's)');
             return cached.data;
         }
 
-        console.log('[OptionChain] Fetching expiries for', underlying, 'on', foExchange);
+        logger.debug('[OptionChain] Fetching expiries for', underlying, 'on', foExchange);
 
         // Try the dedicated expiry API first (fetchExpiryDates)
         let expiryDates = await fetchExpiryDates(underlying, foExchange, instrumenttype);
 
         // Fallback to getExpiry if fetchExpiryDates returns empty
         if (!expiryDates || expiryDates.length === 0) {
-            console.log('[OptionChain] fetchExpiryDates returned empty, trying getExpiry for', underlying);
+            logger.debug('[OptionChain] fetchExpiryDates returned empty, trying getExpiry for', underlying);
             expiryDates = await getExpiry(underlying, foExchange, instrumenttype);
         }
 
         // Final fallback: Parse symbols to extract unique expiries
         if (!expiryDates || expiryDates.length === 0) {
-            console.log('[OptionChain] Expiry APIs returned empty, falling back to symbol parsing for', underlying);
+            logger.debug('[OptionChain] Expiry APIs returned empty, falling back to symbol parsing for', underlying);
             return await getExpiriesFromSymbolSearch(underlying);
         }
 
@@ -390,7 +391,7 @@ export const getAvailableExpiries = async (underlying, exchange = null, instrume
         const expiries = expiryDates.map(dateStr => {
             // HIGH FIX BUG-9: Add type check to prevent .replace() on non-string
             if (typeof dateStr !== 'string') {
-                console.warn('[OptionChain] Non-string expiry date:', dateStr);
+                logger.warn('[OptionChain] Non-string expiry date:', dateStr);
                 return String(dateStr || '');
             }
             // Remove hyphens: "10-JUL-25" -> "10JUL25"
@@ -402,12 +403,12 @@ export const getAvailableExpiries = async (underlying, exchange = null, instrume
 
         return expiries;
     } catch (error) {
-        console.error('[OptionChain] Error getting expiries:', error);
+        logger.error('[OptionChain] Error getting expiries:', error);
         // Try fallback to symbol search
         try {
             return await getExpiriesFromSymbolSearch(underlying);
         } catch (fallbackError) {
-            console.error('[OptionChain] Fallback symbol search also failed:', fallbackError);
+            logger.error('[OptionChain] Fallback symbol search also failed:', fallbackError);
             return [];
         }
     }
@@ -443,10 +444,10 @@ const getExpiriesFromSymbolSearch = async (underlying) => {
             return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
         });
 
-        console.log('[OptionChain] Expiries from symbol search for', underlying, ':', expiries);
+        logger.debug('[OptionChain] Expiries from symbol search for', underlying, ':', expiries);
         return expiries;
     } catch (error) {
-        console.error('[OptionChain] Error in symbol search fallback:', error);
+        logger.error('[OptionChain] Error in symbol search fallback:', error);
         return [];
     }
 };
@@ -512,7 +513,7 @@ export const combinePremiumOHLC = (ceData, peData) => {
 export const combineMultiLegOHLC = (legDataArrays, legConfigs) => {
     if (!legDataArrays?.length || !legConfigs?.length) return [];
     if (legDataArrays.length !== legConfigs.length) {
-        console.warn('[combineMultiLegOHLC] Mismatch between data arrays and configs');
+        logger.warn('[combineMultiLegOHLC] Mismatch between data arrays and configs');
         return [];
     }
 
@@ -588,7 +589,7 @@ export const fetchStraddlePremium = async (ceSymbol, peSymbol, exchange = 'NFO',
     } catch (error) {
         // Don't log AbortError as it's expected during rapid symbol changes
         if (error.name !== 'AbortError') {
-            console.error('Error fetching straddle premium:', error);
+            logger.error('Error fetching straddle premium:', error);
         }
         return [];
     }

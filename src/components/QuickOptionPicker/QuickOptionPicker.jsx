@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import { getOptionChain, getAvailableExpiries, UNDERLYINGS, getDaysToExpiry, parseExpiryDate } from '../../services/optionChain';
 import styles from './QuickOptionPicker.module.css';
 import classNames from 'classnames';
+import logger from '../../utils/logger';
 
 /**
  * QuickOptionPicker - Full option chain dropdown for charting individual options
@@ -59,7 +60,7 @@ const QuickOptionPicker = ({ isOpen, onClose, onSelect, anchorRef }) => {
                 setExpiryScrollIndex(0);
             }
         } catch (err) {
-            console.error('Failed to fetch expiries:', err);
+            logger.error('Failed to fetch expiries:', err);
             setAvailableExpiries([]);
         } finally {
             setIsLoadingExpiries(false);
@@ -140,7 +141,7 @@ const QuickOptionPicker = ({ isOpen, onClose, onSelect, anchorRef }) => {
     // Format spot price
     const formatSpotPrice = (price) => {
         if (!price) return '-';
-        return price.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        return formatCurrency(price, { showSymbol: false, decimals: 2 });
     };
 
     const chainData = optionChain?.chain || [];

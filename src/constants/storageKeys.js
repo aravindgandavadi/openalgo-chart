@@ -44,6 +44,8 @@ export const STORAGE_KEYS = {
   // Option Chain
   OPTION_CHAIN_STRIKE_COUNT: 'optionChainStrikeCount',
   SHOW_OI_LINES: 'tv_show_oi_lines',
+  OI_HISTORY: 'oi_history',
+  OI_CURRENT: 'oi_current',
 
   // Templates
   TEMPLATE_FAVORITES: 'tv_template_favorites',

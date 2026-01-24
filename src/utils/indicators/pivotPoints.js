@@ -13,9 +13,11 @@
  * @param {string} timeframe - Session timeframe: 'daily', 'weekly', 'monthly'
  * @returns {Object} { pivot: [], r1: [], r2: [], r3: [], s1: [], s2: [], s3: [] }
  */
+
+import logger from '../logger';
 export function calculatePivotPoints(data, type = 'classic', timeframe = 'daily') {
     if (!Array.isArray(data) || data.length < 2) {
-        console.warn('[PivotPoints] Insufficient data:', data?.length);
+        logger.warn('[PivotPoints] Insufficient data:', data?.length);
         return { pivot: [], r1: [], r2: [], r3: [], s1: [], s2: [], s3: [] };
     }
 
@@ -33,7 +35,7 @@ export function calculatePivotPoints(data, type = 'classic', timeframe = 'daily'
     const sessions = groupBySession(data, timeframe);
 
     if (sessions.length < 2) {
-        console.warn('[PivotPoints] Need at least 2 sessions (days/weeks) to calculate pivots. Found:', sessions.length);
+        logger.warn('[PivotPoints] Need at least 2 sessions (days/weeks) to calculate pivots. Found:', sessions.length);
         return result;
     }
 
@@ -128,12 +130,12 @@ function getSessionKey(timestamp, timeframe) {
         const ms = timestamp > 1e12 ? timestamp : timestamp * 1000;
         date = new Date(ms);
     } else {
-        console.warn('[PivotPoints] Invalid timestamp format:', timestamp);
+        logger.warn('[PivotPoints] Invalid timestamp format:', timestamp);
         return '';
     }
 
     if (isNaN(date.getTime())) {
-        console.warn('[PivotPoints] Invalid date created from:', timestamp);
+        logger.warn('[PivotPoints] Invalid date created from:', timestamp);
         return '';
     }
 

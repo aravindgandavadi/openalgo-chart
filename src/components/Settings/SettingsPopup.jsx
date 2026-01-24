@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { BaseModal } from '../shared';
 import styles from './SettingsPopup.module.css';
 import { X, Keyboard } from 'lucide-react';
 import ShortcutsSettings from '../ShortcutsSettings/ShortcutsSettings';
@@ -154,103 +155,100 @@ const SettingsPopup = ({
     ];
 
     return (
-        <div className={styles.overlay} onClick={handleCancel}>
-            <div
-                ref={focusTrapRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="settings-dialog-title"
-                className={`${styles.popup} ${theme === 'light' ? styles.light : ''}`}
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Header */}
-                <div className={styles.header}>
-                    <h2 id="settings-dialog-title" className={styles.title}>Settings</h2>
-                    <button
-                        className={styles.closeButton}
-                        onClick={handleCancel}
-                        aria-label="Close settings"
-                    >
-                        <X size={20} />
-                    </button>
+        <BaseModal
+            isOpen={isOpen}
+            onClose={handleCancel}
+            showHeader={false}
+            noPadding={true}
+            className={`${styles.modalBase} ${theme === 'light' ? styles.light : ''}`}
+        >
+            {/* Header */}
+            <div className={styles.header}>
+                <h2 id="settings-dialog-title" className={styles.title}>Settings</h2>
+                <button
+                    className={styles.closeButton}
+                    onClick={handleCancel}
+                    aria-label="Close settings"
+                >
+                    <X size={20} />
+                </button>
+            </div>
+
+            {/* Content */}
+            <div className={styles.content}>
+                {/* Sidebar */}
+                <div className={styles.sidebar}>
+                    {sections.map((section) => (
+                        <button
+                            key={section.id}
+                            className={`${styles.sidebarItem} ${activeSection === section.id ? styles.active : ''}`}
+                            onClick={() => setActiveSection(section.id)}
+                        >
+                            <span className={styles.sidebarIcon}>{section.icon}</span>
+                            <span className={styles.sidebarLabel}>{section.label}</span>
+                        </button>
+                    ))}
                 </div>
 
-                {/* Content */}
-                <div className={styles.content}>
-                    {/* Sidebar */}
-                    <div className={styles.sidebar}>
-                        {sections.map((section) => (
-                            <button
-                                key={section.id}
-                                className={`${styles.sidebarItem} ${activeSection === section.id ? styles.active : ''}`}
-                                onClick={() => setActiveSection(section.id)}
-                            >
-                                <span className={styles.sidebarIcon}>{section.icon}</span>
-                                <span className={styles.sidebarLabel}>{section.label}</span>
-                            </button>
-                        ))}
-                    </div>
+                {/* Main Content Area */}
+                <div className={styles.main}>
+                    {activeSection === 'scales' && (
+                        <ScalesSection
+                            isTimerVisible={isTimerVisible}
+                            onTimerToggle={onTimerToggle}
+                            isSessionBreakVisible={isSessionBreakVisible}
+                            onSessionBreakToggle={onSessionBreakToggle}
+                        />
+                    )}
 
-                    {/* Main Content Area */}
-                    <div className={styles.main}>
-                        {activeSection === 'scales' && (
-                            <ScalesSection
-                                isTimerVisible={isTimerVisible}
-                                onTimerToggle={onTimerToggle}
-                                isSessionBreakVisible={isSessionBreakVisible}
-                                onSessionBreakToggle={onSessionBreakToggle}
-                            />
-                        )}
+                    {activeSection === 'openalgo' && (
+                        <OpenAlgoSection
+                            localHostUrl={localHostUrl}
+                            setLocalHostUrl={setLocalHostUrl}
+                            localApiKey={localApiKey}
+                            setLocalApiKey={setLocalApiKey}
+                            localWsUrl={localWsUrl}
+                            setLocalWsUrl={setLocalWsUrl}
+                            localUsername={localUsername}
+                            setLocalUsername={setLocalUsername}
+                        />
+                    )}
 
-                        {activeSection === 'openalgo' && (
-                            <OpenAlgoSection
-                                localHostUrl={localHostUrl}
-                                setLocalHostUrl={setLocalHostUrl}
-                                localApiKey={localApiKey}
-                                setLocalApiKey={setLocalApiKey}
-                                localWsUrl={localWsUrl}
-                                setLocalWsUrl={setLocalWsUrl}
-                                localUsername={localUsername}
-                                setLocalUsername={setLocalUsername}
-                            />
-                        )}
+                    {activeSection === 'logging' && (
+                        <LoggingSection
+                            logLevel={logLevel}
+                            setLocalLogLevel={setLocalLogLevel}
+                        />
+                    )}
 
-                        {activeSection === 'logging' && (
-                            <LoggingSection
-                                logLevel={logLevel}
-                                setLocalLogLevel={setLocalLogLevel}
-                            />
-                        )}
+                    {activeSection === 'appearance' && (
+                        <AppearanceSection
+                            localAppearance={localAppearance}
+                            setLocalAppearance={setLocalAppearance}
+                        />
+                    )}
 
-                        {activeSection === 'appearance' && (
-                            <AppearanceSection
-                                localAppearance={localAppearance}
-                                setLocalAppearance={setLocalAppearance}
-                            />
-                        )}
-
-                        {activeSection === 'shortcuts' && (
-                            <div className={styles.section}>
-                                <ShortcutsSettings embedded={true} />
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className={styles.footer}>
-                    <button className={styles.cancelButton} onClick={handleCancel}>
-                        Cancel
-                    </button>
-                    <button
-                        className={styles.okButton}
-                        onClick={handleSave}
-                    >
-                        Ok
-                    </button>
+                    {activeSection === 'shortcuts' && (
+                        <div className={styles.section}>
+                            <ShortcutsSettings embedded={true} />
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
+
+            {/* Footer */}
+            <div className={styles.footer}>
+                <button className={styles.cancelButton} onClick={handleCancel}>
+                    Cancel
+                </button>
+                <button
+                    className={styles.okButton}
+                    onClick={handleSave}
+                >
+                    Ok
+                </button>
+            </div>
+        </BaseModal>
     );
 };
 

@@ -57,7 +57,7 @@ export const sanitizeCustomIntervals = (raw) => {
 // ============== JSON/Storage Utilities ==============
 
 // Import and re-export from centralized storage service
-import { safeParseJSON as _safeParseJSON } from '../services/storageService';
+import { safeParseJSON as _safeParseJSON, getJSON, STORAGE_KEYS } from '../services/storageService';
 export const safeParseJSON = _safeParseJSON;
 
 // ============== Alert Constants ==============
@@ -86,7 +86,7 @@ export const DEFAULT_WATCHLIST = {
  * @returns {Object} Migrated watchlist data
  */
 export const migrateWatchlistData = () => {
-    const newData = safeParseJSON(localStorage.getItem('tv_watchlists'), null);
+    const newData = getJSON(STORAGE_KEYS.WATCHLISTS, null);
 
     // If new format exists, validate and use it
     if (newData && newData.lists && Array.isArray(newData.lists)) {
@@ -105,7 +105,7 @@ export const migrateWatchlistData = () => {
     }
 
     // Check for old format
-    const oldData = safeParseJSON(localStorage.getItem('tv_watchlist'), null);
+    const oldData = getJSON(STORAGE_KEYS.WATCHLIST, null);
 
     if (oldData && Array.isArray(oldData) && oldData.length > 0) {
         // Migrate old format to new format
@@ -177,13 +177,6 @@ export const DRAWING_TOOLS = [
 
 // ============== Price Formatting ==============
 
-/**
- * Formats a price value to 2 decimal places
- * @param {number|string} value - Value to format
- * @returns {string} Formatted price string
- */
-export const formatPrice = (value) => {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return value;
-    return num.toFixed(2);
-};
+// Re-export from shared formatters
+import { formatPrice as _formatPrice } from '../utils/shared/formatters';
+export const formatPrice = _formatPrice;

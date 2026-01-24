@@ -3,9 +3,10 @@
  * Modal for modifying pending orders
  */
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { validateOrder, createOrderPayload } from '../../../utils/shared/orderUtils';
 import styles from '../AccountPanel.module.css';
 import { formatCurrency } from '../utils/accountFormatters';
+import { BaseModal } from '../../shared';
 
 const ModifyOrderModal = ({ isOpen, order, onClose, onModifyComplete, showToast }) => {
     const [price, setPrice] = useState('');
@@ -24,34 +25,20 @@ const ModifyOrderModal = ({ isOpen, order, onClose, onModifyComplete, showToast 
         }
     }, [order]);
 
-    // Validate inputs
+    // Validate inputs using centralized validation
     const validate = () => {
-        const newErrors = {};
-
-        // Price validation (for LIMIT and SL orders)
-        if (order?.pricetype !== 'MARKET') {
-            const priceVal = parseFloat(price);
-            if (!price || isNaN(priceVal) || priceVal <= 0) {
-                newErrors.price = 'Price must be greater than 0';
-            }
-        }
-
-        // Quantity validation
-        const qtyVal = parseInt(quantity);
-        if (!quantity || isNaN(qtyVal) || qtyVal <= 0) {
-            newErrors.quantity = 'Quantity must be greater than 0';
-        }
-
-        // Trigger price validation (for SL orders)
-        if (order?.pricetype === 'SL' || order?.pricetype === 'SL-M') {
-            const triggerVal = parseFloat(triggerPrice);
-            if (!triggerPrice || isNaN(triggerVal) || triggerVal <= 0) {
-                newErrors.triggerPrice = 'Trigger price must be greater than 0';
-            }
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        const result = validateOrder({
+            symbol: order?.symbol,
+            exchange: order?.exchange,
+            action: order?.action,
+            quantity,
+            orderType: order?.pricetype,
+            price,
+            triggerPrice,
+            lotSize: order?.lotSize || 1,
+        });
+        setErrors(result.errors);
+        return result.isValid;
     };
 
     const handleModify = async () => {
@@ -59,19 +46,20 @@ const ModifyOrderModal = ({ isOpen, order, onClose, onModifyComplete, showToast 
 
         setIsModifying(true);
         try {
-            const modifyPayload = {
-                orderid: order.orderid,
-                strategy: order.strategy || 'MANUAL',
-                exchange: order.exchange || 'NSE',
+            // Use centralized payload creation for consistency
+            const modifyPayload = createOrderPayload({
                 symbol: order.symbol,
+                exchange: order.exchange || 'NSE',
                 action: order.action,
+                quantity,
                 product: order.product,
-                pricetype: order.pricetype,
-                quantity: parseInt(quantity),
-                disclosed_quantity: order.disclosed_quantity || 0,
-                price: parseFloat(price || 0),
-                trigger_price: parseFloat(triggerPrice || 0)
-            };
+                orderType: order.pricetype,
+                price,
+                triggerPrice,
+                strategy: order.strategy || 'MANUAL',
+                disclosedQuantity: order.disclosed_quantity || 0,
+                orderId: order.orderid,
+            });
 
             await onModifyComplete(modifyPayload);
             onClose();
@@ -95,146 +83,138 @@ const ModifyOrderModal = ({ isOpen, order, onClose, onModifyComplete, showToast 
     // Calculate estimated value
     const estimatedValue = parseFloat(price || 0) * parseInt(quantity || 0);
 
+    const footer = (
+        <>
+            <button
+                className={styles.secondaryBtn}
+                onClick={handleClose}
+                disabled={isModifying}
+            >
+                Cancel
+            </button>
+            <button
+                className={styles.primaryBtn}
+                onClick={handleModify}
+                disabled={isModifying}
+            >
+                {isModifying ? 'Modifying...' : 'Modify Order'}
+            </button>
+        </>
+    );
+
     return (
-        <div className={styles.modalOverlay} onClick={handleClose}>
-            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.modalHeader}>
-                    <h3>Modify Order</h3>
-                    <button
-                        className={styles.modalCloseBtn}
-                        onClick={handleClose}
-                        disabled={isModifying}
-                        title="Close"
-                    >
-                        <X size={18} />
-                    </button>
+        <BaseModal
+            isOpen={isOpen}
+            onClose={handleClose}
+            title="Modify Order"
+            footer={footer}
+        >
+            <div className={styles.modalBody}>
+                {/* Order Details */}
+                <div className={styles.orderDetails}>
+                    <div className={styles.orderDetailRow}>
+                        <span className={styles.orderDetailLabel}>Symbol:</span>
+                        <span className={styles.orderDetailValue}>{order.symbol}</span>
+                    </div>
+                    <div className={styles.orderDetailRow}>
+                        <span className={styles.orderDetailLabel}>Action:</span>
+                        <span className={`${styles.orderDetailValue} ${order.action === 'BUY' ? styles.positive : styles.negative}`}>
+                            {order.action}
+                        </span>
+                    </div>
+                    <div className={styles.orderDetailRow}>
+                        <span className={styles.orderDetailLabel}>Type:</span>
+                        <span className={styles.orderDetailValue}>{order.pricetype}</span>
+                    </div>
+                    <div className={styles.orderDetailRow}>
+                        <span className={styles.orderDetailLabel}>Product:</span>
+                        <span className={styles.orderDetailValue}>{order.product}</span>
+                    </div>
                 </div>
 
-                <div className={styles.modalBody}>
-                    {/* Order Details */}
-                    <div className={styles.orderDetails}>
-                        <div className={styles.orderDetailRow}>
-                            <span className={styles.orderDetailLabel}>Symbol:</span>
-                            <span className={styles.orderDetailValue}>{order.symbol}</span>
-                        </div>
-                        <div className={styles.orderDetailRow}>
-                            <span className={styles.orderDetailLabel}>Action:</span>
-                            <span className={`${styles.orderDetailValue} ${order.action === 'BUY' ? styles.positive : styles.negative}`}>
-                                {order.action}
-                            </span>
-                        </div>
-                        <div className={styles.orderDetailRow}>
-                            <span className={styles.orderDetailLabel}>Type:</span>
-                            <span className={styles.orderDetailValue}>{order.pricetype}</span>
-                        </div>
-                        <div className={styles.orderDetailRow}>
-                            <span className={styles.orderDetailLabel}>Product:</span>
-                            <span className={styles.orderDetailValue}>{order.product}</span>
-                        </div>
+                {/* Modification Form */}
+                <div className={styles.modifyForm}>
+                    {/* Quantity Input */}
+                    <div className={styles.formGroup}>
+                        <label htmlFor="quantity">
+                            Quantity <span className={styles.required}>*</span>
+                        </label>
+                        <input
+                            id="quantity"
+                            type="number"
+                            step="1"
+                            min="1"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            className={`${styles.formInput} ${errors.quantity ? styles.inputError : ''}`}
+                            disabled={isModifying}
+                        />
+                        {errors.quantity && (
+                            <span className={styles.errorText}>{errors.quantity}</span>
+                        )}
                     </div>
 
-                    {/* Modification Form */}
-                    <div className={styles.modifyForm}>
-                        {/* Quantity Input */}
+                    {/* Price Input (not for MARKET orders) */}
+                    {order.pricetype !== 'MARKET' && (
                         <div className={styles.formGroup}>
-                            <label htmlFor="quantity">
-                                Quantity <span className={styles.required}>*</span>
+                            <label htmlFor="price">
+                                {order.pricetype === 'SL' ? 'Limit Price' : 'Price'} <span className={styles.required}>*</span>
                             </label>
                             <input
-                                id="quantity"
+                                id="price"
                                 type="number"
-                                step="1"
-                                min="1"
-                                value={quantity}
-                                onChange={(e) => setQuantity(e.target.value)}
-                                className={`${styles.formInput} ${errors.quantity ? styles.inputError : ''}`}
+                                step="0.05"
+                                min="0"
+                                value={price}
+                                onChange={(e) => setPrice(e.target.value)}
+                                className={`${styles.formInput} ${errors.price ? styles.inputError : ''}`}
                                 disabled={isModifying}
                             />
-                            {errors.quantity && (
-                                <span className={styles.errorText}>{errors.quantity}</span>
+                            {errors.price && (
+                                <span className={styles.errorText}>{errors.price}</span>
                             )}
                         </div>
+                    )}
 
-                        {/* Price Input (not for MARKET orders) */}
-                        {order.pricetype !== 'MARKET' && (
-                            <div className={styles.formGroup}>
-                                <label htmlFor="price">
-                                    {order.pricetype === 'SL' ? 'Limit Price' : 'Price'} <span className={styles.required}>*</span>
-                                </label>
-                                <input
-                                    id="price"
-                                    type="number"
-                                    step="0.05"
-                                    min="0"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
-                                    className={`${styles.formInput} ${errors.price ? styles.inputError : ''}`}
-                                    disabled={isModifying}
-                                />
-                                {errors.price && (
-                                    <span className={styles.errorText}>{errors.price}</span>
-                                )}
-                            </div>
-                        )}
+                    {/* Trigger Price Input (for SL orders) */}
+                    {(order.pricetype === 'SL' || order.pricetype === 'SL-M') && (
+                        <div className={styles.formGroup}>
+                            <label htmlFor="triggerPrice">
+                                Trigger Price <span className={styles.required}>*</span>
+                            </label>
+                            <input
+                                id="triggerPrice"
+                                type="number"
+                                step="0.05"
+                                min="0"
+                                value={triggerPrice}
+                                onChange={(e) => setTriggerPrice(e.target.value)}
+                                className={`${styles.formInput} ${errors.triggerPrice ? styles.inputError : ''}`}
+                                disabled={isModifying}
+                            />
+                            {errors.triggerPrice && (
+                                <span className={styles.errorText}>{errors.triggerPrice}</span>
+                            )}
+                        </div>
+                    )}
 
-                        {/* Trigger Price Input (for SL orders) */}
-                        {(order.pricetype === 'SL' || order.pricetype === 'SL-M') && (
-                            <div className={styles.formGroup}>
-                                <label htmlFor="triggerPrice">
-                                    Trigger Price <span className={styles.required}>*</span>
-                                </label>
-                                <input
-                                    id="triggerPrice"
-                                    type="number"
-                                    step="0.05"
-                                    min="0"
-                                    value={triggerPrice}
-                                    onChange={(e) => setTriggerPrice(e.target.value)}
-                                    className={`${styles.formInput} ${errors.triggerPrice ? styles.inputError : ''}`}
-                                    disabled={isModifying}
-                                />
-                                {errors.triggerPrice && (
-                                    <span className={styles.errorText}>{errors.triggerPrice}</span>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Estimated Value */}
-                        {order.pricetype !== 'MARKET' && (
-                            <div className={styles.estimatedValue}>
-                                <span className={styles.estimatedLabel}>Estimated Value:</span>
-                                <span className={styles.estimatedAmount}>₹{formatCurrency(estimatedValue)}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Error Message */}
-                    {errors.submit && (
-                        <div className={styles.errorMessage}>
-                            {errors.submit}
+                    {/* Estimated Value */}
+                    {order.pricetype !== 'MARKET' && (
+                        <div className={styles.estimatedValue}>
+                            <span className={styles.estimatedLabel}>Estimated Value:</span>
+                            <span className={styles.estimatedAmount}>₹{formatCurrency(estimatedValue)}</span>
                         </div>
                     )}
                 </div>
 
-                {/* Modal Actions */}
-                <div className={styles.modalActions}>
-                    <button
-                        className={styles.secondaryBtn}
-                        onClick={handleClose}
-                        disabled={isModifying}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        className={styles.primaryBtn}
-                        onClick={handleModify}
-                        disabled={isModifying}
-                    >
-                        {isModifying ? 'Modifying...' : 'Modify Order'}
-                    </button>
-                </div>
+                {/* Error Message */}
+                {errors.submit && (
+                    <div className={styles.errorMessage}>
+                        {errors.submit}
+                    </div>
+                )}
             </div>
-        </div>
+        </BaseModal>
     );
 };
 
