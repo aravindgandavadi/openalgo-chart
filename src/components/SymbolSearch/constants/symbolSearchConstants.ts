@@ -4,7 +4,7 @@
  */
 
 export interface FilterTab {
-    id?: string;
+    id: string;
     label: string;
     exchange: string | null;
     instrumenttype: string | null;
@@ -19,11 +19,11 @@ export interface PopularSymbol {
 
 // Filter tabs with their corresponding API parameters
 export const FILTER_TABS: FilterTab[] = [
-    { label: 'All', exchange: null, instrumenttype: null },
-    { label: 'Stocks', exchange: 'NSE', instrumenttype: 'EQ' },
-    { label: 'Futures', exchange: 'NFO', instrumenttype: 'FUT' },
-    { label: 'Options', exchange: 'NFO', instrumenttype: null },
-    { label: 'Indices', exchange: 'NSE_INDEX', instrumenttype: null },
+    { id: 'all', label: 'All', exchange: null, instrumenttype: null },
+    { id: 'stocks', label: 'Stocks', exchange: 'NSE', instrumenttype: 'EQ' },
+    { id: 'futures', label: 'Futures', exchange: 'NFO', instrumenttype: 'FUT' },
+    { id: 'options', label: 'Options', exchange: 'NFO', instrumenttype: null },
+    { id: 'indices', label: 'Indices', exchange: 'NSE_INDEX', instrumenttype: null },
 ];
 
 // Default popular symbols shown on initial load
