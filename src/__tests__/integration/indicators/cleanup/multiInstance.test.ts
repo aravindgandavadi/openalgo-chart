@@ -35,7 +35,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterAddCount).toBe(initialSeriesCount + 3);
 
         // Remove middle one (SMA 50)
-        await removeIndicator(page, sma50);
+        await removeIndicator(page, sma50!);
         await page.waitForTimeout(300);
 
         // Should have 2 remaining
@@ -43,7 +43,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterRemoveCount).toBe(initialSeriesCount + 2);
 
         // Remove first one (SMA 20)
-        await removeIndicator(page, sma20);
+        await removeIndicator(page, sma20!);
         await page.waitForTimeout(300);
 
         // Should have 1 remaining
@@ -51,7 +51,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterRemove2Count).toBe(initialSeriesCount + 1);
 
         // Remove last one (SMA 200)
-        await removeIndicator(page, sma200);
+        await removeIndicator(page, sma200!);
 
         // All cleaned up
         await verifyCleanup(page, {
@@ -75,7 +75,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 3);
 
         // Remove middle RSI
-        await removeIndicator(page, rsi21);
+        await removeIndicator(page, rsi21!);
         await page.waitForTimeout(300);
 
         // Should have 2 panes remaining
@@ -83,7 +83,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterRemove1).toBe(initialPaneCount + 2);
 
         // Remove another
-        await removeIndicator(page, rsi14);
+        await removeIndicator(page, rsi14!);
         await page.waitForTimeout(300);
 
         // Should have 1 pane remaining
@@ -91,7 +91,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterRemove2).toBe(initialPaneCount + 1);
 
         // Remove last
-        await removeIndicator(page, rsi30);
+        await removeIndicator(page, rsi30!);
 
         // All cleaned up
         await verifyCleanup(page, {
@@ -115,7 +115,7 @@ test.describe('Multi-Instance Cleanup', () => {
         await page.waitForTimeout(500);
 
         // Remove one SMA
-        await removeIndicator(page, sma1);
+        await removeIndicator(page, sma1!);
         await page.waitForTimeout(300);
 
         // SMA2 should still exist
@@ -123,7 +123,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterRemoveSMA1).toBeGreaterThan(initialSeriesCount);
 
         // Remove one RSI
-        await removeIndicator(page, rsi1);
+        await removeIndicator(page, rsi1!);
         await page.waitForTimeout(300);
 
         // RSI2 should still exist
@@ -131,9 +131,9 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterRemoveRSI1).toBeGreaterThan(initialPaneCount);
 
         // Remove remaining
-        await removeIndicator(page, sma2);
-        await removeIndicator(page, rsi2);
-        await removeIndicator(page, macd1);
+        await removeIndicator(page, sma2!);
+        await removeIndicator(page, rsi2!);
+        await removeIndicator(page, macd1!);
 
         // All cleaned up
         await verifyCleanup(page, {
@@ -164,7 +164,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterAddCount).toBeGreaterThanOrEqual(initialSeriesCount + 6);
 
         // Remove first BB
-        await removeIndicator(page, bb20);
+        await removeIndicator(page, bb20!);
         await page.waitForTimeout(300);
 
         // Should have 3 series remaining (second BB)
@@ -172,7 +172,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterRemove1).toBeGreaterThanOrEqual(initialSeriesCount + 3);
 
         // Remove second BB
-        await removeIndicator(page, bb50);
+        await removeIndicator(page, bb50!);
 
         // All cleaned up
         await verifyCleanup(page, {
@@ -196,7 +196,7 @@ test.describe('Multi-Instance Cleanup', () => {
         await page.waitForTimeout(500);
 
         // Remove first
-        await removeIndicator(page, fc1);
+        await removeIndicator(page, fc1!);
         await page.waitForTimeout(300);
 
         // Second should still exist
@@ -204,7 +204,7 @@ test.describe('Multi-Instance Cleanup', () => {
         expect(afterRemove1).toBeGreaterThan(initialSeriesCount);
 
         // Remove second
-        await removeIndicator(page, rb1);
+        await removeIndicator(page, rb1!);
 
         // All cleaned up
         await verifyCleanup(page, {
@@ -229,11 +229,11 @@ test.describe('Multi-Instance Cleanup', () => {
         await page.waitForTimeout(500);
 
         // Remove in random order
-        await removeIndicator(page, indicators[2]); // RSI
-        await removeIndicator(page, indicators[0]); // SMA
-        await removeIndicator(page, indicators[4]); // BB
-        await removeIndicator(page, indicators[3]); // MACD
-        await removeIndicator(page, indicators[1]); // EMA
+        await removeIndicator(page, indicators[2]!); // RSI
+        await removeIndicator(page, indicators[0]!); // SMA
+        await removeIndicator(page, indicators[4]!); // BB
+        await removeIndicator(page, indicators[3]!); // MACD
+        await removeIndicator(page, indicators[1]!); // EMA
 
         // All cleaned up regardless of order
         await verifyCleanup(page, {
@@ -249,7 +249,7 @@ test.describe('Multi-Instance Cleanup', () => {
 
         for (let i = 0; i < 3; i++) {
             // Add 3 SMAs
-            const ids = [];
+            const ids: (string | null)[] = [];
             for (let j = 0; j < 3; j++) {
                 const id = await addIndicator(page, {
                     type: 'sma',
@@ -261,11 +261,11 @@ test.describe('Multi-Instance Cleanup', () => {
             await page.waitForTimeout(300);
 
             // Remove middle one
-            await removeIndicator(page, ids[1]);
+            await removeIndicator(page, ids[1]!);
 
             // Remove remaining
-            await removeIndicator(page, ids[0]);
-            await removeIndicator(page, ids[2]);
+            await removeIndicator(page, ids[0]!);
+            await removeIndicator(page, ids[2]!);
 
             await page.waitForTimeout(200);
         }

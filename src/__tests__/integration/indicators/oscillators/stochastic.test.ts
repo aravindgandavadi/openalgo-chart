@@ -1,6 +1,6 @@
 /**
- * E2E Tests for ATR (Average True Range) Indicator
- * Simple oscillator with separate pane
+ * E2E Tests for Stochastic Oscillator
+ * Multi-series oscillator with separate pane (%K and %D lines)
  */
 
 import { test, expect } from '@playwright/test';
@@ -18,22 +18,27 @@ import {
     waitForIndicatorInLegend
 } from '../setup/testHelpers';
 
-test.describe('ATR Indicator', () => {
+test.describe('Stochastic Oscillator', () => {
     test.beforeEach(async ({ page }) => {
         await setupChart(page);
         await setupConsoleTracking(page);
     });
 
-    test('should create separate pane', async ({ page }) => {
+    test('should create separate pane with K and D lines', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'atr',
-            settings: { period: 14 }
+            type: 'stochastic',
+            settings: {
+                kPeriod: 14,
+                dPeriod: 3,
+                smooth: 3
+            }
         });
 
         await page.waitForTimeout(500);
 
+        // Verify new pane created
         const newPaneCount = await getPaneCount(page);
         expect(newPaneCount).toBe(initialPaneCount + 1);
         expect(indicatorId).toBeTruthy();
@@ -41,29 +46,34 @@ test.describe('ATR Indicator', () => {
 
     test('should appear in legend', async ({ page }) => {
         await addIndicator(page, {
-            type: 'atr',
-            settings: { period: 14 }
+            type: 'stochastic',
+            settings: { kPeriod: 14 }
         });
 
-        await waitForIndicatorInLegend(page, 'ATR');
+        await waitForIndicatorInLegend(page, 'Stochastic');
 
-        const inLegend = await isIndicatorInLegend(page, 'ATR');
+        const inLegend = await isIndicatorInLegend(page, 'Stochastic');
         expect(inLegend).toBe(true);
     });
 
-    test('should cleanup pane when removed', async ({ page }) => {
+    test('should cleanup pane and both series when removed', async ({ page }) => {
         const initialSeriesCount = await getSeriesCount(page);
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'atr',
-            settings: { period: 14 }
+            type: 'stochastic',
+            settings: { kPeriod: 14, dPeriod: 3 }
         });
 
         await page.waitForTimeout(500);
 
-        await removeIndicator(page, indicatorId);
+        const afterAddPaneCount = await getPaneCount(page);
+        expect(afterAddPaneCount).toBe(initialPaneCount + 1);
 
+        // Remove Stochastic
+        await removeIndicator(page, indicatorId!);
+
+        // Verify complete cleanup
         await verifyCleanup(page, {
             seriesCount: initialSeriesCount,
             paneCount: initialPaneCount
@@ -72,41 +82,42 @@ test.describe('ATR Indicator', () => {
         await verifyNoConsoleErrors(page);
     });
 
-    test('should support multiple instances', async ({ page }) => {
+    test('should support multiple instances with separate panes', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
-        const atr14 = await addIndicator(page, {
-            type: 'atr',
-            settings: { period: 14 }
+        const stoch1 = await addIndicator(page, {
+            type: 'stochastic',
+            settings: { kPeriod: 14 }
         });
 
         await page.waitForTimeout(300);
 
-        const atr21 = await addIndicator(page, {
-            type: 'atr',
-            settings: { period: 21 }
+        const stoch2 = await addIndicator(page, {
+            type: 'stochastic',
+            settings: { kPeriod: 21 }
         });
 
         await page.waitForTimeout(300);
 
+        // Two new panes
         const afterAddPaneCount = await getPaneCount(page);
         expect(afterAddPaneCount).toBe(initialPaneCount + 2);
 
-        await removeIndicator(page, atr14);
-        await removeIndicator(page, atr21);
+        await removeIndicator(page, stoch1!);
+        await removeIndicator(page, stoch2!);
     });
 
     test('should handle visibility toggle', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'atr',
-            settings: { period: 14 }
+            type: 'stochastic',
+            settings: { kPeriod: 14 }
         });
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         // Pane should still exist

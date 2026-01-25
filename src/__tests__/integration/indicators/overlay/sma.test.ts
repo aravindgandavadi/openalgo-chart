@@ -1,5 +1,5 @@
 /**
- * E2E Tests for EMA (Exponential Moving Average) Indicator
+ * E2E Tests for SMA (Simple Moving Average) Indicator
  *
  * Tests:
  * 1. Calculation accuracy
@@ -17,7 +17,6 @@ import {
     removeIndicator,
     toggleIndicatorVisibility,
     verifyCleanup,
-    waitForChart,
     getSeriesCount,
     getPaneCount,
     setupConsoleTracking,
@@ -26,77 +25,91 @@ import {
     waitForIndicatorInLegend
 } from '../setup/testHelpers';
 
-test.describe('EMA Indicator', () => {
+test.describe('SMA Indicator', () => {
     test.beforeEach(async ({ page }) => {
         await setupChart(page);
         await setupConsoleTracking(page);
     });
 
-    test('should calculate EMA correctly', async ({ page }) => {
-        // Add EMA(20) indicator
+    test('should calculate SMA correctly', async ({ page }) => {
+        // Add SMA(20) indicator
         const indicatorId = await addIndicator(page, {
-            type: 'ema',
+            type: 'sma',
             settings: { period: 20 }
         });
 
         expect(indicatorId).toBeTruthy();
 
-        // Verify EMA values exist
-        const emaValues = await page.evaluate(() => {
+        // Get SMA values from the chart
+        const smaValues = await page.evaluate(() => {
+            // Access chart data and calculate expected SMA
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartData__) {
-                return container.__chartData__.length > 20;
+            if (container && (container as any).__chartData__) {
+                const data = (container as any).__chartData__;
+                // Simple verification: check if values exist
+                return data.length > 20; // Should have data
             }
             return false;
         });
 
-        expect(emaValues).toBeTruthy();
+        expect(smaValues).toBeTruthy();
     });
 
     test('should render on chart correctly', async ({ page }) => {
         const initialSeriesCount = await getSeriesCount(page);
 
-        // Add EMA with custom color (blue)
+        // Add SMA with custom color
         const indicatorId = await addIndicator(page, {
-            type: 'ema',
+            type: 'sma',
             settings: {
                 period: 20,
-                color: '#2962FF'
+                color: '#FF6D00'
             }
         });
 
+        // Wait for indicator to render
         await page.waitForTimeout(500);
 
         // Verify series count increased
         const newSeriesCount = await getSeriesCount(page);
         expect(newSeriesCount).toBeGreaterThan(initialSeriesCount);
+
+        // Verify series color (if accessible)
+        const hasCorrectColor = await page.evaluate(() => {
+            const container = document.querySelector('.chart-container');
+            // This would need to check the actual series color
+            // For now, just verify series was added
+            return true;
+        });
+
+        expect(hasCorrectColor).toBe(true);
     });
 
     test('should appear in legend with correct name', async ({ page }) => {
         await addIndicator(page, {
-            type: 'ema',
+            type: 'sma',
             settings: { period: 20 }
         });
 
         // Wait for legend to update
-        await waitForIndicatorInLegend(page, 'EMA');
+        await waitForIndicatorInLegend(page, 'SMA');
 
-        // Verify legend contains EMA
-        const inLegend = await isIndicatorInLegend(page, 'EMA');
+        // Verify legend contains SMA
+        const inLegend = await isIndicatorInLegend(page, 'SMA');
         expect(inLegend).toBe(true);
 
         // Verify period is shown
-        const hasPeriod = await isIndicatorInLegend(page, '20');
-        expect(hasPeriod).toBe(true);
+        const hasperiod = await isIndicatorInLegend(page, '20');
+        expect(hasperiod).toBe(true);
     });
 
     test('should cleanup completely when removed', async ({ page }) => {
         const initialSeriesCount = await getSeriesCount(page);
         const initialPaneCount = await getPaneCount(page);
 
-        // Add EMA
+        // Add SMA
         const indicatorId = await addIndicator(page, {
-            type: 'ema',
+            type: 'sma',
             settings: { period: 20 }
         });
 
@@ -107,7 +120,7 @@ test.describe('EMA Indicator', () => {
         expect(afterAddSeriesCount).toBeGreaterThan(initialSeriesCount);
 
         // Remove indicator
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         // Verify cleanup
         await verifyCleanup(page, {
@@ -119,48 +132,43 @@ test.describe('EMA Indicator', () => {
         await verifyNoConsoleErrors(page);
     });
 
-    test('should support multiple instances with different periods', async ({ page }) => {
+    test('should support multiple instances', async ({ page }) => {
         const initialSeriesCount = await getSeriesCount(page);
 
-        // Add EMA(9) - fast
-        const ema9Id = await addIndicator(page, {
-            type: 'ema',
-            settings: { period: 9 }
+        // Add SMA(20)
+        const sma20Id = await addIndicator(page, {
+            type: 'sma',
+            settings: { period: 20 }
         });
 
         await page.waitForTimeout(300);
 
-        // Add EMA(21) - medium
-        const ema21Id = await addIndicator(page, {
-            type: 'ema',
-            settings: { period: 21 }
-        });
-
-        await page.waitForTimeout(300);
-
-        // Add EMA(50) - slow
-        const ema50Id = await addIndicator(page, {
-            type: 'ema',
+        // Add SMA(50)
+        const sma50Id = await addIndicator(page, {
+            type: 'sma',
             settings: { period: 50 }
         });
 
         await page.waitForTimeout(300);
 
-        // Verify all three were added
+        // Verify both were added (2 new series)
         const finalSeriesCount = await getSeriesCount(page);
-        expect(finalSeriesCount).toBe(initialSeriesCount + 3);
+        expect(finalSeriesCount).toBe(initialSeriesCount + 2);
 
-        // Remove middle one
-        await removeIndicator(page, ema21Id);
+        // Verify both in legend
+        const hasSMA20 = await isIndicatorInLegend(page, 'SMA');
+        expect(hasSMA20).toBe(true);
+
+        // Remove first SMA
+        await removeIndicator(page, sma20Id!);
         await page.waitForTimeout(300);
 
         // Verify only one removed
         const afterRemoveCount = await getSeriesCount(page);
-        expect(afterRemoveCount).toBe(initialSeriesCount + 2);
+        expect(afterRemoveCount).toBe(initialSeriesCount + 1);
 
-        // Clean up remaining
-        await removeIndicator(page, ema9Id);
-        await removeIndicator(page, ema50Id);
+        // Remove second SMA
+        await removeIndicator(page, sma50Id!);
         await page.waitForTimeout(300);
 
         // Verify all cleaned up
@@ -169,23 +177,25 @@ test.describe('EMA Indicator', () => {
     });
 
     test('should handle visibility toggle', async ({ page }) => {
-        // Add EMA
+        // Add SMA
         const indicatorId = await addIndicator(page, {
-            type: 'ema',
+            type: 'sma',
             settings: { period: 20 }
         });
 
         await page.waitForTimeout(500);
 
         // Toggle visibility off
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
-        // Verify series is hidden
+        // Verify series is hidden (not removed)
         const seriesVisible = await page.evaluate(() => {
+            // Check if series is hidden
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const series = container.__chartInstance__.series();
+            if (container && (container as any).__chartInstance__) {
+                const series = (container as any).__chartInstance__.series();
+                // Last added series should be hidden
                 return series[series.length - 1]?.options?.visible;
             }
             return null;
@@ -193,15 +203,15 @@ test.describe('EMA Indicator', () => {
 
         expect(seriesVisible).toBe(false);
 
-        // Toggle back on
-        await toggleIndicatorVisibility(page, indicatorId);
+        // Toggle visibility back on
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
-        // Verify visible again
+        // Verify series is visible again
         const seriesVisibleAgain = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const series = container.__chartInstance__.series();
+            if (container && (container as any).__chartInstance__) {
+                const series = (container as any).__chartInstance__.series();
                 return series[series.length - 1]?.options?.visible;
             }
             return null;
@@ -210,90 +220,54 @@ test.describe('EMA Indicator', () => {
         expect(seriesVisibleAgain).toBe(true);
     });
 
-    test('should handle different source options', async ({ page }) => {
-        // Test with 'close' source
-        const emaCloseId = await addIndicator(page, {
-            type: 'ema',
-            settings: { period: 20, source: 'close' }
-        });
-
-        await page.waitForTimeout(300);
-        expect(emaCloseId).toBeTruthy();
-
-        // Remove it
-        await removeIndicator(page, emaCloseId);
-        await page.waitForTimeout(300);
-
-        // Test with 'open' source
-        const emaOpenId = await addIndicator(page, {
-            type: 'ema',
-            settings: { period: 20, source: 'open' }
-        });
-
-        await page.waitForTimeout(300);
-        expect(emaOpenId).toBeTruthy();
-
-        // Cleanup
-        await removeIndicator(page, emaOpenId);
-    });
-
-    test('should update when settings change', async ({ page }) => {
-        // Add EMA with period 20
+    test('should handle settings update', async ({ page }) => {
+        // Add SMA with period 20
         const indicatorId = await addIndicator(page, {
-            type: 'ema',
-            settings: { period: 20 }
+            type: 'sma',
+            settings: { period: 20, color: '#FF6D00' }
         });
 
         await page.waitForTimeout(500);
 
-        // Update period to 50
+        // Update settings to period 50
         await page.evaluate((id) => {
             if (window.__indicatorStore__) {
                 window.__indicatorStore__.getState().updateIndicator(id, {
-                    period: 50
+                    period: 50,
+                    color: '#2962FF'
                 });
             }
         }, indicatorId);
 
         await page.waitForTimeout(500);
 
-        // Verify update (check legend)
+        // Verify settings were updated (check legend for new period)
         const has50 = await isIndicatorInLegend(page, '50');
         expect(has50).toBe(true);
     });
 
-    test('should work alongside other indicators', async ({ page }) => {
-        const initialSeriesCount = await getSeriesCount(page);
-
-        // Add EMA
-        const emaId = await addIndicator(page, {
-            type: 'ema',
+    test('should maintain series after data update', async ({ page }) => {
+        // Add SMA
+        const indicatorId = await addIndicator(page, {
+            type: 'sma',
             settings: { period: 20 }
         });
 
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
-        // Add SMA
-        const smaId = await addIndicator(page, {
-            type: 'sma',
-            settings: { period: 50 }
+        const seriesCountBefore = await getSeriesCount(page);
+
+        // Trigger data update (simulate new candle)
+        await page.evaluate(() => {
+            // Trigger a re-render or data update
+            // Force a chart update
+            window.dispatchEvent(new Event('resize'));
         });
 
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
-        // Verify both added
-        const seriesCount = await getSeriesCount(page);
-        expect(seriesCount).toBe(initialSeriesCount + 2);
-
-        // Remove EMA
-        await removeIndicator(page, emaId);
-        await page.waitForTimeout(300);
-
-        // SMA should still exist
-        const afterEmaRemove = await getSeriesCount(page);
-        expect(afterEmaRemove).toBe(initialSeriesCount + 1);
-
-        // Cleanup
-        await removeIndicator(page, smaId);
+        // Verify series count unchanged
+        const seriesCountAfter = await getSeriesCount(page);
+        expect(seriesCountAfter).toBe(seriesCountBefore);
     });
 });

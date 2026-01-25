@@ -53,7 +53,7 @@ test.describe('VWAP Indicator', () => {
         const indicatorId = await addIndicator(page, { type: 'vwap' });
         await page.waitForTimeout(500);
 
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         await verifyCleanup(page, {
             seriesCount: initialSeriesCount,
@@ -75,21 +75,21 @@ test.describe('VWAP Indicator', () => {
         const finalSeriesCount = await getSeriesCount(page);
         expect(finalSeriesCount).toBe(initialSeriesCount + 2);
 
-        await removeIndicator(page, vwap1);
-        await removeIndicator(page, vwap2);
+        await removeIndicator(page, vwap1!);
+        await removeIndicator(page, vwap2!);
     });
 
     test('should handle visibility toggle', async ({ page }) => {
         const indicatorId = await addIndicator(page, { type: 'vwap' });
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         const seriesVisible = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const series = container.__chartInstance__.series();
+            if (container && (container as any).__chartInstance__) {
+                const series = (container as any).__chartInstance__.series();
                 return series[series.length - 1]?.options?.visible;
             }
             return null;
@@ -105,7 +105,7 @@ test.describe('VWAP Indicator', () => {
         });
         expect(vwapHlc3).toBeTruthy();
 
-        await removeIndicator(page, vwapHlc3);
+        await removeIndicator(page, vwapHlc3!);
         await page.waitForTimeout(300);
 
         const vwapClose = await addIndicator(page, {
@@ -114,6 +114,6 @@ test.describe('VWAP Indicator', () => {
         });
         expect(vwapClose).toBeTruthy();
 
-        await removeIndicator(page, vwapClose);
+        await removeIndicator(page, vwapClose!);
     });
 });

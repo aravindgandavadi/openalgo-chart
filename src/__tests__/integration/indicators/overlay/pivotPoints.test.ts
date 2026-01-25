@@ -67,7 +67,7 @@ test.describe('Pivot Points Indicator', () => {
         await page.waitForTimeout(500);
 
         // Remove Pivot Points
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         // Verify complete cleanup of all series
         await verifyCleanup(page, {
@@ -86,7 +86,7 @@ test.describe('Pivot Points Indicator', () => {
         });
         expect(classicId).toBeTruthy();
 
-        await removeIndicator(page, classicId);
+        await removeIndicator(page, classicId!);
         await page.waitForTimeout(300);
 
         // Fibonacci pivots
@@ -96,7 +96,7 @@ test.describe('Pivot Points Indicator', () => {
         });
         expect(fibId).toBeTruthy();
 
-        await removeIndicator(page, fibId);
+        await removeIndicator(page, fibId!);
     });
 
     test('should handle visibility toggle', async ({ page }) => {
@@ -107,7 +107,7 @@ test.describe('Pivot Points Indicator', () => {
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         const isHidden = await page.evaluate(() => {
@@ -124,7 +124,7 @@ test.describe('Pivot Points Indicator', () => {
         });
         expect(weeklyId).toBeTruthy();
 
-        await removeIndicator(page, weeklyId);
+        await removeIndicator(page, weeklyId!);
         await page.waitForTimeout(300);
 
         const monthlyId = await addIndicator(page, {
@@ -133,6 +133,6 @@ test.describe('Pivot Points Indicator', () => {
         });
         expect(monthlyId).toBeTruthy();
 
-        await removeIndicator(page, monthlyId);
+        await removeIndicator(page, monthlyId!);
     });
 });

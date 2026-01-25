@@ -8,19 +8,41 @@
  * - Value extraction and validation
  */
 
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+
+export interface SetupChartConfig {
+    symbol?: string;
+    exchange?: string;
+    interval?: string;
+    waitForData?: boolean;
+}
+
+export interface IndicatorConfig {
+    type: string;
+    settings?: Record<string, any>;
+}
+
+export interface CleanupExpectations {
+    seriesCount?: number;
+    paneCount?: number;
+    legendEmpty?: boolean;
+    noPrimitives?: boolean;
+}
+
+declare global {
+    interface Window {
+        __chartRefs__: any;
+        __indicatorStore__: any;
+        __testConsoleErrors__: string[];
+        getChartInstance: () => any;
+    }
+}
 
 /**
  * Setup chart for testing
- * @param {Page} page - Playwright page object
- * @param {Object} config - Configuration options
- * @returns {Promise<void>}
  */
-export async function setupChart(page, config = {}) {
+export async function setupChart(page: Page, config: SetupChartConfig = {}): Promise<void> {
     const {
-        symbol = 'RELIANCE',
-        exchange = 'NSE',
-        interval = '5',
         waitForData = true
     } = config;
 
@@ -33,7 +55,7 @@ export async function setupChart(page, config = {}) {
     // Wait for chart to load
     await page.waitForFunction(() => {
         const container = document.querySelector('.chart-container');
-        return container && container.offsetHeight > 0;
+        return container && (container as HTMLElement).offsetHeight > 0;
     }, { timeout: 10000 });
 
     // Expose chart instance and refs for testing
@@ -47,7 +69,7 @@ export async function setupChart(page, config = {}) {
             );
 
             if (fiberKey) {
-                const fiber = chartContainer[fiberKey];
+                const fiber = (chartContainer as any)[fiberKey];
                 let currentFiber = fiber;
 
                 // Traverse up to find ChartComponent
@@ -70,7 +92,7 @@ export async function setupChart(page, config = {}) {
                 const keys = Object.keys(chart);
                 for (const key of keys) {
                     if (key.includes('chart') || key.includes('instance')) {
-                        return chart[key];
+                        return (chart as any)[key];
                     }
                 }
             }
@@ -86,11 +108,8 @@ export async function setupChart(page, config = {}) {
 
 /**
  * Add an indicator to the chart
- * @param {Page} page - Playwright page object
- * @param {Object} config - Indicator configuration
- * @returns {Promise<string>} Indicator ID
  */
-export async function addIndicator(page, config) {
+export async function addIndicator(page: Page, config: IndicatorConfig): Promise<string | null> {
     const { type, settings = {} } = config;
 
     // Click the add indicator button (adjust selector based on your UI)
@@ -128,7 +147,7 @@ export async function addIndicator(page, config) {
         // Access Zustand store or React state
         if (window.__indicatorStore__) {
             const indicators = window.__indicatorStore__.getState().indicators;
-            const indicator = indicators.find(ind => ind.type === indicatorType);
+            const indicator = indicators.find((ind: any) => ind.type === indicatorType);
             return indicator?.id;
         }
         return null;
@@ -139,10 +158,8 @@ export async function addIndicator(page, config) {
 
 /**
  * Remove an indicator from the chart
- * @param {Page} page - Playwright page object
- * @param {string} indicatorId - ID of indicator to remove
  */
-export async function removeIndicator(page, indicatorId) {
+export async function removeIndicator(page: Page, indicatorId: string): Promise<void> {
     // Right-click on indicator in legend or use remove button
     await page.evaluate((id) => {
         if (window.__indicatorStore__) {
@@ -156,14 +173,12 @@ export async function removeIndicator(page, indicatorId) {
 
 /**
  * Toggle indicator visibility
- * @param {Page} page - Playwright page object
- * @param {string} indicatorId - ID of indicator
  */
-export async function toggleIndicatorVisibility(page, indicatorId) {
+export async function toggleIndicatorVisibility(page: Page, indicatorId: string): Promise<void> {
     await page.evaluate((id) => {
         if (window.__indicatorStore__) {
             const state = window.__indicatorStore__.getState();
-            const indicator = state.indicators.find(ind => ind.id === id);
+            const indicator = state.indicators.find((ind: any) => ind.id === id);
             if (indicator) {
                 state.updateIndicator(id, { visible: !indicator.visible });
             }
@@ -175,11 +190,8 @@ export async function toggleIndicatorVisibility(page, indicatorId) {
 
 /**
  * Get indicator values from the chart
- * @param {Page} page - Playwright page object
- * @param {string} indicatorType - Type of indicator
- * @returns {Promise<Array<number>>} Array of indicator values
  */
-export async function getIndicatorValues(page, indicatorType) {
+export async function getIndicatorValues(page: Page, indicatorType: string): Promise<number[]> {
     return await page.evaluate((type) => {
         // This would need to be implemented based on your chart's data structure
         // For now, return a placeholder
@@ -189,13 +201,11 @@ export async function getIndicatorValues(page, indicatorType) {
 
 /**
  * Verify cleanup completeness after indicator removal
- * @param {Page} page - Playwright page object
- * @param {Object} expectations - Expected state after cleanup
  */
-export async function verifyCleanup(page, expectations) {
+export async function verifyCleanup(page: Page, expectations: CleanupExpectations): Promise<void> {
     const {
-        seriesCount = 1,      // Only main series should remain
-        paneCount = 1,        // Only main pane should remain
+        seriesCount,
+        paneCount,
         legendEmpty = false,
         noPrimitives = false
     } = expectations;
@@ -207,8 +217,8 @@ export async function verifyCleanup(page, expectations) {
     if (seriesCount !== undefined) {
         const actualSeriesCount = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                return container.__chartInstance__.series().length;
+            if (container && (container as any).__chartInstance__) {
+                return (container as any).__chartInstance__.series().length;
             }
             return -1;
         });
@@ -222,8 +232,8 @@ export async function verifyCleanup(page, expectations) {
     if (paneCount !== undefined) {
         const actualPaneCount = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                return container.__chartInstance__.panes().length;
+            if (container && (container as any).__chartInstance__) {
+                return (container as any).__chartInstance__.panes().length;
             }
             return -1;
         });
@@ -243,8 +253,8 @@ export async function verifyCleanup(page, expectations) {
     if (noPrimitives) {
         const primitivesCount = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                return container.__mainSeriesRef__._primitives?.length || 0;
+            if (container && (container as any).__mainSeriesRef__) {
+                return (container as any).__mainSeriesRef__._primitives?.length || 0;
             }
             return -1;
         });
@@ -257,12 +267,11 @@ export async function verifyCleanup(page, expectations) {
 
 /**
  * Wait for chart to be ready
- * @param {Page} page - Playwright page object
  */
-export async function waitForChart(page) {
+export async function waitForChart(page: Page): Promise<void> {
     await page.waitForFunction(() => {
         return document.querySelector('.chart-container') &&
-               document.querySelector('.chart-container').offsetHeight > 0;
+               (document.querySelector('.chart-container') as HTMLElement).offsetHeight > 0;
     }, { timeout: 10000 });
 
     // Additional wait for chart initialization
@@ -271,14 +280,12 @@ export async function waitForChart(page) {
 
 /**
  * Get chart series count
- * @param {Page} page - Playwright page object
- * @returns {Promise<number>}
  */
-export async function getSeriesCount(page) {
+export async function getSeriesCount(page: Page): Promise<number> {
     return await page.evaluate(() => {
         const container = document.querySelector('.chart-container');
-        if (container && container.__chartInstance__) {
-            return container.__chartInstance__.series().length;
+        if (container && (container as any).__chartInstance__) {
+            return (container as any).__chartInstance__.series().length;
         }
         return 0;
     });
@@ -286,14 +293,12 @@ export async function getSeriesCount(page) {
 
 /**
  * Get chart pane count
- * @param {Page} page - Playwright page object
- * @returns {Promise<number>}
  */
-export async function getPaneCount(page) {
+export async function getPaneCount(page: Page): Promise<number> {
     return await page.evaluate(() => {
         const container = document.querySelector('.chart-container');
-        if (container && container.__chartInstance__) {
-            return container.__chartInstance__.panes().length;
+        if (container && (container as any).__chartInstance__) {
+            return (container as any).__chartInstance__.panes().length;
         }
         return 0;
     });
@@ -301,10 +306,8 @@ export async function getPaneCount(page) {
 
 /**
  * Take a screenshot for debugging
- * @param {Page} page - Playwright page object
- * @param {string} name - Screenshot name
  */
-export async function takeDebugScreenshot(page, name) {
+export async function takeDebugScreenshot(page: Page, name: string): Promise<void> {
     await page.screenshot({
         path: `test-results/screenshots/${name}-${Date.now()}.png`,
         fullPage: true
@@ -313,10 +316,8 @@ export async function takeDebugScreenshot(page, name) {
 
 /**
  * Get console errors from the page
- * @param {Page} page - Playwright page object
- * @returns {Promise<Array<string>>}
  */
-export async function getConsoleErrors(page) {
+export async function getConsoleErrors(page: Page): Promise<string[]> {
     return await page.evaluate(() => {
         if (window.__testConsoleErrors__) {
             return window.__testConsoleErrors__;
@@ -327,13 +328,12 @@ export async function getConsoleErrors(page) {
 
 /**
  * Setup console error tracking
- * @param {Page} page - Playwright page object
  */
-export async function setupConsoleTracking(page) {
+export async function setupConsoleTracking(page: Page): Promise<void> {
     await page.evaluate(() => {
         window.__testConsoleErrors__ = [];
         const originalError = console.error;
-        console.error = (...args) => {
+        console.error = (...args: any[]) => {
             window.__testConsoleErrors__.push(args.map(String).join(' '));
             originalError.apply(console, args);
         };
@@ -342,34 +342,28 @@ export async function setupConsoleTracking(page) {
 
 /**
  * Verify no console errors occurred
- * @param {Page} page - Playwright page object
  */
-export async function verifyNoConsoleErrors(page) {
+export async function verifyNoConsoleErrors(page: Page): Promise<void> {
     const errors = await getConsoleErrors(page);
     expect(errors.length).toBe(0);
 }
 
 /**
  * Get indicator from legend
- * @param {Page} page - Playwright page object
- * @param {string} indicatorName - Name or pattern to match
- * @returns {Promise<boolean>}
  */
-export async function isIndicatorInLegend(page, indicatorName) {
+export async function isIndicatorInLegend(page: Page, indicatorName: string): Promise<boolean> {
     const legendText = await page.locator('.indicator-legend').textContent();
     return legendText?.includes(indicatorName) || false;
 }
 
 /**
  * Wait for indicator to appear in legend
- * @param {Page} page - Playwright page object
- * @param {string} indicatorName - Name to wait for
  */
-export async function waitForIndicatorInLegend(page, indicatorName) {
+export async function waitForIndicatorInLegend(page: Page, indicatorName: string): Promise<void> {
     await page.waitForFunction(
         (name) => {
             const legend = document.querySelector('.indicator-legend');
-            return legend && legend.textContent.includes(name);
+            return legend && legend.textContent?.includes(name);
         },
         indicatorName,
         { timeout: 5000 }

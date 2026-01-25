@@ -68,7 +68,7 @@ test.describe('Bollinger Bands Indicator', () => {
         expect(afterAddCount).toBeGreaterThanOrEqual(initialSeriesCount + 3);
 
         // Remove Bollinger Bands
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         // Verify complete cleanup of all 3 series
         await verifyCleanup(page, {
@@ -100,14 +100,14 @@ test.describe('Bollinger Bands Indicator', () => {
         const finalSeriesCount = await getSeriesCount(page);
         expect(finalSeriesCount).toBeGreaterThanOrEqual(initialSeriesCount + 6);
 
-        await removeIndicator(page, bb20);
+        await removeIndicator(page, bb20!);
         await page.waitForTimeout(300);
 
         // Should remove first 3 series
         const afterRemoveCount = await getSeriesCount(page);
         expect(afterRemoveCount).toBeGreaterThanOrEqual(initialSeriesCount + 3);
 
-        await removeIndicator(page, bb50);
+        await removeIndicator(page, bb50!);
     });
 
     test('should handle visibility toggle for all series', async ({ page }) => {
@@ -118,17 +118,17 @@ test.describe('Bollinger Bands Indicator', () => {
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         // All 3 series should be hidden
         const allHidden = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const series = container.__chartInstance__.series();
+            if (container && (container as any).__chartInstance__) {
+                const series = (container as any).__chartInstance__.series();
                 // Check last 3 series (BB series)
                 const lastThree = series.slice(-3);
-                return lastThree.every(s => s.options?.visible === false);
+                return lastThree.every((s: any) => s.options?.visible === false);
             }
             return false;
         });

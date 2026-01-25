@@ -10,8 +10,6 @@ import {
     removeIndicator,
     toggleIndicatorVisibility,
     verifyCleanup,
-    getSeriesCount,
-    getPaneCount,
     setupConsoleTracking,
     verifyNoConsoleErrors,
     isIndicatorInLegend
@@ -75,7 +73,7 @@ test.describe('Risk Calculator Indicator', () => {
         await page.waitForTimeout(500);
 
         // Remove Risk Calculator
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         // Verify primitive was detached
         await verifyCleanup(page, {
@@ -96,7 +94,7 @@ test.describe('Risk Calculator Indicator', () => {
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         const isHidden = await page.evaluate(() => {
@@ -118,7 +116,7 @@ test.describe('Risk Calculator Indicator', () => {
         });
 
         expect(buyId).toBeTruthy();
-        await removeIndicator(page, buyId);
+        await removeIndicator(page, buyId!);
         await page.waitForTimeout(300);
 
         // Test SELL side
@@ -132,7 +130,7 @@ test.describe('Risk Calculator Indicator', () => {
         });
 
         expect(sellId).toBeTruthy();
-        await removeIndicator(page, sellId);
+        await removeIndicator(page, sellId!);
     });
 
     test('should handle risk percent changes', async ({ page }) => {
@@ -158,7 +156,7 @@ test.describe('Risk Calculator Indicator', () => {
 
         expect(indicatorId).toBeTruthy();
 
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
     });
 
     test('should support target line visibility toggle', async ({ page }) => {
@@ -185,6 +183,6 @@ test.describe('Risk Calculator Indicator', () => {
 
         expect(indicatorId).toBeTruthy();
 
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
     });
 });

@@ -10,8 +10,6 @@ import {
     removeIndicator,
     toggleIndicatorVisibility,
     verifyCleanup,
-    getSeriesCount,
-    getPaneCount,
     setupConsoleTracking,
     verifyNoConsoleErrors,
     isIndicatorInLegend
@@ -37,7 +35,7 @@ test.describe('TPO Profile Indicator', () => {
         // Verify primitive attached
         const primitiveAttached = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
+            if (container && (container as any).__mainSeriesRef__) {
                 // Would check if primitive is attached
                 return true;
             }
@@ -68,7 +66,7 @@ test.describe('TPO Profile Indicator', () => {
         await page.waitForTimeout(1000);
 
         // Remove TPO
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         // CRITICAL: Verify primitive was detached
         await verifyCleanup(page, {
@@ -78,8 +76,8 @@ test.describe('TPO Profile Indicator', () => {
         // Verify no primitives remain
         const noPrimitives = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length === 0;
             }
             return true;
@@ -98,14 +96,14 @@ test.describe('TPO Profile Indicator', () => {
         await page.waitForTimeout(1000);
 
         // Toggle visibility off
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(500);
 
         // CRITICAL: Primitive should be detached when hidden
         const primitiveDetached = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 // Should be no TPO primitives when toggled off
                 return primitives.length === 0;
             }
@@ -115,13 +113,13 @@ test.describe('TPO Profile Indicator', () => {
         expect(primitiveDetached).toBe(true);
 
         // Toggle back on
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(500);
 
         // Primitive should be re-attached
         const primitiveReattached = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
+            if (container && (container as any).__mainSeriesRef__) {
                 // Would check if primitive is back
                 return true;
             }
@@ -140,12 +138,12 @@ test.describe('TPO Profile Indicator', () => {
 
         // Rapid toggle cycles
         for (let i = 0; i < 5; i++) {
-            await toggleIndicatorVisibility(page, indicatorId);
+            await toggleIndicatorVisibility(page, indicatorId!);
             await page.waitForTimeout(200);
         }
 
         // Remove and verify cleanup
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         await verifyCleanup(page, {
             noPrimitives: true
@@ -163,7 +161,7 @@ test.describe('TPO Profile Indicator', () => {
         expect(tpo30m).toBeTruthy();
         await page.waitForTimeout(1000);
 
-        await removeIndicator(page, tpo30m);
+        await removeIndicator(page, tpo30m!);
         await page.waitForTimeout(500);
 
         const tpo1h = await addIndicator(page, {
@@ -172,7 +170,7 @@ test.describe('TPO Profile Indicator', () => {
         });
 
         expect(tpo1h).toBeTruthy();
-        await removeIndicator(page, tpo1h);
+        await removeIndicator(page, tpo1h!);
     });
 
     test('should handle session type changes', async ({ page }) => {
@@ -196,6 +194,6 @@ test.describe('TPO Profile Indicator', () => {
         // Verify update succeeded
         expect(indicatorId).toBeTruthy();
 
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
     });
 });

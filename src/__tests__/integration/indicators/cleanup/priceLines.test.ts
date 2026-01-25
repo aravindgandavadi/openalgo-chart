@@ -39,7 +39,7 @@ test.describe('Price Lines Cleanup', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 1);
 
         // Remove RSI
-        await removeIndicator(page, rsiId);
+        await removeIndicator(page, rsiId!);
 
         // Verify pane and price lines removed
         const afterRemovePaneCount = await getPaneCount(page);
@@ -48,8 +48,8 @@ test.describe('Price Lines Cleanup', () => {
         // Verify no price lines remain
         const noPriceLines = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const panes = container.__chartInstance__.panes();
+            if (container && (container as any).__chartInstance__) {
+                const panes = (container as any).__chartInstance__.panes();
                 // Should only have main pane
                 return panes.length === 1;
             }
@@ -76,7 +76,7 @@ test.describe('Price Lines Cleanup', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 1);
 
         // Remove ADX
-        await removeIndicator(page, adxId);
+        await removeIndicator(page, adxId!);
 
         // Verify complete cleanup including price lines
         await verifyCleanup(page, {
@@ -106,14 +106,14 @@ test.describe('Price Lines Cleanup', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 2);
 
         // Remove first RSI
-        await removeIndicator(page, rsi1);
+        await removeIndicator(page, rsi1!);
 
         // First pane and its price lines should be gone
         const afterRemove1 = await getPaneCount(page);
         expect(afterRemove1).toBe(initialPaneCount + 1);
 
         // Remove second RSI
-        await removeIndicator(page, rsi2);
+        await removeIndicator(page, rsi2!);
 
         // All cleaned up
         await verifyCleanup(page, {
@@ -148,7 +148,7 @@ test.describe('Price Lines Cleanup', () => {
         await page.waitForTimeout(500);
 
         // Remove after update
-        await removeIndicator(page, rsiId);
+        await removeIndicator(page, rsiId!);
 
         // Verify cleanup still works
         await verifyCleanup(page, {
@@ -173,7 +173,7 @@ test.describe('Price Lines Cleanup', () => {
         await page.waitForTimeout(500);
 
         // Remove Hilenga-Milenga
-        await removeIndicator(page, hmId);
+        await removeIndicator(page, hmId!);
 
         // Verify pane and midline removed
         await verifyCleanup(page, {
@@ -194,7 +194,7 @@ test.describe('Price Lines Cleanup', () => {
 
             await page.waitForTimeout(200);
 
-            await removeIndicator(page, rsiId);
+            await removeIndicator(page, rsiId!);
             await page.waitForTimeout(200);
         }
 

@@ -70,7 +70,7 @@ test.describe('ANN Strategy Indicator', () => {
         await page.waitForTimeout(500);
 
         // Remove ANN Strategy
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         // Verify complete cleanup
         await verifyCleanup(page, {
@@ -91,7 +91,7 @@ test.describe('ANN Strategy Indicator', () => {
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         // Pane should still exist

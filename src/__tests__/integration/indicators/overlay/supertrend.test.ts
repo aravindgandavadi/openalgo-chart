@@ -61,7 +61,7 @@ test.describe('Supertrend Indicator', () => {
 
         await page.waitForTimeout(500);
 
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         await verifyCleanup(page, {
             seriesCount: initialSeriesCount,
@@ -91,8 +91,8 @@ test.describe('Supertrend Indicator', () => {
         const finalSeriesCount = await getSeriesCount(page);
         expect(finalSeriesCount).toBe(initialSeriesCount + 2);
 
-        await removeIndicator(page, st1);
-        await removeIndicator(page, st2);
+        await removeIndicator(page, st1!);
+        await removeIndicator(page, st2!);
     });
 
     test('should handle visibility toggle', async ({ page }) => {
@@ -103,13 +103,13 @@ test.describe('Supertrend Indicator', () => {
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         const seriesVisible = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const series = container.__chartInstance__.series();
+            if (container && (container as any).__chartInstance__) {
+                const series = (container as any).__chartInstance__.series();
                 return series[series.length - 1]?.options?.visible;
             }
             return null;

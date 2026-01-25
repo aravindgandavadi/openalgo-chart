@@ -38,7 +38,7 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
         expect(afterAddCount).toBe(initialSeriesCount + 1);
 
         console.log('=== STEP 3: Hide indicator ===');
-        await toggleIndicatorVisibility(page, smaId);
+        await toggleIndicatorVisibility(page, smaId!);
         await page.waitForTimeout(1000);
 
         // Series still exists but hidden
@@ -46,11 +46,11 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
         console.log('Series count after hide:', hiddenCount);
 
         console.log('=== STEP 4: Show indicator again ===');
-        await toggleIndicatorVisibility(page, smaId);
+        await toggleIndicatorVisibility(page, smaId!);
         await page.waitForTimeout(1000);
 
         console.log('=== STEP 5: DELETE indicator ===');
-        await removeIndicator(page, smaId);
+        await removeIndicator(page, smaId!);
         await page.waitForTimeout(2000); // Wait for cleanup
 
         const finalSeriesCount = await getSeriesCount(page);
@@ -74,7 +74,7 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
 
         console.log('=== STEP 2: Check primitives attached ===');
         const hasPrimitives = await page.evaluate(() => {
-            const container = document.querySelector('.chart-container');
+            const container = document.querySelector('.chart-container') as any;
             const primitives = container?.__mainSeriesRef__?._primitives || [];
             return primitives.length > 0;
         });
@@ -82,16 +82,16 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
         expect(hasPrimitives).toBe(true);
 
         console.log('=== STEP 3: Hide TPO ===');
-        await toggleIndicatorVisibility(page, tpoId);
+        await toggleIndicatorVisibility(page, tpoId!);
         await page.waitForTimeout(2000);
 
         console.log('=== STEP 4: DELETE TPO ===');
-        await removeIndicator(page, tpoId);
+        await removeIndicator(page, tpoId!);
         await page.waitForTimeout(2000);
 
         console.log('=== STEP 5: Verify primitives detached ===');
         const noPrimitives = await page.evaluate(() => {
-            const container = document.querySelector('.chart-container');
+            const container = document.querySelector('.chart-container') as any;
             const primitives = container?.__mainSeriesRef__?._primitives || [];
             return primitives.length === 0;
         });
@@ -117,7 +117,7 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 1);
 
         console.log('=== STEP 2: DELETE RSI ===');
-        await removeIndicator(page, rsiId);
+        await removeIndicator(page, rsiId!);
         await page.waitForTimeout(2000);
 
         console.log('=== STEP 3: Verify pane removed ===');
@@ -150,7 +150,7 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
         expect(afterAddCount).toBe(initialSeriesCount + 3);
 
         console.log('=== STEP 3: DELETE Bollinger Bands ===');
-        await removeIndicator(page, bbId);
+        await removeIndicator(page, bbId!);
         await page.waitForTimeout(2000);
 
         const finalSeriesCount = await getSeriesCount(page);
@@ -181,7 +181,7 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
         console.log('Series after add:', afterAddSeriesCount);
 
         console.log('=== STEP 2: DELETE MACD ===');
-        await removeIndicator(page, macdId);
+        await removeIndicator(page, macdId!);
         await page.waitForTimeout(2000);
 
         const finalPaneCount = await getPaneCount(page);
@@ -219,13 +219,13 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
         console.log('After adding all:', afterAddSeriesCount, 'series |', afterAddPaneCount, 'panes');
 
         console.log('=== STEP 5: Remove all indicators ===');
-        await removeIndicator(page, smaId);
+        await removeIndicator(page, smaId!);
         await page.waitForTimeout(500);
 
-        await removeIndicator(page, emaId);
+        await removeIndicator(page, emaId!);
         await page.waitForTimeout(500);
 
-        await removeIndicator(page, rsiId);
+        await removeIndicator(page, rsiId!);
         await page.waitForTimeout(1000);
 
         const finalSeriesCount = await getSeriesCount(page);
@@ -244,10 +244,10 @@ test.describe('Manual Debug - Indicator Cleanup', () => {
         console.log('=== Checking cleanup infrastructure ===');
 
         const infrastructure = await page.evaluate(() => {
-            const container = document.querySelector('.chart-container');
+            const container = document.querySelector('.chart-container') as any;
             return {
                 hasChart: !!container?.__chartInstance__,
-                hasStore: !!window.__indicatorStore__,
+                hasStore: !!(window as any).__indicatorStore__,
                 hasTypesMap: !!container?.__indicatorTypesMap__,
                 hasSeriesMap: !!container?.__indicatorSeriesMap__,
                 hasMainSeriesRef: !!container?.__mainSeriesRef__

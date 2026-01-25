@@ -1,6 +1,6 @@
 /**
- * E2E Tests for First Red Candle Strategy
- * Array-based indicator that creates multiple line series
+ * E2E Tests for Ichimoku Cloud Indicator
+ * Complex multi-series indicator with 5 lines + cloud fill
  */
 
 import { test, expect } from '@playwright/test';
@@ -18,54 +18,58 @@ import {
     waitForIndicatorInLegend
 } from '../setup/testHelpers';
 
-test.describe('First Red Candle Strategy', () => {
+test.describe('Ichimoku Cloud Indicator', () => {
     test.beforeEach(async ({ page }) => {
-        await setupChart(page, { interval: '5' }); // 5-minute chart required
+        await setupChart(page);
         await setupConsoleTracking(page);
     });
 
-    test('should render high/low lines for first red candle', async ({ page }) => {
+    test('should render Ichimoku with multiple series', async ({ page }) => {
         const initialSeriesCount = await getSeriesCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'firstCandle',
-            settings: {}
+            type: 'ichimoku',
+            settings: {
+                tenkanPeriod: 9,
+                kijunPeriod: 26,
+                senkouBPeriod: 52,
+                displacement: 26
+            }
         });
 
         await page.waitForTimeout(500);
 
-        // First Candle creates array of line series
+        // Ichimoku creates multiple series (tenkan, kijun, senkou A/B, chikou)
         const newSeriesCount = await getSeriesCount(page);
-        expect(newSeriesCount).toBeGreaterThanOrEqual(initialSeriesCount);
+        expect(newSeriesCount).toBeGreaterThan(initialSeriesCount);
         expect(indicatorId).toBeTruthy();
     });
 
     test('should appear in legend', async ({ page }) => {
         await addIndicator(page, {
-            type: 'firstCandle'
+            type: 'ichimoku'
         });
 
-        await page.waitForTimeout(500);
+        await waitForIndicatorInLegend(page, 'Ichimoku');
 
-        const inLegend = await isIndicatorInLegend(page, 'First');
+        const inLegend = await isIndicatorInLegend(page, 'Ichimoku');
         expect(inLegend).toBe(true);
     });
 
-    test('should cleanup all array series when removed', async ({ page }) => {
+    test('should cleanup all series when removed', async ({ page }) => {
         const initialSeriesCount = await getSeriesCount(page);
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'firstCandle',
-            settings: {}
+            type: 'ichimoku'
         });
 
         await page.waitForTimeout(500);
 
-        // Remove First Candle
-        await removeIndicator(page, indicatorId);
+        // Remove Ichimoku
+        await removeIndicator(page, indicatorId!);
 
-        // Verify complete cleanup of all array series
+        // Verify complete cleanup of all series
         await verifyCleanup(page, {
             seriesCount: initialSeriesCount,
             paneCount: initialPaneCount
@@ -74,42 +78,38 @@ test.describe('First Red Candle Strategy', () => {
         await verifyNoConsoleErrors(page);
     });
 
+    test('should support custom settings', async ({ page }) => {
+        const indicatorId = await addIndicator(page, {
+            type: 'ichimoku',
+            settings: {
+                tenkanPeriod: 10,
+                kijunPeriod: 30,
+                senkouBPeriod: 60,
+                displacement: 30
+            }
+        });
+
+        expect(indicatorId).toBeTruthy();
+        await page.waitForTimeout(500);
+
+        await removeIndicator(page, indicatorId!);
+    });
+
     test('should handle visibility toggle', async ({ page }) => {
         const indicatorId = await addIndicator(page, {
-            type: 'firstCandle'
+            type: 'ichimoku'
         });
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
-        // Verify series hidden
+        // Verify hidden
         const isHidden = await page.evaluate(() => {
             return true; // Would check actual series visibility
         });
 
         expect(isHidden).toBe(true);
-    });
-
-    test('should handle rapid add/remove cycles', async ({ page }) => {
-        const initialSeriesCount = await getSeriesCount(page);
-
-        for (let i = 0; i < 3; i++) {
-            const id = await addIndicator(page, {
-                type: 'firstCandle'
-            });
-
-            await page.waitForTimeout(200);
-
-            await removeIndicator(page, id);
-            await page.waitForTimeout(200);
-        }
-
-        // Verify clean state
-        const finalSeriesCount = await getSeriesCount(page);
-        expect(finalSeriesCount).toBe(initialSeriesCount);
-
-        await verifyNoConsoleErrors(page);
     });
 });

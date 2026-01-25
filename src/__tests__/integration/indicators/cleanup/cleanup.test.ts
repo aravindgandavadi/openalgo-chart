@@ -34,8 +34,8 @@ test.describe('General Indicator Cleanup', () => {
         expect(afterAddCount).toBe(initialSeriesCount + 2);
 
         // Remove both
-        await removeIndicator(page, smaId);
-        await removeIndicator(page, emaId);
+        await removeIndicator(page, smaId!);
+        await removeIndicator(page, emaId!);
 
         // Verify complete cleanup
         await verifyCleanup(page, {
@@ -61,7 +61,7 @@ test.describe('General Indicator Cleanup', () => {
         expect(afterAddCount).toBeGreaterThanOrEqual(initialSeriesCount + 3);
 
         // Remove BB
-        await removeIndicator(page, bbId);
+        await removeIndicator(page, bbId!);
 
         // Verify all 3 series cleaned up
         await verifyCleanup(page, {
@@ -88,8 +88,8 @@ test.describe('General Indicator Cleanup', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 2);
 
         // Remove both
-        await removeIndicator(page, rsiId);
-        await removeIndicator(page, macdId);
+        await removeIndicator(page, rsiId!);
+        await removeIndicator(page, macdId!);
 
         // Verify complete cleanup including panes
         await verifyCleanup(page, {
@@ -114,9 +114,9 @@ test.describe('General Indicator Cleanup', () => {
         await page.waitForTimeout(500);
 
         // Remove all
-        await removeIndicator(page, smaId);
-        await removeIndicator(page, rsiId);
-        await removeIndicator(page, bbId);
+        await removeIndicator(page, smaId!);
+        await removeIndicator(page, rsiId!);
+        await removeIndicator(page, bbId!);
 
         // Verify complete cleanup
         await verifyCleanup(page, {
@@ -138,9 +138,9 @@ test.describe('General Indicator Cleanup', () => {
         await page.waitForTimeout(500);
 
         // Remove in reverse order (should work the same)
-        await removeIndicator(page, ind3);
-        await removeIndicator(page, ind2);
-        await removeIndicator(page, ind1);
+        await removeIndicator(page, ind3!);
+        await removeIndicator(page, ind2!);
+        await removeIndicator(page, ind1!);
 
         // Verify complete cleanup
         await verifyCleanup(page, {
@@ -161,8 +161,8 @@ test.describe('General Indicator Cleanup', () => {
 
             await page.waitForTimeout(200);
 
-            await removeIndicator(page, sma);
-            await removeIndicator(page, rsi);
+            await removeIndicator(page, sma!);
+            await removeIndicator(page, rsi!);
 
             await page.waitForTimeout(200);
         }
@@ -191,7 +191,7 @@ test.describe('General Indicator Cleanup', () => {
         await page.waitForTimeout(300);
 
         // Remove after data update
-        await removeIndicator(page, smaId);
+        await removeIndicator(page, smaId!);
 
         // Verify cleanup still works
         await verifyCleanup(page, {

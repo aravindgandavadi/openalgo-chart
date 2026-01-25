@@ -55,6 +55,8 @@
   "exclude": [
     "node_modules",
     "dist",
+    "src/__tests__",
+    "e2e",
     "src/plugins",
     "src/helpers",
     "src/services/webhookService.ts",

@@ -62,7 +62,7 @@ test.describe('Price Action Range Strategy', () => {
         await page.waitForTimeout(500);
 
         // Remove PAR
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         // Verify complete cleanup of all array series
         await verifyCleanup(page, {
@@ -80,7 +80,7 @@ test.describe('Price Action Range Strategy', () => {
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         const isHidden = await page.evaluate(() => {
@@ -100,7 +100,7 @@ test.describe('Price Action Range Strategy', () => {
 
             await page.waitForTimeout(200);
 
-            await removeIndicator(page, id);
+            await removeIndicator(page, id!);
             await page.waitForTimeout(200);
         }
 
@@ -123,6 +123,6 @@ test.describe('Price Action Range Strategy', () => {
         expect(indicatorId).toBeTruthy();
         await page.waitForTimeout(500);
 
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
     });
 });

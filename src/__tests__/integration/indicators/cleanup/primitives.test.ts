@@ -29,13 +29,13 @@ test.describe('Primitives Cleanup', () => {
         await page.waitForTimeout(1000);
 
         // Remove TPO
-        await removeIndicator(page, tpoId);
+        await removeIndicator(page, tpoId!);
 
         // CRITICAL: Verify primitive detached
         const noPrimitives = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length === 0;
             }
             return true;
@@ -60,13 +60,13 @@ test.describe('Primitives Cleanup', () => {
         await page.waitForTimeout(500);
 
         // Remove Risk Calculator
-        await removeIndicator(page, rcId);
+        await removeIndicator(page, rcId!);
 
         // Verify primitive detached
         const noPrimitives = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length === 0;
             }
             return true;
@@ -87,18 +87,18 @@ test.describe('Primitives Cleanup', () => {
 
         // Toggle visibility multiple times
         for (let i = 0; i < 5; i++) {
-            await toggleIndicatorVisibility(page, tpoId);
+            await toggleIndicatorVisibility(page, tpoId!);
             await page.waitForTimeout(300);
         }
 
         // Remove TPO
-        await removeIndicator(page, tpoId);
+        await removeIndicator(page, tpoId!);
 
         // Verify no primitive leaks
         const noPrimitives = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length === 0;
             }
             return true;
@@ -125,8 +125,8 @@ test.describe('Primitives Cleanup', () => {
         // Both primitives attached
         const hasBoth = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length >= 2;
             }
             return false;
@@ -135,14 +135,14 @@ test.describe('Primitives Cleanup', () => {
         expect(hasBoth).toBe(true);
 
         // Remove TPO
-        await removeIndicator(page, tpoId);
+        await removeIndicator(page, tpoId!);
         await page.waitForTimeout(300);
 
         // Only Risk Calculator primitive should remain
         const hasOne = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length >= 1;
             }
             return false;
@@ -151,13 +151,13 @@ test.describe('Primitives Cleanup', () => {
         expect(hasOne).toBe(true);
 
         // Remove Risk Calculator
-        await removeIndicator(page, rcId);
+        await removeIndicator(page, rcId!);
 
         // No primitives should remain
         const noPrimitives = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length === 0;
             }
             return true;
@@ -188,13 +188,13 @@ test.describe('Primitives Cleanup', () => {
         await page.waitForTimeout(1000);
 
         // Remove after update
-        await removeIndicator(page, tpoId);
+        await removeIndicator(page, tpoId!);
 
         // Verify cleanup
         const noPrimitives = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length === 0;
             }
             return true;
@@ -214,15 +214,15 @@ test.describe('Primitives Cleanup', () => {
 
             await page.waitForTimeout(300);
 
-            await removeIndicator(page, tpoId);
+            await removeIndicator(page, tpoId!);
             await page.waitForTimeout(200);
         }
 
         // Verify no primitive leaks
         const noPrimitives = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__mainSeriesRef__) {
-                const primitives = container.__mainSeriesRef__._primitives || [];
+            if (container && (container as any).__mainSeriesRef__) {
+                const primitives = (container as any).__mainSeriesRef__._primitives || [];
                 return primitives.length === 0;
             }
             return true;

@@ -5,9 +5,18 @@
 
 import { calculateRiskPosition, validateRiskParams } from '../utils/indicators/riskCalculator';
 
+interface RiskParams {
+  capital: number;
+  riskPercent: number;
+  entryPrice: number;
+  stopLossPrice: number;
+  riskRewardRatio?: number;
+  side: 'BUY' | 'SELL';
+}
+
 describe('Risk Calculator - Core Logic', () => {
   describe('Test Case 1: Basic BUY Setup', () => {
-    const params = {
+    const params: RiskParams = {
       capital: 200000,
       riskPercent: 1,
       entryPrice: 500,
@@ -60,7 +69,7 @@ describe('Risk Calculator - Core Logic', () => {
   });
 
   describe('Test Case 2: SELL Setup', () => {
-    const params = {
+    const params: RiskParams = {
       capital: 100000,
       riskPercent: 2,
       entryPrice: 1000,
@@ -100,7 +109,7 @@ describe('Risk Calculator - Core Logic', () => {
 
   describe('Test Case 3: Validation Errors', () => {
     it('should error when entry equals stop loss', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 100000,
         riskPercent: 2,
         entryPrice: 500,
@@ -114,7 +123,7 @@ describe('Risk Calculator - Core Logic', () => {
     });
 
     it('should error when BUY with entry < stop loss', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 100000,
         riskPercent: 2,
         entryPrice: 490,
@@ -128,7 +137,7 @@ describe('Risk Calculator - Core Logic', () => {
     });
 
     it('should error when SELL with entry > stop loss', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 100000,
         riskPercent: 2,
         entryPrice: 1050,
@@ -142,7 +151,7 @@ describe('Risk Calculator - Core Logic', () => {
     });
 
     it('should error when capital is zero', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 0,
         riskPercent: 2,
         entryPrice: 500,
@@ -157,7 +166,7 @@ describe('Risk Calculator - Core Logic', () => {
 
   describe('Edge Cases', () => {
     it('should handle very small risk percentage', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 100000,
         riskPercent: 0.5,
         entryPrice: 500,
@@ -172,7 +181,7 @@ describe('Risk Calculator - Core Logic', () => {
     });
 
     it('should handle high risk-reward ratio', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 100000,
         riskPercent: 2,
         entryPrice: 500,
@@ -188,7 +197,7 @@ describe('Risk Calculator - Core Logic', () => {
     });
 
     it('should floor quantity to integer', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 100000,
         riskPercent: 2,
         entryPrice: 333,
@@ -208,7 +217,7 @@ describe('Risk Calculator - Core Logic', () => {
 
   describe('Formatted Output', () => {
     it('should format values correctly', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 200000,
         riskPercent: 1,
         entryPrice: 500,
@@ -228,7 +237,7 @@ describe('Risk Calculator - Core Logic', () => {
 
   describe('Validation Function', () => {
     it('should validate correct parameters', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 100000,
         riskPercent: 2,
         entryPrice: 500,
@@ -247,15 +256,15 @@ describe('Risk Calculator - Core Logic', () => {
         riskPercent: 2,
         entryPrice: 500,
         stopLossPrice: 490,
-        side: 'BUY'
+        side: 'BUY' as const
       };
-      const validation = validateRiskParams(params);
+      const validation = validateRiskParams(params as RiskParams);
       expect(validation.isValid).toBe(false);
       expect(validation.errors.length).toBeGreaterThan(0);
     });
 
     it('should detect invalid risk percentage', () => {
-      const params = {
+      const params: RiskParams = {
         capital: 100000,
         riskPercent: 150,
         entryPrice: 500,

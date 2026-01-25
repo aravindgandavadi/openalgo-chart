@@ -1,6 +1,6 @@
 /**
- * E2E Tests for Hilenga-Milenga Oscillator
- * Multi-series oscillator with pane and price lines
+ * E2E Tests for ATR (Average True Range) Indicator
+ * Simple oscillator with separate pane
  */
 
 import { test, expect } from '@playwright/test';
@@ -18,22 +18,18 @@ import {
     waitForIndicatorInLegend
 } from '../setup/testHelpers';
 
-test.describe('Hilenga-Milenga Indicator', () => {
+test.describe('ATR Indicator', () => {
     test.beforeEach(async ({ page }) => {
         await setupChart(page);
         await setupConsoleTracking(page);
     });
 
-    test('should create separate pane with multiple series', async ({ page }) => {
+    test('should create separate pane', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'hilengaMilenga',
-            settings: {
-                rsiLength: 9,
-                emaLength: 3,
-                wmaLength: 21
-            }
+            type: 'atr',
+            settings: { period: 14 }
         });
 
         await page.waitForTimeout(500);
@@ -45,34 +41,29 @@ test.describe('Hilenga-Milenga Indicator', () => {
 
     test('should appear in legend', async ({ page }) => {
         await addIndicator(page, {
-            type: 'hilengaMilenga'
+            type: 'atr',
+            settings: { period: 14 }
         });
 
-        await waitForIndicatorInLegend(page, 'Hilenga');
+        await waitForIndicatorInLegend(page, 'ATR');
 
-        const inLegend = await isIndicatorInLegend(page, 'Hilenga');
+        const inLegend = await isIndicatorInLegend(page, 'ATR');
         expect(inLegend).toBe(true);
     });
 
-    test('should cleanup pane, all series, and price lines', async ({ page }) => {
+    test('should cleanup pane when removed', async ({ page }) => {
         const initialSeriesCount = await getSeriesCount(page);
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'hilengaMilenga',
-            settings: {
-                rsiLength: 9,
-                emaLength: 3,
-                wmaLength: 21
-            }
+            type: 'atr',
+            settings: { period: 14 }
         });
 
         await page.waitForTimeout(500);
 
-        // Remove Hilenga-Milenga
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
-        // Verify complete cleanup (pane + all series + price lines)
         await verifyCleanup(page, {
             seriesCount: initialSeriesCount,
             paneCount: initialPaneCount
@@ -84,16 +75,16 @@ test.describe('Hilenga-Milenga Indicator', () => {
     test('should support multiple instances', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
-        const hm1 = await addIndicator(page, {
-            type: 'hilengaMilenga',
-            settings: { rsiLength: 9 }
+        const atr14 = await addIndicator(page, {
+            type: 'atr',
+            settings: { period: 14 }
         });
 
         await page.waitForTimeout(300);
 
-        const hm2 = await addIndicator(page, {
-            type: 'hilengaMilenga',
-            settings: { rsiLength: 14 }
+        const atr21 = await addIndicator(page, {
+            type: 'atr',
+            settings: { period: 21 }
         });
 
         await page.waitForTimeout(300);
@@ -101,20 +92,21 @@ test.describe('Hilenga-Milenga Indicator', () => {
         const afterAddPaneCount = await getPaneCount(page);
         expect(afterAddPaneCount).toBe(initialPaneCount + 2);
 
-        await removeIndicator(page, hm1);
-        await removeIndicator(page, hm2);
+        await removeIndicator(page, atr14!);
+        await removeIndicator(page, atr21!);
     });
 
     test('should handle visibility toggle', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'hilengaMilenga'
+            type: 'atr',
+            settings: { period: 14 }
         });
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         // Pane should still exist

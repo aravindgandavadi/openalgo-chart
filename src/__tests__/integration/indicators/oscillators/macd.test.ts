@@ -1,6 +1,6 @@
 /**
- * E2E Tests for ADX (Average Directional Index) Indicator
- * Multi-series oscillator with price lines (ADX, +DI, -DI, trend lines)
+ * E2E Tests for MACD (Moving Average Convergence Divergence)
+ * Multi-series oscillator with separate pane (MACD line, signal line, histogram)
  */
 
 import { test, expect } from '@playwright/test';
@@ -18,18 +18,22 @@ import {
     waitForIndicatorInLegend
 } from '../setup/testHelpers';
 
-test.describe('ADX Indicator', () => {
+test.describe('MACD Indicator', () => {
     test.beforeEach(async ({ page }) => {
         await setupChart(page);
         await setupConsoleTracking(page);
     });
 
-    test('should create separate pane with 3 lines', async ({ page }) => {
+    test('should create separate pane with MACD, signal, and histogram', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'adx',
-            settings: { period: 14 }
+            type: 'macd',
+            settings: {
+                fast: 12,
+                slow: 26,
+                signal: 9
+            }
         });
 
         await page.waitForTimeout(500);
@@ -42,23 +46,23 @@ test.describe('ADX Indicator', () => {
 
     test('should appear in legend', async ({ page }) => {
         await addIndicator(page, {
-            type: 'adx',
-            settings: { period: 14 }
+            type: 'macd',
+            settings: { fast: 12, slow: 26, signal: 9 }
         });
 
-        await waitForIndicatorInLegend(page, 'ADX');
+        await waitForIndicatorInLegend(page, 'MACD');
 
-        const inLegend = await isIndicatorInLegend(page, 'ADX');
+        const inLegend = await isIndicatorInLegend(page, 'MACD');
         expect(inLegend).toBe(true);
     });
 
-    test('should cleanup pane and all series including price lines', async ({ page }) => {
+    test('should cleanup pane and all series when removed', async ({ page }) => {
         const initialSeriesCount = await getSeriesCount(page);
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'adx',
-            settings: { period: 14 }
+            type: 'macd',
+            settings: { fast: 12, slow: 26, signal: 9 }
         });
 
         await page.waitForTimeout(500);
@@ -66,26 +70,14 @@ test.describe('ADX Indicator', () => {
         const afterAddPaneCount = await getPaneCount(page);
         expect(afterAddPaneCount).toBe(initialPaneCount + 1);
 
-        // Remove ADX
-        await removeIndicator(page, indicatorId);
+        // Remove MACD
+        await removeIndicator(page, indicatorId!);
 
-        // Verify complete cleanup (pane + series + price lines)
+        // Verify complete cleanup (pane + all 3 series)
         await verifyCleanup(page, {
             seriesCount: initialSeriesCount,
             paneCount: initialPaneCount
         });
-
-        // Verify pane removed
-        const noPriceLines = await page.evaluate(() => {
-            const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const panes = container.__chartInstance__.panes();
-                return panes.length === 1;
-            }
-            return false;
-        });
-
-        expect(noPriceLines).toBe(true);
 
         await verifyNoConsoleErrors(page);
     });
@@ -93,16 +85,16 @@ test.describe('ADX Indicator', () => {
     test('should support multiple instances with separate panes', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
-        const adx14 = await addIndicator(page, {
-            type: 'adx',
-            settings: { period: 14 }
+        const macd1 = await addIndicator(page, {
+            type: 'macd',
+            settings: { fast: 12, slow: 26, signal: 9 }
         });
 
         await page.waitForTimeout(300);
 
-        const adx21 = await addIndicator(page, {
-            type: 'adx',
-            settings: { period: 21 }
+        const macd2 = await addIndicator(page, {
+            type: 'macd',
+            settings: { fast: 8, slow: 21, signal: 5 }
         });
 
         await page.waitForTimeout(300);
@@ -111,30 +103,30 @@ test.describe('ADX Indicator', () => {
         const afterAddPaneCount = await getPaneCount(page);
         expect(afterAddPaneCount).toBe(initialPaneCount + 2);
 
-        await removeIndicator(page, adx14);
+        await removeIndicator(page, macd1!);
         await page.waitForTimeout(300);
 
         // One pane removed
         const afterRemove1 = await getPaneCount(page);
         expect(afterRemove1).toBe(initialPaneCount + 1);
 
-        await removeIndicator(page, adx21);
+        await removeIndicator(page, macd2!);
     });
 
     test('should handle visibility toggle', async ({ page }) => {
         const initialPaneCount = await getPaneCount(page);
 
         const indicatorId = await addIndicator(page, {
-            type: 'adx',
-            settings: { period: 14 }
+            type: 'macd',
+            settings: { fast: 12, slow: 26, signal: 9 }
         });
 
         await page.waitForTimeout(500);
 
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
-        // Pane should still exist (not removed on toggle)
+        // Pane should still exist
         const afterTogglePaneCount = await getPaneCount(page);
         expect(afterTogglePaneCount).toBe(initialPaneCount + 1);
     });
@@ -144,13 +136,13 @@ test.describe('ADX Indicator', () => {
 
         for (let i = 0; i < 3; i++) {
             const id = await addIndicator(page, {
-                type: 'adx',
-                settings: { period: 14 }
+                type: 'macd',
+                settings: { fast: 12, slow: 26, signal: 9 }
             });
 
             await page.waitForTimeout(200);
 
-            await removeIndicator(page, id);
+            await removeIndicator(page, id!);
             await page.waitForTimeout(200);
         }
 

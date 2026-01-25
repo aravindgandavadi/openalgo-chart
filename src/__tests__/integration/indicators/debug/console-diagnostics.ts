@@ -5,12 +5,26 @@
  * while the app is running at http://localhost:5001
  */
 
+declare global {
+    interface Window {
+        __chartRefs__: any;
+        __indicatorStore__: any;
+        __testConsoleErrors__: string[];
+        getChartInstance: () => any;
+    }
+}
+
 // ============================================================================
 // DIAGNOSTIC 1: Check Cleanup Infrastructure
 // ============================================================================
 console.log('=== CLEANUP INFRASTRUCTURE DIAGNOSTIC ===');
 
-const container = document.querySelector('.chart-container');
+const container = document.querySelector('.chart-container') as HTMLElement & {
+    __chartInstance__?: any;
+    __indicatorTypesMap__?: any;
+    __indicatorSeriesMap__?: any;
+    __mainSeriesRef__?: any;
+};
 const chart = container?.__chartInstance__;
 const store = window.__indicatorStore__;
 
@@ -29,10 +43,14 @@ if (!chart || !store) {
 // ============================================================================
 // DIAGNOSTIC 2: Quick SMA Cleanup Test
 // ============================================================================
-function testSMACleanup() {
+function testSMACleanup(): void {
     console.log('\n=== TESTING SMA CLEANUP ===');
 
-    const container = document.querySelector('.chart-container');
+    const container = document.querySelector('.chart-container') as HTMLElement & {
+        __chartInstance__?: any;
+        __indicatorTypesMap__?: { current?: Map<string, string> };
+        __indicatorSeriesMap__?: { current?: Map<string, any> };
+    };
     const chart = container?.__chartInstance__;
     const store = window.__indicatorStore__;
 
@@ -57,7 +75,7 @@ function testSMACleanup() {
         console.log('Expected:', initialCount + 1);
 
         const indicators = store.getState().indicators;
-        const smaId = indicators.find(i => i.type === 'sma')?.id;
+        const smaId = indicators.find((i: any) => i.type === 'sma')?.id;
 
         if (!smaId) {
             console.error('SMA indicator not found in store!');
@@ -94,10 +112,12 @@ function testSMACleanup() {
 // ============================================================================
 // DIAGNOSTIC 3: TPO Primitive Cleanup Test
 // ============================================================================
-function testTPOCleanup() {
+function testTPOCleanup(): void {
     console.log('\n=== TESTING TPO PRIMITIVE CLEANUP ===');
 
-    const container = document.querySelector('.chart-container');
+    const container = document.querySelector('.chart-container') as HTMLElement & {
+        __mainSeriesRef__?: { _primitives?: any[] };
+    };
     const store = window.__indicatorStore__;
     const mainSeries = container?.__mainSeriesRef__;
 
@@ -121,7 +141,7 @@ function testTPOCleanup() {
             console.warn('⚠️ No primitives attached - TPO may not have rendered');
         }
 
-        const tpoId = store.getState().indicators.find(i => i.type === 'tpo')?.id;
+        const tpoId = store.getState().indicators.find((i: any) => i.type === 'tpo')?.id;
 
         if (!tpoId) {
             console.error('TPO indicator not found in store!');
@@ -151,10 +171,12 @@ function testTPOCleanup() {
 // ============================================================================
 // DIAGNOSTIC 4: RSI Pane Cleanup Test
 // ============================================================================
-function testRSICleanup() {
+function testRSICleanup(): void {
     console.log('\n=== TESTING RSI PANE CLEANUP ===');
 
-    const container = document.querySelector('.chart-container');
+    const container = document.querySelector('.chart-container') as HTMLElement & {
+        __chartInstance__?: any;
+    };
     const chart = container?.__chartInstance__;
     const store = window.__indicatorStore__;
 
@@ -178,7 +200,7 @@ function testRSICleanup() {
         console.log('After add pane count:', afterAdd);
         console.log('Expected:', initialPaneCount + 1);
 
-        const rsiId = store.getState().indicators.find(i => i.type === 'rsi')?.id;
+        const rsiId = store.getState().indicators.find((i: any) => i.type === 'rsi')?.id;
 
         if (!rsiId) {
             console.error('RSI indicator not found in store!');
@@ -209,10 +231,12 @@ function testRSICleanup() {
 // ============================================================================
 // DIAGNOSTIC 5: Multi-Indicator Cleanup Test
 // ============================================================================
-function testMultiIndicatorCleanup() {
+function testMultiIndicatorCleanup(): void {
     console.log('\n=== TESTING MULTI-INDICATOR CLEANUP ===');
 
-    const container = document.querySelector('.chart-container');
+    const container = document.querySelector('.chart-container') as HTMLElement & {
+        __chartInstance__?: any;
+    };
     const chart = container?.__chartInstance__;
     const store = window.__indicatorStore__;
 
@@ -243,7 +267,7 @@ function testMultiIndicatorCleanup() {
                 console.log('Indicators in store:', indicators.length);
 
                 console.log('\n--- Removing all indicators ---');
-                indicators.forEach(indicator => {
+                indicators.forEach((indicator: any) => {
                     store.getState().removeIndicator(indicator.id);
                 });
 
@@ -274,11 +298,11 @@ function testMultiIndicatorCleanup() {
 // ============================================================================
 // DIAGNOSTIC 6: Generic Cleanup Tester
 // ============================================================================
-function checkCleanup(indicatorType, settings = {}) {
+function checkCleanup(indicatorType: string, settings: Record<string, any> = {}): void {
     console.log(`\n=== TESTING ${indicatorType.toUpperCase()} CLEANUP ===`);
 
     const store = window.__indicatorStore__;
-    const chart = document.querySelector('.chart-container')?.__chartInstance__;
+    const chart = (document.querySelector('.chart-container') as any)?.__chartInstance__;
 
     if (!chart || !store) {
         console.error('Chart or Store not available');
@@ -293,7 +317,7 @@ function checkCleanup(indicatorType, settings = {}) {
         const afterAdd = chart.series().length;
         console.log(`Added ${indicatorType}: ${initialCount} → ${afterAdd}`);
 
-        const id = store.getState().indicators.find(i => i.type === indicatorType)?.id;
+        const id = store.getState().indicators.find((i: any) => i.type === indicatorType)?.id;
 
         if (!id) {
             console.error(`${indicatorType} not found in store!`);
@@ -323,3 +347,11 @@ console.log('\nExamples:');
 console.log('  checkCleanup("sma", { period: 20 })');
 console.log('  checkCleanup("rsi", { period: 14 })');
 console.log('  checkCleanup("tpo", { blockSize: "30m" })');
+
+export {
+    testSMACleanup,
+    testTPOCleanup,
+    testRSICleanup,
+    testMultiIndicatorCleanup,
+    checkCleanup
+};

@@ -22,7 +22,6 @@ import {
     removeIndicator,
     toggleIndicatorVisibility,
     verifyCleanup,
-    waitForChart,
     getSeriesCount,
     getPaneCount,
     setupConsoleTracking,
@@ -90,8 +89,8 @@ test.describe('RSI Indicator', () => {
             // Check if price lines were created
             // This would need to access the RSI series and check for _obLine and _osLine
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const panes = container.__chartInstance__.panes();
+            if (container && (container as any).__chartInstance__) {
+                const panes = (container as any).__chartInstance__.panes();
                 if (panes.length > 1) {
                     // RSI pane exists
                     return true;
@@ -120,7 +119,7 @@ test.describe('RSI Indicator', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 1);
 
         // Remove RSI
-        await removeIndicator(page, indicatorId);
+        await removeIndicator(page, indicatorId!);
 
         // Verify complete cleanup
         await verifyCleanup(page, {
@@ -132,8 +131,8 @@ test.describe('RSI Indicator', () => {
         const noPriceLines = await page.evaluate(() => {
             // Check that price lines were cleaned up
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const panes = container.__chartInstance__.panes();
+            if (container && (container as any).__chartInstance__) {
+                const panes = (container as any).__chartInstance__.panes();
                 // Should only have main pane
                 return panes.length === 1;
             }
@@ -188,7 +187,7 @@ test.describe('RSI Indicator', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 2);
 
         // Remove first RSI
-        await removeIndicator(page, rsi14Id);
+        await removeIndicator(page, rsi14Id!);
         await page.waitForTimeout(300);
 
         // Verify one pane removed
@@ -196,7 +195,7 @@ test.describe('RSI Indicator', () => {
         expect(afterRemoveCount).toBe(initialPaneCount + 1);
 
         // Remove second RSI
-        await removeIndicator(page, rsi21Id);
+        await removeIndicator(page, rsi21Id!);
         await page.waitForTimeout(300);
 
         // Verify all panes cleaned up
@@ -220,7 +219,7 @@ test.describe('RSI Indicator', () => {
         expect(afterAddPaneCount).toBe(initialPaneCount + 1);
 
         // Toggle visibility off
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         // Pane should still exist (not removed, just hidden)
@@ -230,8 +229,8 @@ test.describe('RSI Indicator', () => {
         // Verify series is hidden
         const seriesVisible = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const panes = container.__chartInstance__.panes();
+            if (container && (container as any).__chartInstance__) {
+                const panes = (container as any).__chartInstance__.panes();
                 if (panes.length > 1) {
                     const rsiPane = panes[1];
                     const series = rsiPane.series();
@@ -244,14 +243,14 @@ test.describe('RSI Indicator', () => {
         expect(seriesVisible).toBe(false);
 
         // Toggle back on
-        await toggleIndicatorVisibility(page, indicatorId);
+        await toggleIndicatorVisibility(page, indicatorId!);
         await page.waitForTimeout(300);
 
         // Verify visible again
         const seriesVisibleAgain = await page.evaluate(() => {
             const container = document.querySelector('.chart-container');
-            if (container && container.__chartInstance__) {
-                const panes = container.__chartInstance__.panes();
+            if (container && (container as any).__chartInstance__) {
+                const panes = (container as any).__chartInstance__.panes();
                 if (panes.length > 1) {
                     const rsiPane = panes[1];
                     const series = rsiPane.series();
@@ -322,7 +321,7 @@ test.describe('RSI Indicator', () => {
         expect(withBothPaneCount).toBe(initialPaneCount + 2);
 
         // Remove RSI
-        await removeIndicator(page, rsiId);
+        await removeIndicator(page, rsiId!);
         await page.waitForTimeout(300);
 
         // Should have 1 pane (MACD remains)
@@ -330,7 +329,7 @@ test.describe('RSI Indicator', () => {
         expect(afterRsiRemove).toBe(initialPaneCount + 1);
 
         // Cleanup MACD
-        await removeIndicator(page, macdId);
+        await removeIndicator(page, macdId!);
         await page.waitForTimeout(300);
 
         // Back to initial state
@@ -351,7 +350,7 @@ test.describe('RSI Indicator', () => {
             await page.waitForTimeout(200);
 
             // Immediately remove
-            await removeIndicator(page, id);
+            await removeIndicator(page, id!);
             await page.waitForTimeout(200);
         }
 
