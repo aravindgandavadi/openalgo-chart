@@ -366,142 +366,114 @@ class PineScriptService {
 
     /**
      * Validate Pine Script syntax
+     * Note: This is a basic structural validation. Full validation happens at execution time.
      */
     validate(code: string): { valid: boolean; errors: string[]; warnings: string[] } {
         const errors: string[] = [];
         const warnings: string[] = [];
 
+        // Remove comments for analysis
+        const codeWithoutComments = code
+            .replace(/\/\/.*$/gm, '')  // Remove single-line comments
+            .replace(/\/\*[\s\S]*?\*\//g, '');  // Remove multi-line comments
+
         // Check for version tag
-        if (!code.includes('//@version=5') && !code.includes('//@version=6')) {
-            warnings.push('No version tag found. Add //@version=5 at the top.');
+        if (!code.includes('//@version=5') && !code.includes('//@version=6') &&
+            !code.includes('//@version=4') && !code.includes('//@version=3')) {
+            warnings.push('No version tag found. Consider adding //@version=5 at the top.');
         }
 
         // Check for indicator or strategy declaration
-        if (!code.includes('indicator(') && !code.includes('strategy(')) {
-            errors.push('Missing indicator() or strategy() declaration.');
+        if (!code.includes('indicator(') && !code.includes('strategy(') && !code.includes('library(')) {
+            errors.push('Missing indicator(), strategy(), or library() declaration.');
         }
 
-        // Check for unclosed brackets/parentheses
-        const openParens = (code.match(/\(/g) || []).length;
-        const closeParens = (code.match(/\)/g) || []).length;
-        if (openParens !== closeParens) {
-            errors.push('Mismatched parentheses.');
-        }
+        // Check for mismatched parentheses (accounting for strings)
+        let parenDepth = 0;
+        let inString = false;
+        let stringChar = '';
+        for (let i = 0; i < codeWithoutComments.length; i++) {
+            const char = codeWithoutComments[i];
+            const prevChar = i > 0 ? codeWithoutComments[i - 1] : '';
 
-        const openBrackets = (code.match(/\[/g) || []).length;
-        const closeBrackets = (code.match(/\]/g) || []).length;
-        if (openBrackets !== closeBrackets) {
-            errors.push('Mismatched brackets.');
-        }
-
-        // Check for unclosed strings
-        const codeWithoutComments = code.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-        const doubleQuotes = (codeWithoutComments.match(/"/g) || []).length;
-        const singleQuotes = (codeWithoutComments.match(/'/g) || []).length;
-        if (doubleQuotes % 2 !== 0) {
-            errors.push('Unclosed string (double quote).');
-        }
-        if (singleQuotes % 2 !== 0) {
-            errors.push('Unclosed string (single quote).');
-        }
-
-        // Valid Pine Script built-in functions (partial list of common ones)
-        const validFunctions = new Set([
-            // Plotting
-            'plot', 'plotshape', 'plotchar', 'plotarrow', 'plotbar', 'plotcandle',
-            'hline', 'fill', 'bgcolor', 'barcolor',
-            // Technical Analysis (ta.*)
-            'ta.sma', 'ta.ema', 'ta.wma', 'ta.vwma', 'ta.rma', 'ta.swma',
-            'ta.rsi', 'ta.macd', 'ta.stoch', 'ta.bb', 'ta.kc', 'ta.atr',
-            'ta.tr', 'ta.cci', 'ta.mfi', 'ta.obv', 'ta.pvi', 'ta.nvi',
-            'ta.highest', 'ta.lowest', 'ta.highestbars', 'ta.lowestbars',
-            'ta.crossover', 'ta.crossunder', 'ta.cross', 'ta.change',
-            'ta.mom', 'ta.roc', 'ta.pivothigh', 'ta.pivotlow',
-            'ta.supertrend', 'ta.vwap', 'ta.dmi', 'ta.adx',
-            'ta.cum', 'ta.percentrank', 'ta.percentile_linear_interpolation',
-            'ta.correlation', 'ta.dev', 'ta.stdev', 'ta.variance',
-            'ta.median', 'ta.mode', 'ta.falling', 'ta.rising',
-            'ta.barssince', 'ta.valuewhen',
-            // Math (math.*)
-            'math.abs', 'math.ceil', 'math.floor', 'math.round',
-            'math.max', 'math.min', 'math.avg', 'math.sum',
-            'math.sqrt', 'math.pow', 'math.log', 'math.log10', 'math.exp',
-            'math.sin', 'math.cos', 'math.tan', 'math.asin', 'math.acos', 'math.atan',
-            'math.random', 'math.sign', 'math.todegrees', 'math.toradians',
-            // String (str.*)
-            'str.format', 'str.tostring', 'str.tonumber', 'str.length',
-            'str.contains', 'str.startswith', 'str.endswith',
-            'str.replace', 'str.replace_all', 'str.split', 'str.lower', 'str.upper',
-            // Input
-            'input', 'input.int', 'input.float', 'input.bool', 'input.string',
-            'input.color', 'input.source', 'input.timeframe', 'input.symbol',
-            'input.session', 'input.time', 'input.price',
-            // Request
-            'request.security', 'request.dividends', 'request.earnings', 'request.splits',
-            // Array (array.*)
-            'array.new_float', 'array.new_int', 'array.new_bool', 'array.new_string',
-            'array.push', 'array.pop', 'array.get', 'array.set', 'array.size',
-            'array.clear', 'array.remove', 'array.insert', 'array.slice',
-            'array.avg', 'array.sum', 'array.min', 'array.max', 'array.median',
-            // Alerts
-            'alert', 'alertcondition',
-            // Strategy
-            'strategy', 'strategy.entry', 'strategy.exit', 'strategy.close',
-            'strategy.close_all', 'strategy.cancel', 'strategy.cancel_all',
-            'strategy.order', 'strategy.risk.allow_entry_in',
-            // Color
-            'color.new', 'color.rgb', 'color.r', 'color.g', 'color.b',
-            // Other
-            'indicator', 'library', 'export', 'import',
-            'nz', 'na', 'fixnan', 'bar_index', 'last_bar_index',
-            'time', 'time_close', 'timenow', 'year', 'month', 'dayofmonth',
-            'dayofweek', 'hour', 'minute', 'second',
-            'label.new', 'label.set_xy', 'label.set_text', 'label.delete',
-            'line.new', 'line.set_xy1', 'line.set_xy2', 'line.delete',
-            'box.new', 'box.set_lefttop', 'box.set_rightbottom', 'box.delete',
-            'table.new', 'table.cell', 'table.delete',
-            'syminfo.ticker', 'syminfo.tickerid', 'syminfo.prefix', 'syminfo.root',
-            'timeframe.period', 'timeframe.multiplier', 'timeframe.isintraday',
-        ]);
-
-        // Find function calls that might be undefined
-        // Match word followed by ( that's not a keyword or known function
-        const functionCallRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)\s*\(/g;
-        const keywords = new Set(['if', 'else', 'for', 'while', 'switch', 'var', 'varip', 'export', 'import', 'type', 'enum']);
-
-        // Track variable assignments to know what's a user-defined function/variable
-        const definedVars = new Set<string>();
-        const varDefRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=|:=)/g;
-        let varMatch;
-        while ((varMatch = varDefRegex.exec(code)) !== null) {
-            definedVars.add(varMatch[1]);
-        }
-
-        let funcMatch;
-        const lines = code.split('\n');
-        while ((funcMatch = functionCallRegex.exec(code)) !== null) {
-            const funcName = funcMatch[1];
-
-            // Skip if it's a keyword, known function, or user-defined variable
-            if (keywords.has(funcName) || validFunctions.has(funcName) || definedVars.has(funcName)) {
-                continue;
+            if (!inString && (char === '"' || char === "'")) {
+                inString = true;
+                stringChar = char;
+            } else if (inString && char === stringChar && prevChar !== '\\') {
+                inString = false;
+            } else if (!inString) {
+                if (char === '(') parenDepth++;
+                else if (char === ')') parenDepth--;
             }
-
-            // Find line number
-            const beforeMatch = code.substring(0, funcMatch.index);
-            const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
-
-            // Report undefined function
-            errors.push(`Undefined function '${funcName}' at line ${lineNumber}`);
+        }
+        if (parenDepth !== 0) {
+            errors.push(`Mismatched parentheses (${parenDepth > 0 ? 'missing ' + parenDepth + ' closing' : 'extra ' + Math.abs(parenDepth) + ' closing'}).`);
         }
 
-        // Check if there's at least one plot/output (warning, not error)
-        if (!code.includes('plot(') && !code.includes('plotshape(') &&
-            !code.includes('plotchar(') && !code.includes('plotarrow(') &&
-            !code.includes('bgcolor(') && !code.includes('barcolor(') &&
-            !code.includes('hline(') && !code.includes('fill(') &&
-            !code.includes('strategy.')) {
-            warnings.push('No plot or output function found. The indicator won\'t display anything.');
+        // Check for mismatched brackets
+        let bracketDepth = 0;
+        inString = false;
+        for (let i = 0; i < codeWithoutComments.length; i++) {
+            const char = codeWithoutComments[i];
+            const prevChar = i > 0 ? codeWithoutComments[i - 1] : '';
+
+            if (!inString && (char === '"' || char === "'")) {
+                inString = true;
+                stringChar = char;
+            } else if (inString && char === stringChar && prevChar !== '\\') {
+                inString = false;
+            } else if (!inString) {
+                if (char === '[') bracketDepth++;
+                else if (char === ']') bracketDepth--;
+            }
+        }
+        if (bracketDepth !== 0) {
+            errors.push(`Mismatched brackets (${bracketDepth > 0 ? 'missing ' + bracketDepth + ' closing' : 'extra ' + Math.abs(bracketDepth) + ' closing'}).`);
+        }
+
+        // Check for unclosed strings (simple check)
+        const lines = codeWithoutComments.split('\n');
+        for (let lineNum = 0; lineNum < lines.length; lineNum++) {
+            const line = lines[lineNum];
+            let inStr = false;
+            let strChar = '';
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const prevChar = i > 0 ? line[i - 1] : '';
+                if (!inStr && (char === '"' || char === "'")) {
+                    inStr = true;
+                    strChar = char;
+                } else if (inStr && char === strChar && prevChar !== '\\') {
+                    inStr = false;
+                }
+            }
+            if (inStr) {
+                errors.push(`Unclosed string at line ${lineNum + 1}.`);
+            }
+        }
+
+        // Check for obvious typos in common functions (only single-word functions to avoid false positives)
+        const commonTypos: Record<string, string> = {
+            'polt': 'plot',
+            'plto': 'plot',
+            'lot': 'plot',
+            'plit': 'plot',
+            'inpu': 'input',
+            'imput': 'input',
+            'inidcator': 'indicator',
+            'indciator': 'indicator',
+            'startegy': 'strategy',
+            'stratagy': 'strategy',
+        };
+
+        for (const [typo, correct] of Object.entries(commonTypos)) {
+            const typoRegex = new RegExp(`\\b${typo}\\s*\\(`, 'g');
+            let match;
+            while ((match = typoRegex.exec(codeWithoutComments)) !== null) {
+                const beforeMatch = codeWithoutComments.substring(0, match.index);
+                const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+                errors.push(`Possible typo '${typo}' at line ${lineNumber}. Did you mean '${correct}'?`);
+            }
         }
 
         return {
