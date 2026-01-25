@@ -6,11 +6,11 @@
     right: 0;
     bottom: 0;
     background: #131722;
-    border-left: 1px solid #2a2e39;
+    border-left: 1px solid #363a45;
     display: flex;
     flex-direction: column;
-    z-index: 100;
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
 }
 
 /* Resize Handle (left edge) */
@@ -38,11 +38,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
-    background: #1e222d;
-    border-bottom: 1px solid #2a2e39;
-    min-height: 44px;
-    gap: 8px;
+    padding: 10px 16px;
+    background: #f0f3fa;
+    border-bottom: 1px solid #e0e3eb;
+    min-height: 48px;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .headerLeft {
@@ -68,19 +69,19 @@
     padding: 6px 10px;
     background: transparent;
     border: none;
-    color: #d1d4dc;
-    font-size: 13px;
+    color: #131722;
+    font-size: 14px;
     font-weight: 500;
     border-radius: 4px;
     cursor: pointer;
-    max-width: 200px;
+    max-width: 220px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .scriptNameBtn:hover {
-    background: #2a2e39;
+    background: rgba(0, 0, 0, 0.05);
 }
 
 .dirtyIndicator {
@@ -103,8 +104,8 @@
 }
 
 .iconBtn:hover {
-    background: #2a2e39;
-    color: #d1d4dc;
+    background: rgba(0, 0, 0, 0.08);
+    color: #131722;
 }
 
 /* Header button with text */
@@ -127,12 +128,12 @@
     background: rgba(41, 98, 255, 0.1);
 }
 
-/* Primary button */
+/* Primary button - "Add to chart" */
 .primaryBtn {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 14px;
+    padding: 8px 16px;
     background: #2962ff;
     border: none;
     color: #ffffff;
