@@ -504,6 +504,39 @@ export const createPivotPointsSeries = (chart: any, ind: IndicatorConfig): any =
 };
 
 /**
+ * Create Pine Script indicator series
+ * Creates a simple line series for each plot in the Pine Script
+ */
+export const createPineSeries = (chart: any, ind: IndicatorConfig, isVisible: boolean = true): { series: any; pane?: any } => {
+    const isOverlay = ind.pane === 'main';
+
+    if (isOverlay) {
+        // Overlay indicator - draw on main chart
+        const series = chart.addSeries(LineSeries, {
+            color: ind.pineColor || '#2962FF',
+            lineWidth: ind.pineLineWidth || 2,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            visible: isVisible,
+            title: ind.name || 'Pine Script'
+        });
+        return { series };
+    } else {
+        // Separate pane indicator
+        const pane = chart.addPane({ height: 100 });
+        const series = pane.addSeries(LineSeries, {
+            color: ind.pineColor || '#2962FF',
+            lineWidth: ind.pineLineWidth || 2,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            visible: isVisible,
+            title: ind.name || 'Pine Script'
+        });
+        return { series, pane };
+    }
+};
+
+/**
  * Main factory function - creates series for any indicator type
  */
 export const createIndicatorSeries = (chart: any, ind: IndicatorConfig, isVisible: boolean = true): SeriesResult | null => {
@@ -564,6 +597,11 @@ export const createIndicatorSeries = (chart: any, ind: IndicatorConfig, isVisibl
 
         case 'pivotPoints':
             return { series: createPivotPointsSeries(chart, ind) };
+
+        case 'pine': {
+            const result = createPineSeries(chart, ind, isVisible);
+            return { series: result.series, pane: result.pane };
+        }
 
         default:
             return null;

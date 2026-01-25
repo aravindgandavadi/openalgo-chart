@@ -346,6 +346,47 @@ export const updatePivotPointsSeries = (series: any, ind: IndicatorConfig, data:
 };
 
 /**
+ * Update Pine Script indicator series
+ * Uses cached pineResult from the indicator config if available
+ */
+export const updatePineSeries = (series: any, ind: IndicatorConfig, data: OHLCData[], isVisible: boolean): void => {
+    series.applyOptions({
+        visible: isVisible,
+        color: ind.pineColor || '#2962FF',
+        lineWidth: ind.pineLineWidth || 2,
+        title: ind.name || 'Pine Script'
+    });
+
+    // If we have cached Pine result data, use it
+    if (ind.pineResultData && Array.isArray(ind.pineResultData)) {
+        // Map the result data to chart format
+        const chartData = ind.pineResultData
+            .map((value: number, index: number) => {
+                if (index >= data.length || value === null || value === undefined || isNaN(value)) {
+                    return null;
+                }
+                return {
+                    time: data[index].time,
+                    value: value
+                };
+            })
+            .filter((d: any) => d !== null);
+
+        if (chartData.length > 0) {
+            series.setData(chartData);
+        }
+    } else {
+        // Fallback: show close price as placeholder until Pine execution completes
+        // This prevents the indicator from appearing empty
+        const placeholderData = data.map(d => ({
+            time: d.time,
+            value: d.close
+        }));
+        series.setData(placeholderData);
+    }
+};
+
+/**
  * Main update function - updates series for any indicator type
  * @returns markers (for indicators that generate markers like ANN Strategy)
  */
@@ -404,6 +445,10 @@ export const updateIndicatorSeries = (series: any, ind: IndicatorConfig, data: O
 
         case 'pivotPoints':
             updatePivotPointsSeries(series, ind, data, isVisible);
+            return [];
+
+        case 'pine':
+            updatePineSeries(series, ind, data, isVisible);
             return [];
 
         default:

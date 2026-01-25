@@ -27,6 +27,8 @@ interface Field {
 
 interface IndicatorConfig {
     name: string;
+    fullName?: string;
+    pane?: string;
     inputs: Field[];
     style: Field[];
 }
@@ -280,6 +282,8 @@ export interface IndicatorSettingsDialogProps {
     settings: Settings;
     onSave?: (settings: Settings) => void;
     theme?: Theme;
+    /** Optional config override for dynamically generated configs (e.g., Pine Script) */
+    dynamicConfig?: IndicatorConfig | null;
 }
 
 /**
@@ -292,10 +296,12 @@ const IndicatorSettingsDialog: FC<IndicatorSettingsDialogProps> = ({
     settings,
     onSave,
     theme = 'dark',
+    dynamicConfig,
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>('inputs');
     const [localSettings, setLocalSettings] = useState<Settings>({});
-    const config = getIndicatorConfig(indicatorType) as IndicatorConfig | null;
+    // Use dynamicConfig if provided (e.g., for Pine Script), otherwise look up by type
+    const config = (dynamicConfig || getIndicatorConfig(indicatorType)) as IndicatorConfig | null;
 
     // Sync local state when dialog opens
     useEffect(() => {
