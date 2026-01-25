@@ -66,25 +66,49 @@ const DepthOfMarket: React.FC<DepthOfMarketProps> = ({ symbol, exchange = 'NSE',
         }
     }, [symbol, exchange, isPaused]);
 
-    // Initial fetch and polling
+    // Initial fetch and polling - pauses when tab is not visible to save CPU
     useEffect(() => {
         if (!isOpen || !symbol) return;
+
+        const startPolling = () => {
+            if (intervalRef.current) return; // Already polling
+            intervalRef.current = setInterval(fetchDepth, 1000); // Poll every 1s (reduced from 500ms)
+        };
+
+        const stopPolling = () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                stopPolling();
+            } else if (isOpen && !isPaused) {
+                fetchDepth(); // Immediate refresh when becoming visible
+                startPolling();
+            }
+        };
 
         setIsLoading(true);
         fetchDepth().finally(() => setIsLoading(false));
 
-        // Poll every 500ms for real-time updates
-        intervalRef.current = setInterval(fetchDepth, 500);
+        // Only start polling if tab is visible
+        if (document.visibilityState !== 'hidden') {
+            startPolling();
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
+            stopPolling();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
             }
         };
-    }, [isOpen, symbol, fetchDepth]);
+    }, [isOpen, symbol, isPaused, fetchDepth]);
 
     // Format number with commas and crushing
     const formatNumber = (num: number): string => formatCompactNumber(num, 2);

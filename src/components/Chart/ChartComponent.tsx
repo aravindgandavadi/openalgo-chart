@@ -1528,34 +1528,61 @@ const ChartComponent = forwardRef<any, ChartComponentProps>(({
         }
     }, []);
 
-    // RAF Loop for smooth updates - pauses when not visible to save CPU/battery
+    // Throttled axis label updates - only updates when chart changes, not every frame
+    // This saves significant CPU when idle compared to continuous RAF loop
     useEffect(() => {
-        let animationFrameId;
-        let isRunning = true;
+        let updateScheduled = false;
+        let lastUpdateTime = 0;
+        const THROTTLE_MS = 100; // Update at most every 100ms
 
-        const animate = () => {
-            if (!isRunning) return;
+        const scheduleUpdate = () => {
+            if (updateScheduled || document.visibilityState === 'hidden' || !isChartVisibleRef.current) return;
 
-            if (isChartVisibleRef.current && document.visibilityState !== 'hidden') {
+            const now = Date.now();
+            const timeSinceLastUpdate = now - lastUpdateTime;
+
+            if (timeSinceLastUpdate >= THROTTLE_MS) {
+                // Enough time has passed, update immediately
                 updateAxisLabel();
-                animationFrameId = requestAnimationFrame(animate);
+                lastUpdateTime = now;
+            } else {
+                // Schedule update for later
+                updateScheduled = true;
+                setTimeout(() => {
+                    updateScheduled = false;
+                    if (document.visibilityState !== 'hidden' && isChartVisibleRef.current) {
+                        updateAxisLabel();
+                        lastUpdateTime = Date.now();
+                    }
+                }, THROTTLE_MS - timeSinceLastUpdate);
             }
-            // Don't schedule next frame if not visible - will resume on visibility change
         };
 
+        // Update on chart events instead of continuous RAF
+        const chart = chartRef.current;
+        if (!chart) return;
+
+        // Subscribe to chart changes that require axis label update
+        const handleCrosshairMove = () => scheduleUpdate();
+        const handleVisibleRangeChange = () => scheduleUpdate();
+
+        chart.subscribeCrosshairMove(handleCrosshairMove);
+        chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
+
+        // Initial update
+        scheduleUpdate();
+
+        // Update when tab becomes visible
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && isChartVisibleRef.current && isRunning) {
-                // Resume animation when tab becomes visible again
-                animationFrameId = requestAnimationFrame(animate);
+            if (document.visibilityState === 'visible') {
+                scheduleUpdate();
             }
         };
-
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        animationFrameId = requestAnimationFrame(animate);
 
         return () => {
-            isRunning = false;
-            cancelAnimationFrame(animationFrameId);
+            chart.unsubscribeCrosshairMove(handleCrosshairMove);
+            chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, [updateAxisLabel]);
@@ -4265,6 +4292,7 @@ const ChartComponent = forwardRef<any, ChartComponentProps>(({
     }, [updateReplayData]);
 
     // Playback Effect - Fixed race condition and synchronization
+    // Pauses when tab is hidden to save CPU
     useEffect(() => {
         if (isPlaying && isReplayMode) {
             stopReplay();
@@ -4278,22 +4306,49 @@ const ChartComponent = forwardRef<any, ChartComponentProps>(({
 
             const intervalMs = 1000 / replaySpeed; // 1x = 1 sec, 10x = 0.1 sec
 
-            replayIntervalRef.current = setInterval(() => {
-                // Use ref to get current value and avoid stale closures
-                const currentIndex = replayIndexRef.current;
+            const startInterval = () => {
+                if (replayIntervalRef.current) return; // Already running
+                replayIntervalRef.current = setInterval(() => {
+                    // Skip if tab is hidden - pause playback to save CPU
+                    if (document.visibilityState === 'hidden') return;
 
-                if (currentIndex === null || currentIndex >= fullDataRef.current.length - 1) {
-                    setIsPlaying(false);
-                    isPlayingRef.current = false;
-                    return;
+                    // Use ref to get current value and avoid stale closures
+                    const currentIndex = replayIndexRef.current;
+
+                    if (currentIndex === null || currentIndex >= fullDataRef.current.length - 1) {
+                        setIsPlaying(false);
+                        isPlayingRef.current = false;
+                        return;
+                    }
+
+                    const nextIndex = currentIndex + 1;
+
+                    // Update state and data synchronously - always hide future candles during playback
+                    setReplayIndex(nextIndex);
+                    updateReplayData(nextIndex, true); // true = hide future candles
+                }, intervalMs);
+            };
+
+            // Only start if tab is visible
+            if (document.visibilityState !== 'hidden') {
+                startInterval();
+            }
+
+            // Handle visibility changes - pause/resume playback
+            const handleVisibilityChange = () => {
+                if (document.visibilityState === 'hidden') {
+                    stopReplay();
+                } else if (isPlayingRef.current) {
+                    startInterval();
                 }
+            };
 
-                const nextIndex = currentIndex + 1;
+            document.addEventListener('visibilitychange', handleVisibilityChange);
 
-                // Update state and data synchronously - always hide future candles during playback
-                setReplayIndex(nextIndex);
-                updateReplayData(nextIndex, true); // true = hide future candles
-            }, intervalMs);
+            return () => {
+                stopReplay();
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            };
         } else {
             stopReplay();
         }
