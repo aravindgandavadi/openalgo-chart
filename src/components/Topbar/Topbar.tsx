@@ -735,6 +735,20 @@ const Topbar: React.FC<TopbarProps> = ({
                                                     </div>
                                                     <div className={styles.text}>Alert</div>
                                                 </button>
+                                                <Tooltip content="Create Indicator Alert" position="bottom">
+                                                    <button
+                                                        className={classNames(styles.button)}
+                                                        aria-label="Create Indicator Alert"
+                                                        onClick={onIndicatorAlertClick}
+                                                    >
+                                                        <div className={styles.icon}>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="28" height="28" fill="none">
+                                                                <path stroke="currentColor" d="M20 17l-5 5M15 17l5 5M9 11.5h7M17.5 8a2.5 2.5 0 0 0-5 0v11a2.5 2.5 0 0 1-5 0"></path>
+                                                            </svg>
+                                                        </div>
+                                                        <div className={styles.text}>Indicator Alert</div>
+                                                    </button>
+                                                </Tooltip>
                                                 <button className={classNames(styles.button, { [styles.isActive]: isReplayMode })} aria-label="Bar Replay" onClick={onReplayClick}>
                                                     <div className={styles.icon}>
                                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="28" height="28"><path fill="none" stroke="currentColor" d="M13.5 20V9l-6 5.5 6 5.5zM21.5 20V9l-6 5.5 6 5.5z"></path></svg>
@@ -747,6 +761,14 @@ const Topbar: React.FC<TopbarProps> = ({
                                                     </div>
                                                     <div className={styles.text}>Options</div>
                                                 </button>
+                                                <Tooltip content="Sector Heatmap" position="bottom">
+                                                    <button className={styles.button} aria-label="Sector Heatmap" onClick={onHeatmapClick}>
+                                                        <div className={styles.icon}>
+                                                            <BarChart3 size={20} strokeWidth={1.5} />
+                                                        </div>
+                                                        <div className={styles.text}>Heatmap</div>
+                                                    </button>
+                                                </Tooltip>
                                             </div>
 
                                             {/* Undo / Redo */}
