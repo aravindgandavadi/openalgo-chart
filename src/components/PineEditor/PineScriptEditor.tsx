@@ -400,9 +400,61 @@ const PineScriptEditor: React.FC<PineScriptEditorProps> = ({
             return;
         }
 
-        addConsoleMessage('success', 'Compiled.');
+        // Check for complex/unsupported features
+        const unsupportedFeatures: string[] = [];
+
+        // Check for features that PineTS doesn't support
+        if (code.includes('request.security') || code.includes('request.security_lower_tf')) {
+            unsupportedFeatures.push('request.security (multi-timeframe data)');
+        }
+        if (code.includes('line.new') || code.includes('label.new') || code.includes('box.new')) {
+            unsupportedFeatures.push('drawing objects (line, label, box)');
+        }
+        if (code.includes('table.new') || code.includes('table.cell')) {
+            unsupportedFeatures.push('tables');
+        }
+        if (code.includes('array.new') || code.includes('array.push') || code.includes('array.get')) {
+            unsupportedFeatures.push('arrays');
+        }
+        if (/\w+\s*\([^)]*\)\s*=>/.test(code)) {
+            unsupportedFeatures.push('user-defined functions');
+        }
+        if (code.includes('for ') || code.includes('while ')) {
+            unsupportedFeatures.push('loops (for/while)');
+        }
+        if (code.includes('max_lines_count') || code.includes('max_labels_count') || code.includes('max_boxes_count')) {
+            unsupportedFeatures.push('drawing limits');
+        }
+
+        if (unsupportedFeatures.length > 0) {
+            addConsoleMessage('warning', '⚠️ This script uses advanced features that may not be fully supported:');
+            unsupportedFeatures.forEach(feature => {
+                addConsoleMessage('warning', `  • ${feature}`);
+            });
+            addConsoleMessage('warning', 'The indicator may not display correctly. Simple indicators (EMA, SMA, RSI, MACD) work best.');
+        }
+
+        // Check if it's a simple indicator we can handle
+        const isSimpleIndicator =
+            (code.includes('ta.ema') || code.includes('ta.sma') || code.includes('ta.rsi') ||
+             code.includes('ta.macd') || code.includes('ta.atr') || code.includes('ta.stoch') ||
+             code.includes('ta.bb') || code.includes('ta.vwap') || code.includes('ta.supertrend')) &&
+            unsupportedFeatures.length === 0;
+
+        if (isSimpleIndicator) {
+            addConsoleMessage('success', 'Compiled successfully.');
+        } else if (unsupportedFeatures.length > 0) {
+            addConsoleMessage('info', 'Attempting to compile with limited support...');
+        } else {
+            addConsoleMessage('success', 'Compiled.');
+        }
+
         onAddToChart(code, parsedInputs);
         addConsoleMessage('success', 'Added to chart.');
+
+        if (unsupportedFeatures.length > 0) {
+            addConsoleMessage('info', 'Note: Check if the indicator displays as expected.');
+        }
     }, [code, parsedInputs, validation, onAddToChart, addConsoleMessage]);
 
     const handleClearConsole = useCallback(() => {

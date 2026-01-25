@@ -434,9 +434,13 @@ export const updatePineSeries = (series: any, ind: IndicatorConfig, data: OHLCDa
     if (calculatedData && calculatedData.length > 0) {
         series.setData(calculatedData);
     } else {
-        // Fallback: show close price as placeholder
-        const placeholderData = data.map(d => ({ time: d.time, value: d.close }));
-        series.setData(placeholderData);
+        // No data available - script couldn't be executed
+        // Show empty series with a title indicating the issue
+        series.applyOptions({
+            title: ind.name ? `${ind.name} (unsupported)` : 'Pine Script (unsupported)',
+        });
+        // Set empty data - don't show misleading close prices
+        series.setData([]);
     }
 };
 
