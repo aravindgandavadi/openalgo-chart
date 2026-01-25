@@ -378,7 +378,10 @@ export const isInputField = (event: Event): boolean => {
     const isEditable = (target as any).isContentEditable;
     const isInput = tagName === 'input' || tagName === 'textarea' || tagName === 'select';
 
-    return isEditable || isInput;
+    // Check if inside Monaco editor (Pine Script editor, code editors)
+    const isMonacoEditor = target.closest('.monaco-editor') !== null;
+
+    return isEditable || isInput || isMonacoEditor;
 };
 
 // ============================================

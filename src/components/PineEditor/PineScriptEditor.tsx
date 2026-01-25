@@ -428,6 +428,17 @@ const PineScriptEditor: React.FC<PineScriptEditorProps> = ({
         }
     }, [consoleMessages]);
 
+    // Stop keyboard events from bubbling to app-level handlers (search, etc.)
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+        // Allow Escape to close
+        if (e.key === 'Escape') {
+            onClose();
+            return;
+        }
+        // Stop all other keyboard events from bubbling
+        e.stopPropagation();
+    }, [onClose]);
+
     if (!isOpen) return null;
 
     const errorCount = validation.errors.length;
@@ -437,6 +448,9 @@ const PineScriptEditor: React.FC<PineScriptEditorProps> = ({
             ref={containerRef}
             className={styles.container}
             style={{ width: editorWidth }}
+            onKeyDown={handleKeyDown}
+            onKeyUp={(e) => e.stopPropagation()}
+            onKeyPress={(e) => e.stopPropagation()}
         >
             {/* Resize handle (left edge) */}
             <div className={styles.resizeHandle} onMouseDown={startResize} />
