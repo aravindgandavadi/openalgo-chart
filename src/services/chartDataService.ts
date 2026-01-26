@@ -251,14 +251,15 @@ export const getKlines = async (
         );
 
       // Sort by time ascending and remove duplicates
+      // Use forward loop with push (O(1)) instead of backward loop with unshift (O(n))
       candles.sort((a, b) => a.time - b.time);
       const deduped: Candle[] = [];
       const seenTimes = new Set<number>();
-      for (let i = candles.length - 1; i >= 0; i--) {
+      for (let i = 0; i < candles.length; i++) {
         const candle = candles[i];
         if (candle && !seenTimes.has(candle.time)) {
           seenTimes.add(candle.time);
-          deduped.unshift(candle);
+          deduped.push(candle);
         }
       }
       return deduped;
@@ -358,14 +359,15 @@ export const getHistoricalKlines = async (
         );
 
       // Sort by time ascending and remove duplicates
+      // Use forward loop with push (O(1)) instead of backward loop with unshift (O(n))
       candles.sort((a, b) => a.time - b.time);
       const deduped: Candle[] = [];
       const seenTimes = new Set<number>();
-      for (let i = candles.length - 1; i >= 0; i--) {
+      for (let i = 0; i < candles.length; i++) {
         const candle = candles[i];
         if (candle && !seenTimes.has(candle.time)) {
           seenTimes.add(candle.time);
-          deduped.unshift(candle);
+          deduped.push(candle);
         }
       }
       return deduped;

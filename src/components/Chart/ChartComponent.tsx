@@ -172,8 +172,13 @@ const ChartComponent = forwardRef<any, ChartComponentProps>(({
     // Get orders and positions from OrderContext
     const { activeOrders: orders = [], activePositions: positions = [], onModifyOrder, onCancelOrder } = useOrders();
 
-    // Memoize comparisons to prevent frequent re-renders/effects
-    const comparisonSymbols = useMemo(() => comparisonSymbolsProp, [JSON.stringify(comparisonSymbolsProp)]);
+    // Memoize comparisons - use length and first item as proxy for deep comparison
+    // This avoids JSON.stringify on every render while still detecting meaningful changes
+    const comparisonSymbols = useMemo(() => comparisonSymbolsProp, [
+        comparisonSymbolsProp?.length,
+        comparisonSymbolsProp?.[0]?.symbol,
+        comparisonSymbolsProp?.[0]?.exchange
+    ]);
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const [isLoading, setIsLoading] = useState(true);

@@ -147,6 +147,9 @@ class GlobalAlertMonitor {
   /** Bound storage change handler */
   private _handleStorageChange: (event: StorageEvent) => void;
 
+  /** Debounce timer for storage change events */
+  private _storageChangeDebounceTimer: ReturnType<typeof setTimeout> | null;
+
   constructor() {
     this._lastPrices = new Map();
     this._alertPositions = new Map();
@@ -161,6 +164,7 @@ class GlobalAlertMonitor {
     this._lastCacheRefresh = 0;
     this._cacheRefreshIntervalId = null;
     this._cleanupIntervalId = null;
+    this._storageChangeDebounceTimer = null;
 
     // Listen for storage changes from other tabs
     this._handleStorageChange = this._onStorageChange.bind(this);
@@ -170,12 +174,19 @@ class GlobalAlertMonitor {
   }
 
   /**
-   * Handle storage changes from other tabs
+   * Handle storage changes from other tabs with debounce to prevent rapid multiple calls
    */
   private _onStorageChange(event: StorageEvent): void {
     if (event.key === ALERT_STORAGE_KEY || event.key === APP_ALERT_STORAGE_KEY) {
-      logger.debug('[GlobalAlertMonitor] Storage changed in another tab, refreshing cache');
-      this._refreshAlertCache();
+      // Debounce rapid storage changes (e.g., from multiple tabs syncing)
+      if (this._storageChangeDebounceTimer) {
+        clearTimeout(this._storageChangeDebounceTimer);
+      }
+      this._storageChangeDebounceTimer = setTimeout(() => {
+        logger.debug('[GlobalAlertMonitor] Storage changed in another tab, refreshing cache');
+        this._refreshAlertCache();
+        this._storageChangeDebounceTimer = null;
+      }, 100); // 100ms debounce
     }
   }
 

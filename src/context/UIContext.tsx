@@ -8,6 +8,7 @@ import {
   useState,
   useContext,
   useCallback,
+  useMemo,
   type ReactNode,
   type Dispatch,
   type SetStateAction,
@@ -232,7 +233,8 @@ export function UIProvider({ children }: UIProviderProps) {
     isSectorHeatmapOpen ||
     isIndicatorSettingsOpen;
 
-  const value: UIContextValue = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value: UIContextValue = useMemo(() => ({
     // Search
     isSearchOpen,
     setIsSearchOpen,
@@ -289,7 +291,18 @@ export function UIProvider({ children }: UIProviderProps) {
     closeAllModals,
     closeTopmostModal,
     hasOpenModal,
-  };
+  }), [
+    isSearchOpen, searchMode, initialSearchValue, openSearch,
+    isCommandPaletteOpen,
+    isTemplateDialogOpen, isShortcutsDialogOpen, isChartTemplatesOpen, isSettingsOpen,
+    isStraddlePickerOpen, isOptionChainOpen, optionChainInitialSymbol, openOptionChain,
+    isAlertOpen,
+    isSectorHeatmapOpen,
+    isIndicatorSettingsOpen,
+    showDrawingToolbar,
+    activeRightPanel,
+    closeAllModals, closeTopmostModal, hasOpenModal,
+  ]);
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 }

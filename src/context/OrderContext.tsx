@@ -5,7 +5,7 @@
  * Provides single source of truth for trading data across the application
  */
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useTradingData } from '../hooks/useTradingData';
 import { useOrderHandlers } from '../hooks/useOrderHandlers';
 import { useUser } from './UserContext';
@@ -121,7 +121,8 @@ export function OrderProvider({ children, showToast }: OrderProviderProps) {
     refreshTradingData,
   });
 
-  const value: OrderContextValue = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value: OrderContextValue = useMemo(() => ({
     // Raw data
     orders: orders as any,
     positions: positions as any,
@@ -137,7 +138,7 @@ export function OrderProvider({ children, showToast }: OrderProviderProps) {
     onModifyOrder: handleModifyOrder as any,
     onCancelOrder: handleCancelOrder as any,
     refresh: refreshTradingData,
-  };
+  }), [orders, positions, funds, holdings, trades, activeOrders, activePositions, handleModifyOrder, handleCancelOrder, refreshTradingData]);
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
 }

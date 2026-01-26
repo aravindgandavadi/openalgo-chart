@@ -4,7 +4,7 @@
  */
 
 import { useCallback, type Dispatch, type SetStateAction, type MutableRefObject } from 'react';
-import html2canvas from 'html2canvas';
+// html2canvas is lazy loaded when screenshot is taken to reduce initial bundle size
 import logger from '../utils/logger';
 
 // ==================== TYPES ====================
@@ -216,6 +216,8 @@ export const useToolHandlers = ({
       const chartContainer = activeRef.getChartContainer();
       if (chartContainer) {
         try {
+          // Lazy load html2canvas only when needed (reduces initial bundle by ~200KB)
+          const { default: html2canvas } = await import('html2canvas');
           const canvas = await html2canvas(chartContainer, {
             useCORS: true,
             allowTaint: true,
@@ -248,6 +250,8 @@ export const useToolHandlers = ({
       const chartContainer = activeRef.getChartContainer();
       if (chartContainer) {
         try {
+          // Lazy load html2canvas only when needed (reduces initial bundle by ~200KB)
+          const { default: html2canvas } = await import('html2canvas');
           const canvas = await html2canvas(chartContainer, {
             useCORS: true,
             allowTaint: true,

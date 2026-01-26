@@ -320,8 +320,9 @@ export const calculateANNStrategy = (
 
     // Debug: Log sample outputs
     const sampleOutputs = predictions.slice(-10).map(p => p.value.toFixed(6));
-    const minOutput = Math.min(...predictions.map(p => p.value));
-    const maxOutput = Math.max(...predictions.map(p => p.value));
+    const predictionValues = predictions.map(p => p.value);
+    const minOutput = predictionValues.length > 0 ? Math.min(...predictionValues) : 0;
+    const maxOutput = predictionValues.length > 0 ? Math.max(...predictionValues) : 0;
     logger.debug('[ANN] NN Output range:', minOutput.toFixed(6), 'to', maxOutput.toFixed(6));
     logger.debug('[ANN] Last 10 outputs:', sampleOutputs);
     logger.debug('[ANN] Markers generated:', markers.length);

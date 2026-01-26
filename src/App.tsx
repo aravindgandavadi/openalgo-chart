@@ -8,7 +8,7 @@ import ChartComponent from './components/Chart/ChartComponent';
 import SymbolSearch from './components/SymbolSearch/SymbolSearch';
 import Toast from './components/Toast/Toast';
 import SnapshotToast from './components/Toast/SnapshotToast';
-import html2canvas from 'html2canvas';
+// html2canvas is lazy loaded in useToolHandlers.ts when screenshot is taken
 import { getTickerPrice, subscribeToMultiTicker, checkAuth, closeAllWebSockets, forceCloseAllWebSockets, saveUserPreferences, modifyOrder, cancelOrder, getKlines } from './services/openalgo';
 import { globalAlertMonitor } from './services/globalAlertMonitor';
 
