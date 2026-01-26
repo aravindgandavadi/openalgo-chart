@@ -223,7 +223,7 @@ export function removePrimitive(primitiveRef: any, mainSeries: any): void {
 
 /**
  * Safely remove a pane from the chart
- * Uses pane object reference instead of fragile index-based removal
+ * Uses pane index since lightweight-charts removePane expects an index
  */
 export function removePane(chart: any, pane: any): void {
   logger.debug('[CLEANUP EXEC] removePane called', { hasChart: !!chart, hasPane: !!pane });
@@ -233,26 +233,28 @@ export function removePane(chart: any, pane: any): void {
     return;
   }
 
-  if (!isValidPane(pane)) {
-    logger.warn('[CLEANUP EXEC] Attempted to remove invalid pane:', pane);
-    return;
-  }
-
   try {
-    // Modern API: remove pane by reference
-    if (typeof chart.removePane === 'function') {
-      logger.debug('[CLEANUP EXEC] Calling chart.removePane');
-      chart.removePane(pane);
-      logger.debug('[CLEANUP EXEC] Successfully called chart.removePane');
-    }
-    // Fallback: remove pane by finding its index
-    else if (typeof chart.panes === 'function') {
+    // Get all panes and find the index of this pane
+    if (typeof chart.panes === 'function') {
       const panes = chart.panes();
       const index = panes.indexOf(pane);
+
+      logger.debug('[CLEANUP EXEC] Found pane at index:', index, 'total panes:', panes.length);
+
       if (index > 0) {
         // Never remove index 0 (main pane)
-        chart.removePaneByIndex?.(index);
+        if (typeof chart.removePane === 'function') {
+          logger.debug('[CLEANUP EXEC] Calling chart.removePane with index:', index);
+          chart.removePane(index);
+          logger.debug('[CLEANUP EXEC] Successfully removed pane at index:', index);
+        }
+      } else if (index === 0) {
+        logger.warn('[CLEANUP EXEC] Attempted to remove main pane (index 0), skipping');
+      } else {
+        logger.warn('[CLEANUP EXEC] Pane not found in chart.panes()');
       }
+    } else {
+      logger.warn('[CLEANUP EXEC] chart.panes() not available');
     }
   } catch (error) {
     logger.warn('Error removing pane:', error);
