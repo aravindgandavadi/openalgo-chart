@@ -98,16 +98,10 @@ docker build -t openalgo-chart .
 #### Run the Container
 
 ```bash
-# Run on port 80
-docker run -d -p 80:80 --name openalgo-chart openalgo-chart
-
-# Or run on a custom port (e.g., 3000)
-docker run -d -p 3000:80 --name openalgo-chart openalgo-chart
+docker run -d -p 5001:80 --name openalgo-chart openalgo-chart
 ```
 
-The application will be available at:
-- **http://localhost** (if using port 80)
-- **http://localhost:3000** (if using custom port)
+The application will be available at **http://localhost:5001**
 
 #### Stop the Container
 
@@ -129,7 +123,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "5001:80"
     depends_on:
       - backend
     networks:
