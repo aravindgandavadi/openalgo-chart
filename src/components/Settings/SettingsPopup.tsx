@@ -9,13 +9,13 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardNav } from '../../hooks/useKeyboardNav';
 
 // Import extracted section components
-import { ScalesSection, OpenAlgoSection, LoggingSection, AppearanceSection } from './sections';
+import { ScalesSection, OpenAlgoSection, LoggingSection, AppearanceSection, SymbolSection } from './sections';
 
 // Import constants
 import { DEFAULT_CHART_APPEARANCE, ChartAppearance } from './constants';
 
 type Theme = 'dark' | 'light';
-type SectionId = 'scales' | 'openalgo' | 'logging' | 'appearance' | 'shortcuts';
+type SectionId = 'symbol' | 'scales' | 'openalgo' | 'logging' | 'appearance' | 'shortcuts';
 
 interface Section {
     id: SectionId;
@@ -72,7 +72,7 @@ const SettingsPopup: FC<SettingsPopupProps> = ({
 }) => {
     // Logging state
     const [logLevel, setLocalLogLevel] = useState(getLogLevel);
-    const [activeSection, setActiveSection] = useState<SectionId>('scales');
+    const [activeSection, setActiveSection] = useState<SectionId>('symbol');
     const [localHostUrl, setLocalHostUrl] = useState(hostUrl);
     const [localApiKey, setLocalApiKey] = useState(apiKey);
     const [localWsUrl, setLocalWsUrl] = useState(websocketUrl);
@@ -153,7 +153,14 @@ const SettingsPopup: FC<SettingsPopupProps> = ({
 
     const sections: Section[] = [
         {
-            id: 'scales', label: 'Scales and lines', icon: (
+            id: 'symbol', label: 'Symbol', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="18" height="18" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17.5 20.5h4v-13h-4v13zm2-13v-3m0 16v3M6.5 17.5h4v-7h-4v7zm2-7v-3m0 10v3" />
+                </svg>
+            )
+        },
+        {
+            id: 'scales', label: 'Scales', icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="18" height="18" fill="none" stroke="currentColor">
                     <path d="M10.5 20.5a2 2 0 1 1-2-2m2 2a2 2 0 0 0-2-2m2 2h14m-16-2v-14m16 16L21 17m3.5 3.5L21 24M8.5 4.5L12 8M8.5 4.5L5 8"></path>
                 </svg>
@@ -226,6 +233,12 @@ const SettingsPopup: FC<SettingsPopupProps> = ({
 
                 {/* Main Content Area */}
                 <div className={styles.main}>
+                    {activeSection === 'symbol' && (
+                        <SymbolSection
+                            localAppearance={localAppearance}
+                            setLocalAppearance={setLocalAppearance}
+                        />
+                    )}
                     {activeSection === 'scales' && (
                         <ScalesSection
                             isTimerVisible={isTimerVisible}
