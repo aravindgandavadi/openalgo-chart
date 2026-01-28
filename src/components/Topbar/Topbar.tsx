@@ -858,6 +858,13 @@ const Topbar: React.FC<TopbarProps> = ({
                                                         </div>
                                                     </button>
                                                 </Tooltip>
+                                                <Tooltip content="Indicator Templates" position="bottom">
+                                                    <button className={classNames(styles.button, styles.iconButton)} aria-label="Indicator Templates" onClick={onChartTemplatesClick}>
+                                                        <div className={styles.icon}>
+                                                            <Bookmark size={20} strokeWidth={1.5} />
+                                                        </div>
+                                                    </button>
+                                                </Tooltip>
 
                                                 <div className={styles.separatorWrap}><div className={styles.separator}></div></div>
 
