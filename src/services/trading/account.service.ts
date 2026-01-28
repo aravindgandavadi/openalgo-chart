@@ -69,12 +69,14 @@ export async function getPositionBook(): Promise<Position[]> {
  * Get Order Book - Fetch all orders with statistics
  */
 export async function getOrderBook(): Promise<OrderBookResponse> {
+  const defaultStats = { total: 0, open: 0, completed: 0, rejected: 0 };
+
   const result = await makeApiRequest<any>(
     ACCOUNT_ENDPOINTS.ORDER_BOOK,
     {},
     {
       context: 'OrderBook',
-      defaultValue: { orders: [], statistics: { total: 0, open: 0, completed: 0, rejected: 0 } },
+      defaultValue: { orders: [], statistics: defaultStats },
       rawResponse: true,
     }
   );
@@ -83,27 +85,27 @@ export async function getOrderBook(): Promise<OrderBookResponse> {
   if (result) {
     // Already has orders field
     if (Array.isArray(result.orders)) {
-      return { orders: result.orders, statistics: result.statistics || {} };
+      return { orders: result.orders, statistics: result.statistics || defaultStats };
     }
     // Nested in data.orders
     if (result.data && Array.isArray(result.data.orders)) {
-      return { orders: result.data.orders, statistics: result.data.statistics || {} };
+      return { orders: result.data.orders, statistics: result.data.statistics || defaultStats };
     }
     // Nested in data field directly as array
     if (Array.isArray(result.data)) {
-      return { orders: result.data, statistics: {} };
+      return { orders: result.data, statistics: defaultStats };
     }
     // Nested in orderbook field
     if (Array.isArray(result.orderbook)) {
-      return { orders: result.orderbook, statistics: {} };
+      return { orders: result.orderbook, statistics: defaultStats };
     }
     // Direct array response
     if (Array.isArray(result)) {
-      return { orders: result, statistics: {} };
+      return { orders: result, statistics: defaultStats };
     }
   }
 
-  return { orders: [], statistics: { total: 0, open: 0, completed: 0, rejected: 0 } };
+  return { orders: [], statistics: defaultStats };
 }
 
 /**
