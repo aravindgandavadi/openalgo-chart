@@ -1,7 +1,8 @@
-import { useEffect, useRef, useCallback, RefObject } from 'react';
+import { useEffect, useRef, useCallback, RefObject, useState } from 'react';
 import { getKlines, getHistoricalKlines, subscribeToTicker } from '../../../services/openalgo';
 import { combineMultiLegOHLC } from '../../../services/optionChain';
 import { getAccurateISTTimestamp, syncTimeWithAPI, shouldResync } from '../../../services/timeService';
+import { subscribeToNetworkRecovery } from '../../../services/connectionStatus';
 import { intervalToSeconds } from '../../../utils/timeframes';
 import { logger } from '../../../utils/logger';
 import { transformData } from '../utils/seriesFactories';
@@ -99,10 +100,22 @@ export function useChartData({
     const exchangeRef = useRef<string>(exchange);
     const intervalRef = useRef<string>(interval);
 
+    // Network recovery trigger - increments when network recovers to force data refetch
+    const [networkRecoveryKey, setNetworkRecoveryKey] = useState(0);
+
     // Keep refs in sync with props
     useEffect(() => { symbolRef.current = symbol; }, [symbol]);
     useEffect(() => { exchangeRef.current = exchange; }, [exchange]);
     useEffect(() => { intervalRef.current = interval; }, [interval]);
+
+    // Subscribe to network recovery events
+    useEffect(() => {
+        const unsubscribe = subscribeToNetworkRecovery(() => {
+            logger.debug('[useChartData] Network recovery detected, triggering data refetch');
+            setNetworkRecoveryKey(prev => prev + 1);
+        });
+        return unsubscribe;
+    }, []);
 
     // Load older historical data when user scrolls back
     const loadOlderData = useCallback(async () => {
@@ -514,7 +527,7 @@ export function useChartData({
             strategyDataRef.current = {};
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [symbol, exchange, interval, strategyConfig]);
+    }, [symbol, exchange, interval, strategyConfig, networkRecoveryKey]);
 
     return {
         // Refs

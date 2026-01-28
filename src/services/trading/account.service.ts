@@ -41,22 +41,35 @@ export async function getFunds(): Promise<Funds | null> {
  * Get Position Book - Fetch current open positions
  */
 export async function getPositionBook(): Promise<Position[]> {
-  const result = await makeApiRequest<Position[]>(
+  const result = await makeApiRequest<any>(
     ACCOUNT_ENDPOINTS.POSITION_BOOK,
     {},
     {
       context: 'PositionBook',
       defaultValue: [],
+      rawResponse: true,
     }
   );
-  return result ?? [];
+
+  // Handle different response formats from OpenAlgo API
+  if (result) {
+    // Direct array response
+    if (Array.isArray(result)) return result;
+    // Nested in data field
+    if (Array.isArray(result.data)) return result.data;
+    // Nested in positionbook field
+    if (Array.isArray(result.positionbook)) return result.positionbook;
+    // Nested in positions field
+    if (Array.isArray(result.positions)) return result.positions;
+  }
+  return [];
 }
 
 /**
  * Get Order Book - Fetch all orders with statistics
  */
 export async function getOrderBook(): Promise<OrderBookResponse> {
-  const result = await makeApiRequest<OrderBookResponse>(
+  const result = await makeApiRequest<any>(
     ACCOUNT_ENDPOINTS.ORDER_BOOK,
     {},
     {
@@ -66,8 +79,28 @@ export async function getOrderBook(): Promise<OrderBookResponse> {
     }
   );
 
-  if (result && 'orders' in result) {
-    return result;
+  // Handle different response formats from OpenAlgo API
+  if (result) {
+    // Already has orders field
+    if (Array.isArray(result.orders)) {
+      return { orders: result.orders, statistics: result.statistics || {} };
+    }
+    // Nested in data.orders
+    if (result.data && Array.isArray(result.data.orders)) {
+      return { orders: result.data.orders, statistics: result.data.statistics || {} };
+    }
+    // Nested in data field directly as array
+    if (Array.isArray(result.data)) {
+      return { orders: result.data, statistics: {} };
+    }
+    // Nested in orderbook field
+    if (Array.isArray(result.orderbook)) {
+      return { orders: result.orderbook, statistics: {} };
+    }
+    // Direct array response
+    if (Array.isArray(result)) {
+      return { orders: result, statistics: {} };
+    }
   }
 
   return { orders: [], statistics: { total: 0, open: 0, completed: 0, rejected: 0 } };
@@ -77,56 +110,74 @@ export async function getOrderBook(): Promise<OrderBookResponse> {
  * Get Trade Book - Fetch executed trades
  */
 export async function getTradeBook(): Promise<Trade[]> {
-  const result = await makeApiRequest<Trade[]>(
+  const result = await makeApiRequest<any>(
     ACCOUNT_ENDPOINTS.TRADE_BOOK,
     {},
     {
       context: 'TradeBook',
       defaultValue: [],
+      rawResponse: true,
     }
   );
-  return result ?? [];
+
+  // Handle different response formats from OpenAlgo API
+  if (result) {
+    // Direct array response
+    if (Array.isArray(result)) return result;
+    // Nested in data field
+    if (Array.isArray(result.data)) return result.data;
+    // Nested in tradebook field
+    if (Array.isArray(result.tradebook)) return result.tradebook;
+    // Nested in trades field
+    if (Array.isArray(result.trades)) return result.trades;
+  }
+  return [];
 }
 
 /**
  * Get Holdings - Fetch long-term stock holdings with P&L
  */
 export async function getHoldings(): Promise<HoldingsResponse> {
-  const result = await makeApiRequest<HoldingsResponse>(
+  const defaultStats = {
+    total_investment: 0,
+    total_current_value: 0,
+    total_pnl: 0,
+    total_pnl_percent: 0,
+    day_pnl: 0,
+    day_pnl_percent: 0,
+  };
+
+  const result = await makeApiRequest<any>(
     ACCOUNT_ENDPOINTS.HOLDINGS,
     {},
     {
       context: 'Holdings',
-      defaultValue: {
-        holdings: [],
-        statistics: {
-          total_investment: 0,
-          total_current_value: 0,
-          total_pnl: 0,
-          total_pnl_percent: 0,
-          day_pnl: 0,
-          day_pnl_percent: 0,
-        },
-      },
+      defaultValue: { holdings: [], statistics: defaultStats },
       rawResponse: true,
     }
   );
 
-  if (result && 'holdings' in result) {
-    return result;
+  // Handle different response formats from OpenAlgo API
+  if (result) {
+    // Already has holdings field
+    if (Array.isArray(result.holdings)) {
+      return { holdings: result.holdings, statistics: result.statistics || defaultStats };
+    }
+    // Nested in data.holdings
+    if (result.data && Array.isArray(result.data.holdings)) {
+      return { holdings: result.data.holdings, statistics: result.data.statistics || defaultStats };
+    }
+    // Nested in data field directly as array
+    if (Array.isArray(result.data)) {
+      return { holdings: result.data, statistics: defaultStats };
+    }
+    // Direct array response
+    if (Array.isArray(result)) {
+      return { holdings: result, statistics: defaultStats };
+    }
   }
 
-  return {
-    holdings: [],
-    statistics: {
-      total_investment: 0,
-      total_current_value: 0,
-      total_pnl: 0,
-      total_pnl_percent: 0,
-      day_pnl: 0,
-      day_pnl_percent: 0,
-    },
-  };
+  return { holdings: [], statistics: defaultStats };
 }
 
 /**

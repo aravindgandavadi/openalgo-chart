@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getDepth } from '../../services/openalgo';
-import { X, RefreshCw, Layers } from 'lucide-react';
+import { X, RefreshCw, Layers, Pause, Play } from 'lucide-react';
 import styles from './DepthOfMarket.module.css';
 import logger from '../../utils/logger';
 import { formatCompactNumber, formatPrice } from '../../utils/shared/formatters';
+
+const AUTO_REFRESH_INTERVAL = 1000; // 1 second refresh interval
 
 interface DepthLevel {
     price: number;
@@ -43,8 +45,8 @@ const DepthOfMarket: React.FC<DepthOfMarketProps> = ({ symbol, exchange = 'NSE',
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // Fetch depth data
-    const fetchDepth = useCallback(async (): Promise<void> => {
-        if (!symbol || isPaused) return;
+    const fetchDepth = useCallback(async (force: boolean = false): Promise<void> => {
+        if (!symbol || (isPaused && !force)) return;
 
         // Abort previous request if still pending
         if (abortControllerRef.current) {
@@ -66,12 +68,22 @@ const DepthOfMarket: React.FC<DepthOfMarketProps> = ({ symbol, exchange = 'NSE',
         }
     }, [symbol, exchange, isPaused]);
 
-    // Event-driven: Fetch only on open and manual refresh (no polling)
+    // Auto-refresh when panel is open
     useEffect(() => {
         if (!isOpen || !symbol) return;
 
+        // Initial fetch
         setIsLoading(true);
         fetchDepth().finally(() => setIsLoading(false));
+
+        // Set up auto-refresh interval (only when not paused)
+        let intervalId: ReturnType<typeof setInterval> | null = null;
+
+        if (!isPaused) {
+            intervalId = setInterval(() => {
+                fetchDepth();
+            }, AUTO_REFRESH_INTERVAL);
+        }
 
         // Refresh when tab becomes visible (user returning to app)
         const handleVisibilityChange = () => {
@@ -83,6 +95,10 @@ const DepthOfMarket: React.FC<DepthOfMarketProps> = ({ symbol, exchange = 'NSE',
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
+            // Stop auto-refresh when panel closes or component unmounts
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
@@ -90,13 +106,13 @@ const DepthOfMarket: React.FC<DepthOfMarketProps> = ({ symbol, exchange = 'NSE',
         };
     }, [isOpen, symbol, isPaused, fetchDepth]);
 
-    // Manual refresh handler
+    // Manual refresh handler (works even when paused)
     const handleRefresh = useCallback(async () => {
-        if (isPaused || isRefreshing) return;
+        if (isRefreshing) return;
         setIsRefreshing(true);
-        await fetchDepth();
+        await fetchDepth(true); // force fetch even when paused
         setIsRefreshing(false);
-    }, [isPaused, isRefreshing, fetchDepth]);
+    }, [isRefreshing, fetchDepth]);
 
     // Format number with commas and crushing
     const formatNumber = (num: number): string => formatCompactNumber(num, 2);
@@ -128,12 +144,19 @@ const DepthOfMarket: React.FC<DepthOfMarketProps> = ({ symbol, exchange = 'NSE',
                 </div>
                 <div className={styles.headerActions}>
                     <button
+                        className={`${styles.iconBtn} ${!isPaused ? styles.active : ''}`}
+                        onClick={() => setIsPaused(!isPaused)}
+                        title={isPaused ? 'Resume auto-refresh' : 'Pause auto-refresh'}
+                    >
+                        {isPaused ? <Play size={14} /> : <Pause size={14} />}
+                    </button>
+                    <button
                         className={styles.iconBtn}
                         onClick={handleRefresh}
                         disabled={isRefreshing}
                         title="Refresh"
                     >
-                        <RefreshCw size={14} className={isRefreshing ? styles.spinning : ''} />
+                        <RefreshCw size={14} className={!isPaused ? styles.spinning : ''} />
                     </button>
                     <button className={styles.iconBtn} onClick={onClose} title="Close">
                         <X size={14} />
