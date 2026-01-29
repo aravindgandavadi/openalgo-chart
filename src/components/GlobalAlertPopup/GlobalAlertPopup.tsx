@@ -6,9 +6,15 @@ interface AlertNotification {
     id: string;
     symbol: string;
     exchange: string;
-    direction: 'up' | 'down';
-    price: number;
+    direction?: 'up' | 'down';
+    price?: number;
     timestamp: number;
+    // Indicator alert fields
+    alertType?: 'price' | 'indicator';
+    indicator?: string;
+    condition?: string;
+    message?: string;
+    currentPrice?: number;
 }
 
 interface SymbolInfo {
@@ -77,38 +83,47 @@ const GlobalAlertPopup: React.FC<GlobalAlertPopupProps> = ({ alerts, onDismiss, 
 
     return (
         <div className={styles.container}>
-            {alerts.map(alert => (
-                <div
-                    key={alert.id}
-                    className={`${styles.notification} ${dismissing[alert.id] ? styles.dismissing : ''}`}
-                    onClick={(e) => handleClick(alert, e)}
-                    style={{ cursor: 'pointer' }}
-                    title="Click to view chart"
-                >
-                    {/* Icon */}
-                    <div className={styles.icon}>🪙</div>
+            {alerts.map(alert => {
+                const isIndicatorAlert = alert.alertType === 'indicator';
+                const icon = isIndicatorAlert ? '📊' : '🪙';
+                const header = isIndicatorAlert
+                    ? `${alert.indicator?.toUpperCase() || 'Indicator'} Alert`
+                    : `Alert on ${alert.symbol}`;
+                const message = isIndicatorAlert
+                    ? (alert.message || `${alert.indicator} ${alert.condition}`)
+                    : `${alert.symbol} Crossing ${alert.direction === 'up' ? '↑' : '↓'} ${alert.price}`;
 
-                    {/* Content */}
-                    <div className={styles.content}>
-                        <div className={styles.header}>Alert on {alert.symbol}</div>
-                        <div className={styles.message}>
-                            {alert.symbol} Crossing {alert.direction === 'up' ? '↑' : '↓'} {alert.price}
-                        </div>
-                        <div className={styles.footer}>
-                            <span className={styles.viewChart}>View chart →</span>
-                            <span className={styles.timestamp}>{formatTime(alert.timestamp)}</span>
-                        </div>
-                    </div>
-
-                    {/* Close button */}
-                    <button
-                        className={styles.closeBtn}
-                        onClick={() => handleDismiss(alert.id)}
+                return (
+                    <div
+                        key={alert.id}
+                        className={`${styles.notification} ${dismissing[alert.id] ? styles.dismissing : ''}`}
+                        onClick={(e) => handleClick(alert, e)}
+                        style={{ cursor: 'pointer' }}
+                        title="Click to view chart"
                     >
-                        ×
-                    </button>
-                </div>
-            ))}
+                        {/* Icon */}
+                        <div className={styles.icon}>{icon}</div>
+
+                        {/* Content */}
+                        <div className={styles.content}>
+                            <div className={styles.header}>{header}</div>
+                            <div className={styles.message}>{message}</div>
+                            <div className={styles.footer}>
+                                <span className={styles.viewChart}>{alert.symbol} →</span>
+                                <span className={styles.timestamp}>{formatTime(alert.timestamp)}</span>
+                            </div>
+                        </div>
+
+                        {/* Close button */}
+                        <button
+                            className={styles.closeBtn}
+                            onClick={() => handleDismiss(alert.id)}
+                        >
+                            ×
+                        </button>
+                    </div>
+                );
+            })}
         </div>
     );
 };

@@ -5,7 +5,7 @@
 
 import logger from '../utils/logger';
 import { safeParseJSON } from './storageService';
-import { ConnectionState, setConnectionStatus } from './connectionStatus';
+import { ConnectionState, setConnectionStatus, triggerNetworkRecovery, subscribeToNetworkRecovery } from './connectionStatus';
 import {
   getHostUrl,
   shouldUseProxy,
@@ -180,9 +180,20 @@ class SharedWebSocketManager {
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _authenticated: boolean = false;
   private _wsWrapper: ManagedWebSocket | null = null;
+  private _wasDisconnected: boolean = false;
 
   constructor() {
-    // Initialize in constructor
+    // Listen for network recovery to trigger immediate reconnection
+    subscribeToNetworkRecovery(() => {
+      logger.debug('[SharedWS] Network recovery detected, attempting reconnection');
+      if (this._reconnectTimer) {
+        clearTimeout(this._reconnectTimer);
+        this._reconnectTimer = null;
+      }
+      if (this._subscribers.size > 0) {
+        this._ensureConnected();
+      }
+    });
   }
 
   /**
@@ -335,6 +346,14 @@ class SharedWebSocketManager {
           this._authenticated = true;
           setConnectionStatus(ConnectionState.CONNECTED);
           this._resubscribeAll();
+
+          // Trigger network recovery if we were disconnected before
+          // This notifies components to refresh their data
+          if (this._wasDisconnected) {
+            this._wasDisconnected = false;
+            logger.debug('[SharedWS] Reconnected after disconnect, triggering data recovery');
+            triggerNetworkRecovery();
+          }
           return;
         }
 
@@ -365,6 +384,7 @@ class SharedWebSocketManager {
     this._ws.onclose = () => {
       logger.debug('[SharedWS] Disconnected');
       this._authenticated = false;
+      this._wasDisconnected = true;
       setConnectionStatus(ConnectionState.DISCONNECTED);
       if (this._subscribers.size > 0) {
         this._reconnectTimer = setTimeout(() => this._ensureConnected(), 2000);

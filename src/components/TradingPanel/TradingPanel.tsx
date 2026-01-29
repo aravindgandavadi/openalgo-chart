@@ -5,6 +5,7 @@ import styles from './TradingPanel.module.css';
 import { subscribeToTicker, placeOrder, getLotSize } from '../../services/openalgo';
 import { validateOrder, createOrderPayload } from '../../utils/shared/orderUtils';
 import { PRODUCTS, FNO_EXCHANGES } from '../../constants/orderConstants';
+import { useOrders } from '../../context/OrderContext';
 import logger from '../../utils/logger';
 
 type OrderAction = 'BUY' | 'SELL';
@@ -47,6 +48,9 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
     initialPrice = '',
     initialOrderType = 'MARKET'
 }) => {
+    // Get refresh function from OrderContext for event-driven updates
+    const { refresh: refreshOrders } = useOrders();
+
     // Local State - use initial values from props
     const [action, setAction] = useState<OrderAction>(initialAction);
     const [orderType, setOrderType] = useState<OrderType>(initialOrderType);
@@ -190,6 +194,8 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
             const result = await placeOrder(orderDetails as any) as OrderResult;
             if (result.status === 'success') {
                 if (showToast) showToast(`Order Placed: ${result.orderid}`, 'success');
+                // Event-driven: Refresh orders immediately after successful placement
+                refreshOrders();
             } else {
                 if (showToast) showToast(`Order Failed: ${result.message}`, 'error');
             }
@@ -369,11 +375,18 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
                         <option value="NRML">Overnight (NRML)</option>
                     </select>
                 </div>
+            </div>
 
-                <div className={styles.marginInfo}>
-                    <span>Required Margin</span>
-                    <span>--</span>
-                </div>
+            {/* Margin Info - Outside scrollable form */}
+            <div className={styles.marginInfo}>
+                <span>Required Margin</span>
+                <span>--</span>
+            </div>
+
+            {/* LTP Info */}
+            <div className={styles.marginInfo}>
+                <span>LTP</span>
+                <span className={styles.ltpValue}>{ltp > 0 ? ltp.toFixed(2) : '--.--'}</span>
             </div>
 
             {/* Submit Button */}

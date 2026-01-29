@@ -290,6 +290,13 @@ function AppContent({ isAuthenticated, setIsAuthenticated }) {
 
       // Add to popup queue for visual notification
       setGlobalAlertPopups(prev => [...prev, { ...evt, id: evt.alertId || crypto.randomUUID() }]);
+
+      // Update alert status in React state (for indicator alerts)
+      if (evt.alertType === 'indicator' && evt.alertId) {
+        setAlerts(prev => prev.map(a =>
+          a.id === evt.alertId ? { ...a, status: 'Triggered' } : a
+        ));
+      }
     };
 
     // Load alerts and start monitoring

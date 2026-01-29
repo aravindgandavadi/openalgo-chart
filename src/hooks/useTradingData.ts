@@ -19,6 +19,7 @@ import {
   getHoldings,
   getTradeBook,
 } from '../services/openalgo';
+import { subscribeToNetworkRecovery } from '../services/connectionStatus';
 import logger from '../utils/logger';
 
 // ==================== TYPES ====================
@@ -247,7 +248,7 @@ export const useTradingData = (isAuthenticated: boolean): UseTradingDataReturn =
     [isAuthenticated]
   );
 
-  // Event-driven: Initial fetch + refresh on visibility change only (no polling)
+  // Event-driven: Initial fetch + refresh on visibility change and network recovery
   // Relies on WebSocket events for real-time updates
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -266,8 +267,15 @@ export const useTradingData = (isAuthenticated: boolean): UseTradingDataReturn =
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Subscribe to network recovery for auto-refresh after reconnection
+    const unsubscribeNetworkRecovery = subscribeToNetworkRecovery(() => {
+      logger.debug('[useTradingData] Network recovery refresh');
+      fetchData('network-recovery');
+    });
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      unsubscribeNetworkRecovery();
     };
   }, [isAuthenticated, fetchData]);
 

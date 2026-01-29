@@ -260,6 +260,12 @@ const IndicatorAlertDialog: FC<IndicatorAlertDialogProps> = ({
                 id: selectedCondition.id,
                 type: selectedCondition.type,
                 label: selectedCondition.label,
+                // Include series fields from selected condition for alert evaluation
+                series: selectedCondition.series,
+                series1: selectedCondition.series1,
+                series2: selectedCondition.series2,
+                comparison: selectedCondition.comparison,
+                requiresPrice: selectedCondition.requiresPrice,
                 ...conditionConfig,
             },
             name: alertName || `${symbol} ${selectedIndicator} Alert`,

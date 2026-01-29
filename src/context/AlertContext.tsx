@@ -199,7 +199,7 @@ export function AlertProvider({ children }: AlertProviderProps) {
   // Mark alert as triggered
   const triggerAlert = useCallback((alertId: string) => {
     setAlerts((prev) =>
-      prev.map((a) => (a.id === alertId ? { ...a, triggered: true, triggeredAt: Date.now() } : a))
+      prev.map((a) => (a.id === alertId ? { ...a, triggered: true, triggeredAt: Date.now(), status: 'Triggered' } : a))
     );
   }, []);
 
@@ -247,7 +247,7 @@ export function AlertProvider({ children }: AlertProviderProps) {
 
   // Get triggered alerts
   const getTriggeredAlerts = useCallback(() => {
-    return alerts.filter((a) => a.triggered);
+    return alerts.filter((a) => a.triggered || a.status === 'Triggered');
   }, [alerts]);
 
   // Get alerts for a specific symbol

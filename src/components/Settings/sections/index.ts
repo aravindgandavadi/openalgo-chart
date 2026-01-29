@@ -1,7 +1,16 @@
 /**
  * Settings Sections Index
  */
-export { default as ScalesSection } from './ScalesSection';
-export { default as OpenAlgoSection } from './OpenAlgoSection';
-export { default as LoggingSection } from './LoggingSection';
-export { default as AppearanceSection } from './AppearanceSection';
+import ScalesSection from './ScalesSection';
+import OpenAlgoSection from './OpenAlgoSection';
+import LoggingSection from './LoggingSection';
+import AppearanceSection from './AppearanceSection';
+import SymbolSection from './SymbolSection';
+
+export {
+    ScalesSection,
+    OpenAlgoSection,
+    LoggingSection,
+    AppearanceSection,
+    SymbolSection,
+};

@@ -37,49 +37,9 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({ localAppearance, 
 
     return (
         <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>CANDLE COLORS</h3>
 
-            <div className={styles.colorRow}>
-                <label className={styles.colorLabel}>Up Color (Bullish)</label>
-                <div className={styles.colorInputWrapper}>
-                    <input
-                        type="color"
-                        value={localAppearance.candleUpColor}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleColorChange('candleUpColor', e.target.value, 'wickUpColor')}
-                        className={styles.colorInput}
-                    />
-                    <input
-                        type="text"
-                        value={localAppearance.candleUpColor}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleHexInput('candleUpColor', e.target.value, 'wickUpColor')}
-                        className={styles.hexInput}
-                        maxLength={7}
-                        placeholder="#000000"
-                    />
-                </div>
-            </div>
 
-            <div className={styles.colorRow}>
-                <label className={styles.colorLabel}>Down Color (Bearish)</label>
-                <div className={styles.colorInputWrapper}>
-                    <input
-                        type="color"
-                        value={localAppearance.candleDownColor}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleColorChange('candleDownColor', e.target.value, 'wickDownColor')}
-                        className={styles.colorInput}
-                    />
-                    <input
-                        type="text"
-                        value={localAppearance.candleDownColor}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleHexInput('candleDownColor', e.target.value, 'wickDownColor')}
-                        className={styles.hexInput}
-                        maxLength={7}
-                        placeholder="#000000"
-                    />
-                </div>
-            </div>
-
-            <h3 className={styles.sectionTitle} style={{ marginTop: '24px' }}>GRID LINES</h3>
+            <h3 className={styles.sectionTitle}>GRID LINES</h3>
 
             <div className={styles.optionGroup}>
                 <label className={styles.checkboxLabel}>

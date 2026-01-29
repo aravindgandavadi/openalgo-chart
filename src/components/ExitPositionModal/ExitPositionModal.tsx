@@ -7,6 +7,7 @@ import styles from './ExitPositionModal.module.css';
 import logger from '../../utils/logger';
 import { BaseModal, BaseButton, ButtonGroup } from '../shared';
 import { formatCurrency } from '../../utils/shared/formatters';
+import { useOrders } from '../../context/OrderContext';
 
 // Order types available for exit
 const ORDER_TYPES = [
@@ -48,6 +49,9 @@ const ExitPositionModal: React.FC<ExitPositionModalProps> = ({
     onExitComplete,
     showToast
 }) => {
+    // Get refresh function from OrderContext for event-driven updates
+    const { refresh: refreshOrders } = useOrders();
+
     // State
     const [orderType, setOrderType] = useState<OrderType>('MARKET');
     const [exitQuantity, setExitQuantity] = useState('');
@@ -171,6 +175,8 @@ const ExitPositionModal: React.FC<ExitPositionModalProps> = ({
                 if (showToast) {
                     showToast(`Exit order placed: ${result.orderid}`, 'success');
                 }
+                // Event-driven: Refresh orders immediately after successful placement
+                refreshOrders();
                 onClose();
                 if (onExitComplete) {
                     onExitComplete();

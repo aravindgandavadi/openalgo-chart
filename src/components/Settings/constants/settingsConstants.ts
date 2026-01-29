@@ -42,8 +42,13 @@ export const DEFAULT_CHART_APPEARANCE: ChartAppearance = {
 // Settings section definitions
 export const SETTINGS_SECTIONS: SettingsSection[] = [
     {
+        id: 'symbol',
+        label: 'Symbol',
+        iconPath: 'M17.5 20.5h4v-13h-4v13zm2-13v-3m0 16v3M6.5 17.5h4v-7h-4v7zm2-7v-3m0 10v3',
+    },
+    {
         id: 'scales',
-        label: 'Scales and lines',
+        label: 'Scales',
         iconPath: 'M10.5 20.5a2 2 0 1 1-2-2m2 2a2 2 0 0 0-2-2m2 2h14m-16-2v-14m16 16L21 17m3.5 3.5L21 24M8.5 4.5L12 8M8.5 4.5L5 8',
     },
     {
