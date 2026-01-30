@@ -30,6 +30,7 @@ export interface BaseModalProps {
     noPadding?: boolean;
     footer?: ReactNode;
     headerRight?: ReactNode;
+    contentClassName?: string;
 }
 
 const BaseModal: React.FC<BaseModalProps> = ({
@@ -46,6 +47,7 @@ const BaseModal: React.FC<BaseModalProps> = ({
     noPadding = false,
     footer = null,
     headerRight = null,
+    contentClassName = '',
 }) => {
     // Handle Escape key
     useEffect(() => {
@@ -98,7 +100,7 @@ const BaseModal: React.FC<BaseModalProps> = ({
                     </div>
                 )}
 
-                <div className={`${styles.content} ${noPadding ? styles.noPadding : ''}`}>
+                <div className={`${styles.content} ${noPadding ? styles.noPadding : ''} ${contentClassName}`}>
                     {children}
                 </div>
 

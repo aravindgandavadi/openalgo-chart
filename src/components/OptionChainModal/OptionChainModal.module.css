@@ -70,6 +70,8 @@
 .modalBase {
     width: 950px;
     max-width: 95vw;
+    /* Ensure modal fits in viewport so internal scrolling works and header stays visible */
+    max-height: 85vh;
     /* We don't set background/border here as BaseModal handles it, 
        but we want to ensure height behavior matches */
     display: flex;
@@ -80,6 +82,14 @@
 
 .modalBaseWide {
     width: 1150px;
+}
+
+.modalContent {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    padding: 0 !important;
 }
 
 /* Header */

@@ -120,6 +120,7 @@ const OptionChainModal: FC<OptionChainModalProps> = ({ isOpen, onClose, onSelect
     const [strikeCount, setStrikeCount] = useState(15);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const tableBodyRef = useRef<HTMLDivElement>(null);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
     const wsRef = useRef<WebSocketConnection | null>(null);
 
     // Greeks mode state
@@ -395,9 +396,27 @@ const OptionChainModal: FC<OptionChainModalProps> = ({ isOpen, onClose, onSelect
     }, [isOpen, selectedExpiry, fetchChain]);
 
     useEffect(() => {
-        if (optionChain?.atmStrike && tableBodyRef.current) {
-            const spotBar = tableBodyRef.current.querySelector('[data-spot-bar="true"]');
-            if (spotBar) spotBar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (optionChain?.atmStrike && tableContainerRef.current) {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                const container = tableContainerRef.current;
+                if (!container) return;
+
+                const spotBar = container.querySelector('[data-spot-bar="true"]') as HTMLElement;
+                if (spotBar) {
+                    // Manual scroll calculation to prevent scrolling the entire page/modal
+                    const containerRect = container.getBoundingClientRect();
+                    const spotRect = spotBar.getBoundingClientRect();
+
+                    // Calculate relative position + current scroll
+                    const relativeTop = spotRect.top - containerRect.top + container.scrollTop;
+                    const containerHeight = container.clientHeight;
+                    const spotHeight = spotBar.offsetHeight;
+
+                    // Center the spot bar
+                    container.scrollTop = relativeTop - (containerHeight / 2) + (spotHeight / 2);
+                }
+            }, 100);
         }
     }, [optionChain]);
 
@@ -769,6 +788,7 @@ const OptionChainModal: FC<OptionChainModalProps> = ({ isOpen, onClose, onSelect
             showHeader={false}
             noPadding={true}
             className={classNames(styles.modalBase, { [styles.modalBaseWide]: viewMode === 'greeks' })}
+            contentClassName={styles.modalContent}
         >
             {/* Header */}
             <div className={styles.header}>
@@ -898,7 +918,7 @@ const OptionChainModal: FC<OptionChainModalProps> = ({ isOpen, onClose, onSelect
             )}
 
             {/* Table */}
-            <div className={styles.tableContainer}>
+            <div className={styles.tableContainer} ref={tableContainerRef}>
                 {isLoading ? (
                     <div className={styles.loading}>
                         <Loader2 size={28} className={styles.spin} />
