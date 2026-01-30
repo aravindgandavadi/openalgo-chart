@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import type { FC, ChangeEvent, KeyboardEvent } from 'react';
-import { BaseModal } from '../shared';
+import { BaseModal, Button, Text } from '../shared';
 import { X, Loader2, RefreshCw, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getOptionChain, getAvailableExpiries, UNDERLYINGS } from '../../services/optionChain';
 import { subscribeToMultiTicker, getMultiOptionGreeks } from '../../services/openalgo';
@@ -816,10 +816,17 @@ const OptionChainModal: FC<OptionChainModalProps> = ({ isOpen, onClose, onSelect
                             <option key={u.symbol} value={u.symbol}>{u.symbol}</option>
                         ))}
                     </select>
-                    <span className={styles.headerTitle}>Options</span>
-                    <button className={styles.refreshBtnHeader} onClick={() => fetchChain()} disabled={isLoading || !selectedExpiry}>
-                        <RefreshCw size={16} className={isLoading ? styles.spin : ''} />
-                    </button>
+                    <Text variant="h3" weight="semibold">Options</Text>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => fetchChain()}
+                        disabled={!selectedExpiry}
+                        isLoading={isLoading}
+                        iconOnly
+                    >
+                        {!isLoading && <RefreshCw size={16} />}
+                    </Button>
                 </div>
                 <div className={styles.headerRight}>
                     <div className={styles.viewToggle}>
@@ -966,11 +973,16 @@ const OptionChainModal: FC<OptionChainModalProps> = ({ isOpen, onClose, onSelect
                             <div className={styles.spotBar} data-spot-bar="true">
                                 <div className={styles.spotLine}></div>
                                 <div className={styles.spotBadge}>
-                                    <span>Spot price</span>
-                                    <strong>{spotInfo.price}</strong>
-                                    <span className={classNames(styles.spotChange, { [styles.positive]: spotInfo.isPositive, [styles.negative]: !spotInfo.isPositive })}>
+                                    <Text as="span" variant="caption" color="secondary">Spot price</Text>
+                                    <Text as="span" variant="body" weight="bold">{spotInfo.price}</Text>
+                                    <Text
+                                        as="span"
+                                        variant="caption"
+                                        weight="medium"
+                                        className={classNames(styles.spotChange, { [styles.positive]: spotInfo.isPositive, [styles.negative]: !spotInfo.isPositive })}
+                                    >
                                         {spotInfo.change} ({spotInfo.percent})
-                                    </span>
+                                    </Text>
                                 </div>
                                 <div className={styles.spotLine}></div>
                             </div>

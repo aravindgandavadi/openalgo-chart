@@ -7,6 +7,10 @@
  * import { BaseModal, BaseDialog, ConfirmDialog } from '../shared';
  */
 
+// Basic UI
+// Basic UI
+export * from './Text/Text';
+
 // Modal Components
 export { BaseModal } from './Modal';
 export type { BaseModalProps } from './Modal';
@@ -24,8 +28,8 @@ export { BaseDropdown, DropdownItem, DropdownDivider, DropdownWithTrigger } from
 export type { BaseDropdownProps, DropdownItemProps, DropdownPosition, DropdownWithTriggerProps } from './Dropdown';
 
 // Button Components
-export { BaseButton, IconButton, ButtonGroup } from './Button';
-export type { BaseButtonProps, IconButtonProps, ButtonGroupProps } from './Button';
+export { BaseButton, IconButton, ButtonGroup, Button } from './Button';
+export type { BaseButtonProps, IconButtonProps, ButtonGroupProps, ButtonProps } from './Button';
 
 // Table Components
 export { BaseTable } from './Table';

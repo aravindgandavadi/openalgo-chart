@@ -40,7 +40,11 @@
       "mcp__plugin_playwright_playwright__browser_console_messages",
       "mcp__plugin_playwright_playwright__browser_evaluate",
       "Bash(gh run list:*)",
-      "Bash(npm ci)"
+      "Bash(npm ci)",
+      "Bash(npm run test:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint)"
     ]
   }
 }
